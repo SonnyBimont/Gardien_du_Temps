@@ -1,0 +1,44 @@
+title,assignees,labels,milestone,status
+"[INF-001] Configuration du dépôt Git et structure du projet",,Type: DevOps;Priorité: Critique;Module: Administration,M1: Infrastructure et authentification,À faire
+"[INF-002] Mise en place de l'environnement de développement",,Type: DevOps;Priorité: Critique;Module: Administration,M1: Infrastructure et authentification,À faire
+"[INF-003] Définition de l'architecture technique (backend/frontend)",,Type: DevOps;Priorité: Critique;Module: Administration,M1: Infrastructure et authentification,À faire
+"[INF-004] Mise en place de la base de données et schémas",,Type: DevOps;Priorité: Critique;Module: Administration,M1: Infrastructure et authentification,À faire
+"[AUTH-001] Implémentation du système d'authentification (login/mot de passe)",,Type: Feature;Priorité: Critique;Module: Authentification,M1: Infrastructure et authentification,À faire
+"[AUTH-002] Système de gestion des rôles (Admin, Directeur, Animateur)",,Type: Feature;Priorité: Critique;Module: Authentification,M1: Infrastructure et authentification,À faire
+"[AUTH-003] Gestion des jetons (tokens) et sessions",,Type: Feature;Priorité: Haute;Module: Authentification,M1: Infrastructure et authentification,À faire
+"[AUTH-004] Protection des routes par rôle",,Type: Feature;Priorité: Haute;Module: Authentification,M1: Infrastructure et authentification,À faire
+"[STRUCT-001] Création/modification/suppression des structures",,Type: Feature;Priorité: Haute;Module: Administration,M1: Infrastructure et authentification,Backlog
+"[STRUCT-002] Association des directeurs aux structures",,Type: Feature;Priorité: Haute;Module: Administration,M1: Infrastructure et authentification,Backlog
+"[STRUCT-003] Association des animateurs aux structures",,Type: Feature;Priorité: Haute;Module: Administration,M1: Infrastructure et authentification,Backlog
+"[USER-001] CRUD des utilisateurs administrateurs",,Type: Feature;Priorité: Haute;Module: Administration,M1: Infrastructure et authentification,Backlog
+"[USER-002] CRUD des utilisateurs directeurs",,Type: Feature;Priorité: Haute;Module: Administration,M1: Infrastructure et authentification,Backlog
+"[USER-003] CRUD des utilisateurs animateurs",,Type: Feature;Priorité: Haute;Module: Administration,M1: Infrastructure et authentification,Backlog
+"[POINT-001] Développement de l'interface de pointage (mobile-first)",,Type: Feature;Priorité: Critique;Module: Pointage,M2: Système de pointage,Backlog
+"[POINT-002] Implémentation du pointage d'arrivée",,Type: Feature;Priorité: Critique;Module: Pointage,M2: Système de pointage,Backlog
+"[POINT-003] Implémentation du pointage de pause méridienne",,Type: Feature;Priorité: Critique;Module: Pointage,M2: Système de pointage,Backlog
+"[POINT-004] Implémentation du pointage de départ",,Type: Feature;Priorité: Critique;Module: Pointage,M2: Système de pointage,Backlog
+"[POINT-005] Validation des pointages (cohérence temporelle)",,Type: Feature;Priorité: Haute;Module: Pointage,M2: Système de pointage,Backlog
+"[POINT-006] Visualisation des pointages quotidiens",,Type: Feature;Priorité: Haute;Module: Pointage,M2: Système de pointage,Backlog
+"[POINT-007] Historique des pointages par utilisateur",,Type: Feature;Priorité: Haute;Module: Pointage,M2: Système de pointage,Backlog
+"[POINT-008] Correction/ajustement des pointages (directeurs)",,Type: Feature;Priorité: Moyenne;Module: Pointage,M2: Système de pointage,Backlog
+"[PLAN-001] Interface de saisie du prévisionnel hebdomadaire",,Type: Feature;Priorité: Haute;Module: Planning,M3: Planning et objectifs,Backlog
+"[PLAN-002] Configuration des objectifs horaires par type de contrat",,Type: Feature;Priorité: Haute;Module: Planning,M3: Planning et objectifs,Backlog
+"[PLAN-003] Création de modèles de semaine",,Type: Feature;Priorité: Moyenne;Module: Planning,M3: Planning et objectifs,Backlog
+"[PLAN-004] Application des modèles au planning",,Type: Feature;Priorité: Moyenne;Module: Planning,M3: Planning et objectifs,Backlog
+"[OBJ-001] Calcul automatique des heures journalières",,Type: Feature;Priorité: Haute;Module: Planning,M3: Planning et objectifs,Backlog
+"[OBJ-002] Calcul automatique des heures hebdomadaires",,Type: Feature;Priorité: Haute;Module: Planning,M3: Planning et objectifs,Backlog
+"[OBJ-003] Comparaison avec les objectifs définis",,Type: Feature;Priorité: Haute;Module: Planning,M3: Planning et objectifs,Backlog
+"[OBJ-004] Système d'alertes pour dépassement d'heures",,Type: Feature;Priorité: Moyenne;Module: Planning,M3: Planning et objectifs,Backlog
+"[REPORT-001] Dashboard directeur - Vue personnelle",,Type: Feature;Priorité: Haute;Module: Reporting,M4: Reporting et finalisation,Backlog
+"[REPORT-002] Dashboard directeur - Vue équipe",,Type: Feature;Priorité: Haute;Module: Reporting,M4: Reporting et finalisation,Backlog
+"[REPORT-003] Dashboard administrateur - Vue globale",,Type: Feature;Priorité: Moyenne;Module: Reporting,M4: Reporting et finalisation,Backlog
+"[EXPORT-001] Export des relevés d'heures en PDF",,Type: Feature;Priorité: Haute;Module: Reporting,M4: Reporting et finalisation,Backlog
+"[EXPORT-002] Export des relevés d'heures en Excel",,Type: Feature;Priorité: Moyenne;Module: Reporting,M4: Reporting et finalisation,Backlog
+"[UI-001] Design système et charte graphique",,Type: Design;Priorité: Haute;Module: UI/UX,M1: Infrastructure et authentification,Backlog
+"[UI-002] Composants UI réutilisables",,Type: Design;Priorité: Haute;Module: UI/UX,M2: Système de pointage,Backlog
+"[UI-003] Adaptation responsive (mobile, tablette, desktop)",,Type: Design;Priorité: Haute;Module: UI/UX,M3: Planning et objectifs,Backlog
+"[UI-004] Documentation utilisateur",,Type: Documentation;Priorité: Moyenne;Module: UI/UX,M4: Reporting et finalisation,Backlog
+"[TEST-001] Tests fonctionnels",,Type: Test;Priorité: Haute;Module: Administration,M4: Reporting et finalisation,Backlog
+"[TEST-002] Tests d'intégration",,Type: Test;Priorité: Haute;Module: Administration,M4: Reporting et finalisation,Backlog
+"[TEST-003] Préparation du déploiement",,Type: DevOps;Priorité: Critique;Module: Administration,M4: Reporting et finalisation,Backlog
+"[TEST-004] Déploiement en production",,Type: DevOps;Priorité: Critique;Module: Administration,M4: Reporting et finalisation,Backlog
