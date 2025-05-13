@@ -3,7 +3,7 @@ const path = require('path');
 // Configuration des chemins pour Sequelize CLI
 module.exports = {
   // Chemin vers le fichier de configuration de la base de données
-  'config': path.resolve('src', 'config', 'database.js'),
+  'config': path.resolve('src/config', 'sequelize-cli-config.js'),
 
   // Chemin vers le dossier contenant les modèles
   'models-path': path.resolve('src', 'models'),
