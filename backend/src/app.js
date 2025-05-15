@@ -6,7 +6,7 @@ const debug = require('debug')('gardien:server');
 const config = require('./config/config');
 const { sequelize } = require('./models');
 const { setupScheduledJobs } = require('./services/scheduleService');
-// const routes = require('./routes');
+const routes = require('./routes');
 
 const app = express();
 
@@ -21,22 +21,21 @@ if (config.nodeEnv === 'development') {
     app.use(morgan('dev'));
 }
 
-
 // Journalisation des requêtes
 app.use((req, res, next) => {
     const dateISO = new Date().toISOString(); // Format ISO de la date et heure
     const clientIP = req.ip; // IP du client
+    const method = req.method; // Ajout de la méthode HTTP
     const path = req.originalUrl; // Chemin accédé
 
-    console.log("journalisation", `[${dateISO} ${clientIP}] ${path}`);
-
+    console.log(`[${dateISO}] ${method} ${path} - IP: ${clientIP}`);
     next();
 });
 
 // Routes
-// app.use('/api/v1', routes);
+app.use('/api', routes);
 
-// Gestion des erreurs 404
+// Gestion des erreurs 404 - doit être après les routes
 app.use((req, res) => {
     res.status(404).json({ message: 'Route non trouvée' });
 });
@@ -57,9 +56,13 @@ const startServer = async () => {
         debug('Connexion à la base de données réussie.');
         console.log('Connexion à la base de données réussie.');
 
+        // Démarrer les tâches planifiées après connexion à la DB
+        setupScheduledJobs();
+
         app.listen(config.port, () => {
             debug(`Serveur démarré sur le port ${config.port}`);
             console.log(`Serveur démarré sur le port ${config.port}`);
+            console.log(`API disponible sur http://localhost:${config.port}/api`);
         });
     } catch (error) {
         debug('Erreur de connexion à la base de données: %O', error);
@@ -68,5 +71,3 @@ const startServer = async () => {
 };
 
 startServer();
-// Démarrer les tâches planifiées
-setupScheduledJobs();

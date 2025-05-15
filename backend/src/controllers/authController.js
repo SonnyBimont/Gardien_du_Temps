@@ -69,3 +69,28 @@ exports.getMe = async (req, res) => {
         res.status(500).json({ message: 'Erreur lors de la récupération du profil', error: error.message });
     }
 };
+
+// Rafraîchir le token JWT
+exports.refreshToken = async (req, res) => {
+    try {
+        const user = req.user;
+
+        // Générer un nouveau token
+        const token = generateToken(user);
+
+        res.status(200).json({
+            success: true,
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                role: user.role,
+                structure_id: user.structure_id
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Erreur lors du rafraîchissement du token', error: error.message });
+    }
+};

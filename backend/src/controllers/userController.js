@@ -1,4 +1,5 @@
 const { User, Structure } = require('../models');
+const bcrypt = require('bcryptjs');
 
 // Récupérer tous les utilisateurs
 exports.getUsers = async (req, res) => {
