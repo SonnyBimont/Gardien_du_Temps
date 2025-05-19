@@ -42,19 +42,19 @@ module.exports = {
       return queryInterface.bulkInsert('users', [
         {
           email: 'admin@gardien-temps.com',
-          password: hashedPassword,
+          password: hashedPassword, // permet de stocker le mot de passe haché
           last_name: 'Dubois',
           first_name: 'Jean',
           phone: '0601020304',
           structure_id: parisId, // Utiliser l'ID dynamique, pas une valeur fixe comme 1
-          role: 'admin',
-          contract_type: 'permanent',
-          weekly_hours: 35,
-          annual_hours: 1607,
-          contract_start_date: new Date('2023-01-01'),
-          active: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
+          role: 'admin', // Rôle de l'utilisateur
+          contract_type: 'permanent', // Type de contrat
+          weekly_hours: 35, // Nombre d'heures hebdomadaires
+          annual_hours: 1607, // Nombre d'heures annuelles
+          contract_start_date: new Date('2023-01-01'), // Date de début du contrat
+          active: true, // Statut de l'utilisateur
+          createdAt: new Date(), // Date de création
+          updatedAt: new Date() // Date de mise à jour
         },
         {
           email: 'directeur@gardien-temps.com',
@@ -62,7 +62,7 @@ module.exports = {
           last_name: 'Martin',
           first_name: 'Sophie',
           phone: '0602030405',
-          structure_id: parisId, // Utiliser l'ID dynamique
+          structure_id: parisId,
           role: 'director',
           contract_type: 'permanent',
           weekly_hours: 35,
@@ -78,7 +78,7 @@ module.exports = {
           last_name: 'Petit',
           first_name: 'Lucas',
           phone: '0603040506',
-          structure_id: parisId, // Utiliser l'ID dynamique
+          structure_id: parisId,
           role: 'animator',
           contract_type: 'fixed_term',
           weekly_hours: 24,
@@ -95,7 +95,7 @@ module.exports = {
           last_name: 'Durand',
           first_name: 'Léa',
           phone: '0604050607',
-          structure_id: parisId, // Utiliser l'ID dynamique
+          structure_id: parisId,
           role: 'animator',
           contract_type: 'permanent',
           weekly_hours: 30,
@@ -111,7 +111,7 @@ module.exports = {
           last_name: 'Moreau',
           first_name: 'Thomas',
           phone: '0605060708',
-          structure_id: lyonId, // Utiliser l'ID dynamique
+          structure_id: lyonId,
           role: 'director',
           contract_type: 'permanent',
           weekly_hours: 35,
@@ -127,7 +127,7 @@ module.exports = {
           last_name: 'Lefebvre',
           first_name: 'Emma',
           phone: '0606070809',
-          structure_id: lyonId, // Utiliser l'ID dynamique
+          structure_id: lyonId,
           role: 'animator',
           contract_type: 'fixed_term',
           weekly_hours: 20,
