@@ -8,11 +8,34 @@ router
     .get(protect, schoolVacationController.getAllVacations)
     .post(protect, authorize('admin'), schoolVacationController.createVacation);
 
+// Routes pour la synchronisation avec l'API gouvernementale
 router
-    .route('/:id')
-    .get(protect, schoolVacationController.getVacationById)
-    .put(protect, authorize('admin'), schoolVacationController.updateVacation)
-    .delete(protect, authorize('admin'), schoolVacationController.deleteVacation);
+    .route('/academies')
+    .get(protect, schoolVacationController.getAvailableAcademies);
+
+router
+    .route('/available-years')
+    .get(protect, schoolVacationController.getAvailableSchoolYears);
+
+router
+    .route('/calendar')
+    .get(protect, schoolVacationController.getVacationsCalendar);
+
+// Route pour synchroniser les données de vacances depuis l'API gouvernementale
+router
+    .route('/sync')
+    .post(protect, authorize('admin'), schoolVacationController.syncVacationsFromAPI);
+
+// POST: Déclenche la synchronisation automatique (admin uniquement)
+// Route pour synchronisation automatique (années courante et suivante)
+router
+    .route('/sync-auto')
+    .post(protect, authorize('admin'), schoolVacationController.syncCurrentAndNextYear);
+
+// Route pour vérifier si une date est pendant les vacances
+router
+    .route('/check')
+    .get(protect, schoolVacationController.checkIfDateIsVacation);
 
 // Route pour récupérer les vacances d'une zone spécifique
 router
@@ -24,25 +47,10 @@ router
     .route('/year/:schoolYear')
     .get(protect, schoolVacationController.getVacationsBySchoolYear);
 
-// Route pour vérifier si une date est pendant les vacances
 router
-    .route('/check')
-    .get(protect, schoolVacationController.checkIfDateIsVacation);
-
-// Route pour synchroniser les données de vacances depuis l'API gouvernementale
-router
-    .route('/sync')
-    .post(protect, authorize('admin'), schoolVacationController.syncVacationsFromAPI);
-
-// Route pour synchronisation automatique (années courante et suivante)
-// POST: Déclenche la synchronisation automatique (admin uniquement)
-router
-    .route('/sync-auto')
-    .post(protect, authorize('admin'), schoolVacationController.syncCurrentAndNextYear);
-
-// Routes pour la synchronisation avec l'API gouvernementale
-router.post('/sync', protect, authorize('admin'), schoolVacationController.syncVacationsFromAPI);
-router.get('/available-years', protect, schoolVacationController.getAvailableSchoolYears);
-router.post('/sync-auto', protect, authorize('admin'), schoolVacationController.syncCurrentAndNextYear);
+    .route('/:id')
+    .get(protect, schoolVacationController.getVacationById)
+    .put(protect, authorize('admin'), schoolVacationController.updateVacation)
+    .delete(protect, authorize('admin'), schoolVacationController.deleteVacation);
 
 module.exports = router;

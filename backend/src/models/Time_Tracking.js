@@ -10,6 +10,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.INTEGER,
             allowNull: false
         },
+        task_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true
+        },
         date_time: {
             type: DataTypes.DATE,
             allowNull: false
@@ -46,6 +50,11 @@ module.exports = (sequelize, DataTypes) => {
         Time_Tracking.belongsTo(models.User, {
             foreignKey: 'validated_by',
             as: 'validator'
+        });
+        // Ajout de l'association avec Task
+        Time_Tracking.belongsTo(models.Task, {
+            foreignKey: 'task_id',
+            as: 'task'
         });
     };
 

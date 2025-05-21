@@ -48,16 +48,23 @@ module.exports = (sequelize, DataTypes) => {
     });
 
     Task.associate = (models) => {
-        // Task belongs to Project
+        // Association avec Project
         Task.belongsTo(models.Project, {
             foreignKey: 'project_id',
             as: 'project'
         });
 
-        // Task has many UserTasks
-        Task.hasMany(models.User_Task, {
+        // Association many-to-many avec User
+        Task.belongsToMany(models.User, {
+            through: 'User_Task',
             foreignKey: 'task_id',
-            as: 'user_tasks'
+            otherKey: 'user_id',
+            as: 'assignedUsers'
+        });
+        // Dans la méthode associate du modèle Task
+        Task.hasMany(models.Time_Tracking, {
+            foreignKey: 'task_id',
+            as: 'timeEntries'
         });
     };
 

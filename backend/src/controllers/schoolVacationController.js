@@ -129,38 +129,6 @@ exports.getVacationsBySchoolYear = async (req, res) => {
     }
 };
 
-// Vérifier si une date donnée est pendant les vacances scolaires
-exports.checkIfDateIsVacation = async (req, res) => {
-    try {
-        const { date, zone } = req.query;
-        const checkDate = new Date(date);
-
-        if (!checkDate || Number.isNaN(checkDate.getTime())) {
-            return res.status(400).json({ message: 'Date invalide' });
-        }
-
-        const whereClause = {
-            start_date: { [Op.lte]: checkDate },
-            end_date: { [Op.gte]: checkDate }
-        };
-
-        if (zone) {
-            whereClause.zone = zone;
-        }
-
-        const vacation = await School_Vacations.findOne({
-            where: whereClause
-        });
-
-        res.status(200).json({
-            success: true,
-            isVacation: !!vacation,
-            vacationData: vacation
-        });
-    } catch (error) {
-        res.status(500).json({ message: 'Erreur lors de la vérification de la date', error: error.message });
-    }
-};
 
 // API pour synchroniser les vacances scolaires 
 // Synchroniser les vacances scolaires depuis l'API du gouvernement
@@ -183,7 +151,19 @@ exports.syncVacationsFromAPI = async (req, res) => {
             for (const schoolYear of schoolYears) {
                 try {
                     // Format de l'API : exemple pour 2023-2024, zone A
-                    const apiUrl = `https://data.education.gouv.fr/api/records/1.0/search/?dataset=fr-en-calendrier-scolaire&q=&facet=description&facet=population&facet=start_date&facet=end_date&facet=zones&facet=annee_scolaire&refine.zones=Zone+${zone}&refine.annee_scolaire=${schoolYear}`;
+                    const apiUrl = `https://data.education.gouv.fr/api/records/1.0/search/`
+                        + `?dataset=fr-en-calendrier-scolaire`
+                        + `&q=`
+                        + `&rows=100`
+                        + `&facet=description&facet=population&facet=start_date&facet=end_date&facet=zones&facet=annee_scolaire`
+                        + `&refine.zones=Zone+${zone}`
+                        + `&refine.annee_scolaire=${schoolYear}`
+                        + `&refine.population=Élèves`;
+
+                    // Si une académie est spécifiée, l'ajouter
+                    if (req.body.location) {
+                        apiUrl += `&refine.location=${encodeURIComponent(req.body.location)}`;
+                    }
 
                     const response = await axios.get(apiUrl);
                     const records = response.data.records;
@@ -255,6 +235,28 @@ exports.syncVacationsFromAPI = async (req, res) => {
     }
 };
 
+// Récupérer les académies disponibles
+exports.getAvailableAcademies = async (req, res) => {
+    try {
+        const apiUrl = 'https://data.education.gouv.fr/api/records/1.0/search/?dataset=fr-en-calendrier-scolaire&q=&facet=location';
+        const response = await axios.get(apiUrl);
+
+        const academies = response.data.facet_groups
+            .find(group => group.name === 'location')?.facets
+            .map(facet => facet.name) || [];
+
+        res.status(200).json({
+            success: true,
+            data: academies.sort()
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: 'Erreur lors de la récupération des académies disponibles',
+            error: error.message
+        });
+    }
+};
+
 // Récupérer les années scolaires disponibles dans l'API
 exports.getAvailableSchoolYears = async (req, res) => {
     try {
@@ -274,6 +276,60 @@ exports.getAvailableSchoolYears = async (req, res) => {
             message: 'Erreur lors de la récupération des années scolaires disponibles',
             error: error.message
         });
+    }
+};
+
+
+// À ajouter dans schoolVacationController.js
+exports.getVacationsCalendar = async (req, res) => {
+    try {
+        const { zone, schoolYear, location } = req.query;
+        let whereClause = {};
+
+        if (zone) whereClause.zone = zone;
+        if (schoolYear) whereClause.school_year = schoolYear;
+
+        const vacations = await School_Vacations.findAll({
+            where: whereClause,
+            order: [['start_date', 'ASC']]
+        });
+
+        // Formater pour l'affichage calendrier
+        const calendarData = vacations.map(vacation => ({
+            id: vacation.id,
+            title: `${vacation.period_name} - Zone ${vacation.zone}`,
+            start: vacation.start_date,
+            end: new Date(new Date(vacation.end_date).getTime() + 86400000), // +1 jour pour inclusion
+            backgroundColor: getColorForZone(vacation.zone),
+            borderColor: getColorForZone(vacation.zone),
+            textColor: '#ffffff',
+            allDay: true,
+            extendedProps: {
+                zone: vacation.zone,
+                schoolYear: vacation.school_year
+            }
+        }));
+
+        res.status(200).json({
+            success: true,
+            count: vacations.length,
+            data: calendarData
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: 'Erreur lors de la récupération du calendrier des vacances',
+            error: error.message
+        });
+    }
+};
+
+// Fonction utilitaire à ajouter en haut du fichier
+const getColorForZone = (zone) => {
+    switch (zone) {
+        case 'A': return '#4285F4'; // Bleu
+        case 'B': return '#EA4335'; // Rouge
+        case 'C': return '#34A853'; // Vert
+        default: return '#FBBC05';  // Jaune
     }
 };
 
@@ -308,5 +364,38 @@ exports.syncCurrentAndNextYear = async (req, res) => {
             message: 'Erreur lors de la synchronisation automatique des vacances scolaires',
             error: error.message
         });
+    }
+};
+
+// Vérifier si une date donnée est pendant les vacances scolaires
+exports.checkIfDateIsVacation = async (req, res) => {
+    try {
+        const { date, zone } = req.query;
+        const checkDate = new Date(date);
+
+        if (!checkDate || Number.isNaN(checkDate.getTime())) {
+            return res.status(400).json({ message: 'Date invalide' });
+        }
+
+        const whereClause = {
+            start_date: { [Op.lte]: checkDate },
+            end_date: { [Op.gte]: checkDate }
+        };
+
+        if (zone) {
+            whereClause.zone = zone;
+        }
+
+        const vacation = await School_Vacations.findOne({
+            where: whereClause
+        });
+
+        res.status(200).json({
+            success: true,
+            isVacation: !!vacation,
+            vacationData: vacation
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Erreur lors de la vérification de la date', error: error.message });
     }
 };
