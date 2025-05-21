@@ -69,7 +69,7 @@ module.exports = (sequelize, DataTypes) => {
     });
 
     User.associate = (models) => {
-        // User belongs to Structure
+        // Association avec Structure
         User.belongsTo(models.Structure, {
             foreignKey: 'structure_id',
             as: 'structure'
@@ -87,10 +87,12 @@ module.exports = (sequelize, DataTypes) => {
             as: 'planned_schedules'
         });
 
-        // User has many UserTasks
-        User.hasMany(models.User_Task, {
+        // Association many-to-many avec Task
+        User.belongsToMany(models.Task, {
+            through: 'User_Task',
             foreignKey: 'user_id',
-            as: 'user_tasks'
+            otherKey: 'task_id',
+            as: 'assignedTasks'
         });
 
         // User has many ActivityLogs

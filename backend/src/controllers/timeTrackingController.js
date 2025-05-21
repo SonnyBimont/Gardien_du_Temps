@@ -1,4 +1,5 @@
 const { Time_Tracking, User, Task } = require('../models');
+const { Op } = require('sequelize');
 
 // Récupérer tous les pointages
 exports.getAllTimeEntries = async (req, res) => {
@@ -139,7 +140,7 @@ exports.getTimeEntriesByDateRange = async (req, res) => {
         let whereClause = {};
 
         if (startDate && endDate) {
-            whereClause.date = {
+            whereClause.date_time = {
                 [Op.between]: [new Date(startDate), new Date(endDate)]
             };
         }
@@ -154,7 +155,7 @@ exports.getTimeEntriesByDateRange = async (req, res) => {
                 { model: User, as: 'user', attributes: { exclude: ['password'] } },
                 { model: Task, as: 'task' }
             ],
-            order: [['date', 'ASC'], ['start_time', 'ASC']]
+            order: [['date_time', 'ASC']]
         });
 
         res.status(200).json({

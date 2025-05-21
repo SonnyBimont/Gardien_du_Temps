@@ -8,17 +8,6 @@ router
     .get(protect, authorize('admin', 'director'), plannedScheduleController.getAllSchedules)
     .post(protect, authorize('admin', 'director'), plannedScheduleController.createSchedule);
 
-router
-    .route('/:id')
-    .get(protect, plannedScheduleController.getScheduleById)
-    .put(protect, authorize('admin', 'director'), plannedScheduleController.updateSchedule)
-    .delete(protect, authorize('admin', 'director'), plannedScheduleController.deleteSchedule);
-
-// Route pour récupérer les plannings d'un utilisateur spécifique
-router
-    .route('/user/:userId')
-    .get(protect, plannedScheduleController.getSchedulesByUser);
-
 // Route pour récupérer les plannings sur une période
 router
     .route('/range')
@@ -28,5 +17,16 @@ router
 router
     .route('/templates')
     .get(protect, authorize('admin', 'director'), plannedScheduleController.getScheduleTemplates);
+
+// Route pour récupérer les plannings d'un utilisateur spécifique
+router
+    .route('/user/:userId')
+    .get(protect, plannedScheduleController.getSchedulesByUser);
+
+router
+    .route('/:id')
+    .get(protect, plannedScheduleController.getScheduleById)
+    .put(protect, authorize('admin', 'director'), plannedScheduleController.updateSchedule)
+    .delete(protect, authorize('admin', 'director'), plannedScheduleController.deleteSchedule);
 
 module.exports = router;

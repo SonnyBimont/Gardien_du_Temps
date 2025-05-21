@@ -5,8 +5,9 @@ const bcrypt = require('bcryptjs');
 exports.getUsers = async (req, res) => {
     try {
         const users = await User.findAll({
-            attributes: { exclude: ['password'] },
-            include: [{ model: Structure, as: 'structure' }]
+            attributes: { exclude: ['password'] }, // Exclure le mot de passe dans la response API/Postman
+            where: { active: true }, // Filtrer les utilisateurs actifs
+            include: [{ model: Structure, as: 'structure' }] // Inclure la structure associée
         });
 
         res.status(200).json({
