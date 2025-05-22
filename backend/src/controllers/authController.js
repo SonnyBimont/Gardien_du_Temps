@@ -54,6 +54,29 @@ exports.login = async (req, res) => {
     }
 };
 
+// Déconnexion
+exports.logout = async (req, res) => {
+    try {
+        // Notez que JWT est stateless, donc côté serveur vous ne pouvez pas vraiment "invalider" un token
+        // Les approches possibles sont:
+
+        // 1. Mettre le token dans une "blacklist" (nécessite une base de données ou un cache)
+        // await BlacklistedToken.create({ token: req.token, expiresAt: ... });
+
+        // 2. Ou simplement dire au client de supprimer le token
+
+        res.status(200).json({
+            success: true,
+            message: 'Utilisateur déconnecté avec succès'
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: 'Erreur lors de la déconnexion',
+            error: error.message
+        });
+    }
+};
+
 // Récupérer le profil de l'utilisateur connecté
 exports.getMe = async (req, res) => {
     try {

@@ -114,7 +114,7 @@ exports.getLogsByDateRange = async (req, res) => {
         let whereClause = {};
 
         if (startDate && endDate) {
-            whereClause.createdAt = {
+            whereClause.action_date = {
                 [Op.between]: [new Date(startDate), new Date(endDate)]
             };
         }
@@ -124,7 +124,7 @@ exports.getLogsByDateRange = async (req, res) => {
         }
 
         if (action) {
-            whereClause.action = action;
+            whereClause.action_type = action;
         }
 
         const logs = await Activity_Log.findAll({
@@ -132,7 +132,7 @@ exports.getLogsByDateRange = async (req, res) => {
             include: [
                 { model: User, as: 'user', attributes: { exclude: ['password'] } }
             ],
-            order: [['createdAt', 'DESC']]
+            order: [['action_date', 'DESC']]
         });
 
         res.status(200).json({
@@ -145,22 +145,88 @@ exports.getLogsByDateRange = async (req, res) => {
     }
 };
 
-// Rechercher dans les logs d'activité
+// Rechercher dans les logs d'activité avec options de tri
 exports.searchLogs = async (req, res) => {
     try {
-        const { query } = req.query;
+        const { query, sortBy, sortOrder, userId } = req.query;
+        let whereClause = {};
+        let orderArray = [['action_date', 'DESC']]; // Tri par défaut
+
+        // Si userId est spécifié, filtrer par utilisateur
+        if (userId) {
+            whereClause.user_id = userId;
+        }
+
+        // Gestion des options de tri
+        if (sortBy) {
+            const validSortFields = ['action_type', 'action_date', 'description'];
+            const validSortOrders = ['ASC', 'DESC'];
+
+            // Vérifier si le champ de tri est valide
+            if (validSortFields.includes(sortBy)) {
+                // Déterminer l'ordre de tri (ASC ou DESC)
+                const order = validSortOrders.includes(sortOrder?.toUpperCase())
+                    ? sortOrder.toUpperCase()
+                    : 'ASC';
+
+                // Remplacer le tri par défaut par celui spécifié
+                orderArray = [[sortBy, order]];
+
+                // Si on trie par utilisateur, il faut utiliser une approche différente
+                if (sortBy === 'user') {
+                    orderArray = [[{ model: User, as: 'user' }, 'last_name', order], [{ model: User, as: 'user' }, 'first_name', order]];
+                }
+            }
+        }
+
+        // Si query n'existe pas, retourner tous les logs avec le tri demandé
+        if (!query) {
+            const logs = await Activity_Log.findAll({
+                where: whereClause,
+                include: [
+                    { model: User, as: 'user', attributes: { exclude: ['password'] } }
+                ],
+                order: orderArray
+            });
+
+            return res.status(200).json({
+                success: true,
+                count: logs.length,
+                data: logs
+            });
+        }
+
+        // Liste des valeurs enum possibles
+        const actionTypes = ['login', 'creation', 'modification', 'deletion'];
+
+        // Vérifier si la requête correspond à une des valeurs enum
+        const matchingActionTypes = actionTypes.filter(type =>
+            type.toLowerCase().includes(query.toLowerCase())
+        );
+
+        if (matchingActionTypes.length > 0) {
+            // Si oui, utiliser Op.in pour les types d'action
+            whereClause = {
+                ...whereClause,
+                [Op.or]: [
+                    { action_type: { [Op.in]: matchingActionTypes } },
+                    { description: { [Op.like]: `%${query}%` } }
+                ]
+            };
+        } else {
+            // Sinon, rechercher uniquement dans la description
+            whereClause = {
+                ...whereClause,
+                description: { [Op.like]: `%${query}%` }
+            };
+        }
 
         const logs = await Activity_Log.findAll({
-            where: {
-                [Op.or]: [
-                    { action: { [Op.iLike]: `%${query}%` } },
-                    { details: { [Op.iLike]: `%${query}%` } }
-                ]
-            },
+            where: whereClause,
             include: [
                 { model: User, as: 'user', attributes: { exclude: ['password'] } }
             ],
-            order: [['createdAt', 'DESC']]
+            order: orderArray
         });
 
         res.status(200).json({
@@ -169,6 +235,9 @@ exports.searchLogs = async (req, res) => {
             data: logs
         });
     } catch (error) {
-        res.status(500).json({ message: 'Erreur lors de la recherche dans les logs d\'activité', error: error.message });
+        res.status(500).json({
+            message: 'Erreur lors de la recherche dans les logs d\'activité',
+            error: error.message
+        });
     }
 };
