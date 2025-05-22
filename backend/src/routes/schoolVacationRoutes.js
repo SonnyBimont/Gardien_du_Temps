@@ -8,6 +8,16 @@ router
     .get(protect, schoolVacationController.getAllVacations)
     .post(protect, authorize('admin'), schoolVacationController.createVacation);
 
+// Route pour obtenir les données au format de l'API gouvernementale
+router
+    .route('/gov-format')
+    .get(protect, schoolVacationController.getVacationsInGovernmentFormat);
+
+// Ou pour la requête directe à l'API gouvernementale
+router
+    .route('/raw-data')
+    .get(protect, schoolVacationController.getRawVacationData);
+
 // Routes pour la synchronisation avec l'API gouvernementale
 router
     .route('/academies')

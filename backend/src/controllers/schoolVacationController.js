@@ -399,3 +399,76 @@ exports.checkIfDateIsVacation = async (req, res) => {
         res.status(500).json({ message: 'Erreur lors de la vérification de la date', error: error.message });
     }
 };
+
+// Récupérer les vacances au format de l'API gouvernementale
+exports.getRawVacationData = async (req, res) => {
+    try {
+        const { zone, schoolYear, location } = req.query;
+
+        // Construction de l'URL de l'API
+        let apiUrl = 'https://data.education.gouv.fr/api/records/1.0/search/'
+            + '?dataset=fr-en-calendrier-scolaire'
+            + '&q='
+            + '&rows=100'
+            + '&facet=description&facet=population&facet=start_date&facet=end_date&facet=zones&facet=annee_scolaire';
+
+        // Ajouter les filtres si présents
+        if (zone) apiUrl += `&refine.zones=Zone+${zone}`;
+        if (schoolYear) apiUrl += `&refine.annee_scolaire=${schoolYear}`;
+        if (location) apiUrl += `&refine.location=${encodeURIComponent(location)}`;
+
+        const response = await axios.get(apiUrl);
+
+        // Extraire les champs pertinents
+        const formattedData = response.data.records.map(record => record.fields);
+
+        res.status(200).json({
+            success: true,
+            count: formattedData.length,
+            data: formattedData
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: 'Erreur lors de la récupération des données brutes de vacances',
+            error: error.message
+        });
+    }
+};
+
+// formater au format requis
+exports.getVacationsInGovernmentFormat = async (req, res) => {
+    try {
+        const { zone, schoolYear, location } = req.query;
+        let whereClause = {};
+
+        if (zone) whereClause.zone = zone;
+        if (schoolYear) whereClause.school_year = schoolYear;
+
+        const vacations = await School_Vacations.findAll({
+            where: whereClause,
+            order: [['start_date', 'ASC']]
+        });
+
+        // Transformer au format de l'API gouvernementale
+        const formattedData = vacations.map(vacation => ({
+            description: vacation.period_name,
+            population: "Élèves",
+            start_date: vacation.start_date.toISOString(),
+            end_date: vacation.end_date.toISOString(),
+            location: location || "Toutes académies",
+            zones: `Zone ${vacation.zone}`,
+            annee_scolaire: vacation.school_year
+        }));
+
+        res.status(200).json({
+            success: true,
+            count: formattedData.length,
+            data: formattedData
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: 'Erreur lors de la récupération des données formatées de vacances',
+            error: error.message
+        });
+    }
+};

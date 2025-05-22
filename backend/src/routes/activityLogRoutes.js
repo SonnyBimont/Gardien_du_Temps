@@ -8,16 +8,6 @@ router
     .get(protect, authorize('admin'), activityLogController.getAllLogs)
     .post(protect, activityLogController.createLog); // Le système génère les logs
 
-router
-    .route('/:id')
-    .get(protect, authorize('admin'), activityLogController.getLogById)
-    .delete(protect, authorize('admin'), activityLogController.deleteLog);
-
-// Route pour récupérer les logs d'un utilisateur spécifique
-router
-    .route('/user/:userId')
-    .get(protect, authorize('admin', 'director'), activityLogController.getLogsByUser);
-
 // Route pour récupérer les logs sur une période
 router
     .route('/range')
@@ -27,5 +17,15 @@ router
 router
     .route('/search')
     .get(protect, authorize('admin'), activityLogController.searchLogs);
+
+router
+    .route('/:id')
+    .get(protect, authorize('admin'), activityLogController.getLogById)
+    .delete(protect, authorize('admin'), activityLogController.deleteLog);
+
+// Route pour récupérer les logs d'un utilisateur spécifique
+router
+    .route('/user/:userId')
+    .get(protect, authorize('admin', 'director'), activityLogController.getLogsByUser);
 
 module.exports = router;
