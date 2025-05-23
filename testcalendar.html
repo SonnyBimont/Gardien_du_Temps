@@ -1,0 +1,203 @@
+<!-- vacation-calendar.html -->
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendrier des Vacances Scolaires</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.css" rel="stylesheet">
+    <style>
+        .zone-filter,
+        .year-filter {
+            margin-bottom: 1rem;
+        }
+
+        #calendar {
+            margin-top: 2rem;
+        }
+
+        .fc-event {
+            cursor: pointer;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-right: 15px;
+        }
+
+        .color-box {
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Calendrier des Vacances Scolaires</h1>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="zone-filter">
+                    <label for="zone-select">Zone :</label>
+                    <select id="zone-select" class="form-select">
+                        <option value="">Toutes les zones</option>
+                        <option value="A">Zone A</option>
+                        <option value="B">Zone B</option>
+                        <option value="C">Zone C</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="year-filter">
+                    <label for="year-select">Année scolaire :</label>
+                    <select id="year-select" class="form-select">
+                        <option value="">Toutes les années</option>
+                        <!-- Années dynamiques -->
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-grid gap-2">
+                    <button id="sync-button" class="btn btn-primary">Synchroniser les données</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #4285F4;"></div>
+                <span>Zone A</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #EA4335;"></div>
+                <span>Zone B</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #34A853;"></div>
+                <span>Zone C</span>
+            </div>
+        </div>
+
+        <div id="calendar"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const API_BASE_URL = 'http://localhost:3000/api/v1';
+            const calendarEl = document.getElementById('calendar');
+            const zoneSelect = document.getElementById('zone-select');
+            const yearSelect = document.getElementById('year-select');
+            const syncButton = document.getElementById('sync-button');
+
+            // Initialiser le calendrier
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,dayGridYear'
+                },
+                views: {
+                    dayGridYear: {
+                        type: 'dayGrid',
+                        duration: { years: 1 }
+                    }
+                },
+                locale: 'fr',
+                events: [],
+                eventClick: function (info) {
+                    alert(`${info.event.title}\nDu: ${new Date(info.event.start).toLocaleDateString('fr-FR')}\nAu: ${new Date(info.event.end).toLocaleDateString('fr-FR')}`);
+                }
+            });
+
+            calendar.render();
+
+            // Charger les années scolaires disponibles
+            async function loadSchoolYears() {
+                try {
+                    const response = await axios.get(`${API_BASE_URL}/school-vacations/available-years`);
+                    const years = response.data.data;
+
+                    yearSelect.innerHTML = '<option value="">Toutes les années</option>';
+                    years.forEach(year => {
+                        const option = document.createElement('option');
+                        option.value = year;
+                        option.textContent = year;
+                        yearSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Erreur lors du chargement des années:', error);
+                    alert('Impossible de charger les années scolaires');
+                }
+            }
+
+            // Charger les vacances
+            async function loadVacations() {
+                try {
+                    const zone = zoneSelect.value;
+                    const schoolYear = yearSelect.value;
+
+                    let url = `${API_BASE_URL}/school-vacations/calendar?`;
+                    if (zone) url += `zone=${zone}&`;
+                    if (schoolYear) url += `schoolYear=${schoolYear}`;
+
+                    const response = await axios.get(url);
+                    const events = response.data.data;
+
+                    calendar.removeAllEvents();
+                    calendar.addEventSource(events);
+                } catch (error) {
+                    console.error('Erreur lors du chargement des vacances:', error);
+                    alert('Impossible de charger les données des vacances');
+                }
+            }
+
+            // Synchroniser les données
+            async function syncVacations() {
+                try {
+                    syncButton.disabled = true;
+                    syncButton.textContent = 'Synchronisation en cours...';
+
+                    const response = await axios.post(`${API_BASE_URL}/school-vacations/sync-auto`);
+
+                    alert(`Synchronisation terminée!\nCréées: ${response.data.results.created}\nMises à jour: ${response.data.results.updated}`);
+
+                    // Recharger les années et les vacances
+                    await loadSchoolYears();
+                    await loadVacations();
+                } catch (error) {
+                    console.error('Erreur lors de la synchronisation:', error);
+                    alert('Erreur lors de la synchronisation');
+                } finally {
+                    syncButton.disabled = false;
+                    syncButton.textContent = 'Synchroniser les données';
+                }
+            }
+
+            // Gestionnaires d'événements
+            zoneSelect.addEventListener('change', loadVacations);
+            yearSelect.addEventListener('change', loadVacations);
+            syncButton.addEventListener('click', syncVacations);
+
+            // Chargement initial
+            loadSchoolYears().then(loadVacations);
+        });
+    </script>
+</body>
+
+</html>
