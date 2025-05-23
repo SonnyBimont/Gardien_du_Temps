@@ -7,6 +7,7 @@ const config = require('./config/config');
 const { sequelize } = require('./models');
 const { setupScheduledJobs } = require('./services/scheduleService');
 const routes = require('./routes');
+const swaggerConfig = require('./config/swagger');
 
 const app = express();
 
@@ -34,6 +35,9 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api', routes);
+
+// Documentation API Swagger - Placez-la après les routes API
+app.use('/api-docs', swaggerConfig.serve, swaggerConfig.setup);
 
 // Gestion des erreurs 404 - doit être après les routes
 app.use((req, res) => {
