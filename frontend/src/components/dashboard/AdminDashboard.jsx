@@ -32,50 +32,58 @@ const AdminDashboard = () => {
   
   const { 
     users = [], 
-    structures= [], 
     fetchUsers, 
+    structures= [], 
     fetchStructures, 
-    stats,
+    stats = {},
     fetchStats,
+    fetchDashboardStats,
+    fetchRecentActivity,
     loading 
   } = useAdminStore();
   
-  const { entries, fetchAllEntries } = useTimeStore();
+  const { entries = [], fetchAllEntries } = useTimeStore();
 
   useEffect(() => {
     const loadData = async () => {
-      await Promise.all([
-        fetchUsers(),
-        fetchStructures(),
-        fetchStats(dateRange),
-        fetchAllEntries({ days: parseInt(dateRange) })
-      ]);
+      try {
+        await Promise.allSettled([
+          fetchUsers().catch(err => console.error('Erreur users:', err)),
+          fetchStructures().catch(err => console.error('Erreur structures:', err)),
+          fetchStats?.(dateRange).catch(err => console.error('Erreur stats:', err)),
+          fetchDashboardStats?.().catch(err => console.error('Erreur dashboard stats:', err)),
+          fetchRecentActivity?.(10).catch(err => console.error('Erreur activity:', err)),
+          fetchAllEntries?.({ days: parseInt(dateRange) }).catch(err => console.error('Erreur entries:', err))
+        ]);
+      } catch (error) {
+        console.error('Erreur générale:', error);
+      }
     };
     
     loadData();
-  }, [fetchUsers, fetchStructures, fetchStats, fetchAllEntries, dateRange]);
+  }, [fetchUsers, fetchStructures, fetchStats, fetchDashboardStats, fetchRecentActivity, fetchAllEntries, dateRange]);
 
   // Calculs des statistiques
-  const totalUsers = users.length;
-  const activeUsers = users.filter(u => u.is_active).length;
-  const totalStructures = structures.length;
-  const directors = users.filter(u => u.role === 'director').length;
-  const animators = users.filter(u => u.role === 'animator').length;
+  const totalUsers = (users || []).length;
+  const activeUsers = (users || []).filter(u => u.is_active).length;
+  const totalStructures = (structures || []).length;
+  const directors = (users || []).filter(u => u.role === 'director').length;
+  const animators = (users || []).filter(u => u.role === 'animator').length;
   
   // Statistiques d'activité récente
-  const recentActivity = entries
+  const recentActivity = (entries || [])
     .slice(0, 10)
     .map(entry => ({
       ...entry,
-      user: users.find(u => u.id === entry.user_id)
+      user: (users || []).find(u => u.id === entry.user_id)
     }))
     .filter(entry => entry.user);
 
   // Utilisateurs filtés pour la recherche
-  const filteredUsers = users.filter(user =>
-    user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = (users || []).filter(user =>
+    (user.first_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.last_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleDateRangeChange = (range) => {
@@ -179,9 +187,13 @@ const AdminDashboard = () => {
 
       <StatsCard
         title="Activité Aujourd'hui"
-        value={entries.filter(e => 
-          new Date(e.date_time).toDateString() === new Date().toDateString()
-        ).length}
+        value={(entries || []).filter(e => {
+          try {
+            return new Date(e.date_time).toDateString() === new Date().toDateString()
+          } catch {
+            return false;
+          }
+        }).length}
         change="pointages"
         trend="positive"
         icon={<Clock className="w-6 h-6" />}

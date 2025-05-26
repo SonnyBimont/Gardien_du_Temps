@@ -314,6 +314,55 @@ export const useAdminStore = create((set, get) => ({
       console.error('Erreur lors du chargement de l\'activité récente:', error);
     }
   },
+  
+  fetchStats: async (dateRange = '7') => {
+    set({ loading: true, error: null });
+    
+    try {
+      const response = await api.get(`/api/admin/stats?days=${dateRange}`);
+      
+      if (response.data.success) {
+        const stats = response.data.data || {};
+        
+        set(state => ({ 
+          stats: {
+            ...state.stats,
+            ...stats,
+            newUsersThisWeek: stats.newUsersThisWeek || 0,
+            newStructuresThisWeek: stats.newStructuresThisWeek || 0,
+            connectionsToday: stats.connectionsToday || 0,
+            connectionsChange: stats.connectionsChange || "Aucune donnée"
+          },
+          loading: false
+        }));
+        
+        return { success: true };
+      } else {
+        throw new Error(response.data.message || 'Erreur lors du chargement');
+      }
+    } catch (error) {
+      console.error('Erreur fetch stats:', error);
+      
+      // Fallback avec stats par défaut
+      const defaultStats = {
+        newUsersThisWeek: 0,
+        newStructuresThisWeek: 0,
+        connectionsToday: 0,
+        connectionsChange: "Aucune donnée"
+      };
+      
+      set(state => ({ 
+        stats: {
+          ...state.stats,
+          ...defaultStats
+        },
+        error: error.response?.data?.message || 'Erreur lors du chargement des stats',
+        loading: false
+      }));
+      
+      return { success: false, error: error.message };
+    }
+  },
 
   // Utilitaires et validation
   validateUserData: (userData) => {
