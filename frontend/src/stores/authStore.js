@@ -18,7 +18,7 @@ export const useAuthStore = create(
         set({ loading: true, error: null });
         
         try {
-          const response = await api.post('/api/auth/login', credentials);
+          const response = await api.post('/auth/login', credentials);
           
           if (response.data.success) {
             const { token, user } = response.data;
@@ -88,7 +88,7 @@ export const useAuthStore = create(
         set({ loading: true });
 
         try {
-          const response = await api.get('/api/auth/me');
+          const response = await api.get('/auth/me');
           
           if (response.data.success) {
             set({ 

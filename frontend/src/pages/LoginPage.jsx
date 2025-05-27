@@ -1,4 +1,3 @@
-// src/pages/LoginPage.jsx
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Shield, Users, Target } from 'lucide-react';
@@ -9,7 +8,6 @@ const LoginPage = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
-  // Redirection si déjà connecté
   useEffect(() => {
     if (user) {
       navigate('/dashboard');
@@ -18,111 +16,123 @@ const LoginPage = () => {
 
   const features = [
     {
-      icon: <Clock className="w-6 h-6" />,
+      icon: <Clock className="w-5 h-5" />,
       title: "Pointage simplifié",
       description: "Enregistrez vos heures d'arrivée, pauses et départ en un clic"
     },
     {
-      icon: <Target className="w-6 h-6" />,
-      title: "Gestion de projets",
+      icon: <Target className="w-5 h-5" />,
+      title: "Gestion de projets", 
       description: "Organisez et suivez l'avancement de vos projets en équipe"
     },
     {
-      icon: <Users className="w-6 h-6" />,
+      icon: <Users className="w-5 h-5" />,
       title: "Travail collaboratif",
       description: "Coordonnez les tâches et communiquez avec votre équipe"
     },
     {
-      icon: <Shield className="w-6 h-6" />,
+      icon: <Shield className="w-5 h-5" />,
       title: "Données sécurisées",
-      description: "Vos informations sont protégées et sauvegardées en temps réel"
+      description: "Vos informations sont protégées et sauvegardées"
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <div className="flex min-h-screen">
-        {/* Panneau gauche - Informations */}
-        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
-          <div className="flex flex-col justify-center px-12 py-16">
-            {/* Logo et titre */}
+    <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen flex flex-col lg:flex-row">
+        
+        {/* 🖥️ Panneau gauche - Desktop uniquement */}
+        <div className="hidden lg:flex lg:w-3/5 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white relative overflow-hidden">
+          <div className="absolute inset-0 bg-black bg-opacity-10">
+            <div className="absolute top-20 left-10 w-32 h-32 bg-white bg-opacity-10 rounded-full blur-xl"></div>
+            <div className="absolute bottom-20 right-10 w-48 h-48 bg-white bg-opacity-5 rounded-full blur-2xl"></div>
+          </div>
+          
+          <div className="relative z-10 flex flex-col justify-center min-h-full px-12 py-16">
+            
+            {/* 🏷️ Logo et titre principal */}
             <div className="mb-12">
               <div className="flex items-center mb-6">
-                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center mr-4">
-                  <Clock className="w-7 h-7 text-white" />
+                <div className="w-14 h-14 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center mr-4 backdrop-blur-sm">
+                  <Clock className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold">Gardien du Temps</h1>
-                  <p className="text-blue-100">Gestion de temps moderne</p>
+                  <h1 className="text-4xl font-bold text-white">Gardien du Temps</h1>
+                  <p className="text-blue-100 text-base font-medium">Gestion de temps moderne</p>
                 </div>
               </div>
-              <p className="text-xl text-blue-100 leading-relaxed">
+              
+              <p className="text-xl text-blue-50 leading-relaxed max-w-lg">
+                La solution complète pour gérer le temps de travail de votre équipe, 
+                organiser vos projets et optimiser votre productivité.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 🔐 Section formulaire de connexion */}
+        <div className="flex-1 lg:w-2/5 bg-white flex items-center justify-center">
+          <div className="w-full max-w-md px-6 py-8 lg:px-8 lg:py-12">   
+            {/* 🎯 Titre de connexion */}
+            <div className="text-center mb-8">
+              {/* 📱 Logo et titre */}
+              <div className="flex flex-col items-center justify-center mb-4">
+                <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mr-3 lg:mr-4">
+                  <Clock className="w-7 h-7 lg:w-8 lg:h-8 text-white" />
+                </div>
+                <div className="text-center">
+                  <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Gardien du Temps</h1>
+                  <p className="text-sm lg:text-base font-semibold text-gray-600">Gestion de temps moderne</p>
+                </div>
+              </div>
+              
+              <p className="text-sm lg:text-base text-gray-600 leading-relaxed max-w-sm mx-auto">
                 La solution complète pour gérer le temps de travail de votre équipe, 
                 organiser vos projets et optimiser votre productivité.
               </p>
             </div>
 
-            {/* Fonctionnalités */}
+            {/* 🚀 Fonctionnalités */}
+            <div className="bg-gray-50 rounded-xl p-6 mb-8">
+              <div className="space-y-4">
+                {features.map((feature, index) => (
+                  <div key={index} className="flex items-start">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3 mt-0.5">
+                      <div className="text-blue-600">
+                        {feature.icon}
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-sm text-gray-900 mb-1">
+                        {feature.title}
+                      </h3>
+                      <p className="text-gray-600 text-xs leading-relaxed">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 📝 Formulaire */}
+            <div className="mb-8">
+              <LoginForm />
+            </div>
+
+            {/* 🆘 Aide et footer */}
             <div className="space-y-6">
-              {features.map((feature, index) => (
-                <div key={index} className="flex items-start">
-                  <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-4 mt-1">
-                    {feature.icon}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg mb-1">{feature.title}</h3>
-                    <p className="text-blue-100 text-sm">{feature.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Statistiques fictives */}
-            <div className="mt-12 grid grid-cols-3 gap-6 pt-8 border-t border-blue-400 border-opacity-30">
               <div className="text-center">
-                <div className="text-2xl font-bold">500+</div>
-                <div className="text-sm text-blue-200">Utilisateurs</div>
+                <p className="text-sm text-gray-500 mb-2">Besoin d'aide ?</p>
+                <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                  Contactez votre administrateur
+                </button>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">50+</div>
-                <div className="text-sm text-blue-200">Structures</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">99.9%</div>
-                <div className="text-sm text-blue-200">Disponibilité</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Panneau droit - Formulaire de connexion */}
-        <div className="flex-1 lg:w-1/2 flex items-center justify-center px-6 py-12">
-          <div className="w-full max-w-md">
-            {/* Header mobile */}
-            <div className="lg:hidden text-center mb-8">
-              <div className="flex items-center justify-center mb-4">
-                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center mr-3">
-                  <Clock className="w-6 h-6 text-white" />
-                </div>
-                <h1 className="text-2xl font-bold text-gray-900">Gardien du Temps</h1>
-              </div>
-              <p className="text-gray-600">Connectez-vous à votre espace</p>
-            </div>
-
-            {/* Titre de connexion */}
-            <div className="hidden lg:block text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Connexion</h2>
-              <p className="text-gray-600">Accédez à votre espace de travail</p>
-            </div>
-
-            {/* Formulaire */}
-            <LoginForm />
-
-            {/* Footer */}
-            <div className="mt-8 text-center text-sm text-gray-500">
-              <p>Besoin d'aide ? Contactez votre administrateur</p>
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p>&copy; 2024 Gardien du Temps. Tous droits réservés.</p>
+              
+              <div className="pt-6 border-t border-gray-200 text-center">
+                <p className="text-xs text-gray-400">
+                  &copy; 2025 Gardien du Temps by Sanka. Tous droits réservés.
+                </p>
               </div>
             </div>
           </div>

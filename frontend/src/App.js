@@ -20,10 +20,11 @@ const ProtectedRoute = ({ children }) => {
     );
   }
   
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  return isAuthenticated ? children : <Navigate to="/login" replace />; //replace évite l'historique de navigation
 };
 
 const PublicRoute = ({ children }) => {
+    // Empêche l'accès aux pages publiques si déjà connecté
   const { isAuthenticated, loading } = useAuthStore();
   
   if (loading) {
@@ -110,7 +111,7 @@ function App() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        await checkAuth();
+        await checkAuth(); // Vérification du token au démarrage
       } catch (error) {
         console.error('Erreur lors de l\'initialisation:', error);
       } finally {

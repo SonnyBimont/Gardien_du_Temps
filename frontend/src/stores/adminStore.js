@@ -28,7 +28,7 @@ export const useAdminStore = create((set, get) => ({
       if (filters.structure_id) params.append('structure_id', filters.structure_id);
       if (filters.active !== undefined) params.append('active', filters.active);
       
-      const response = await api.get(`/api/users?${params}`);
+      const response = await api.get(`/users?${params}`);
       
       if (response.data.success) {
         const users = response.data.data || [];
@@ -66,7 +66,7 @@ export const useAdminStore = create((set, get) => ({
         throw new Error(validationError);
       }
       
-      const response = await api.post('/api/users', userData);
+      const response = await api.post('/users', userData);
       
       if (response.data.success) {
         const newUser = response.data.data;
@@ -96,7 +96,7 @@ export const useAdminStore = create((set, get) => ({
     set({ error: null });
     
     try {
-      const response = await api.put(`/api/users/${userId}`, userData);
+      const response = await api.put(`/users/${userId}`, userData);
       
       if (response.data.success) {
         const updatedUser = response.data.data;
@@ -125,7 +125,7 @@ export const useAdminStore = create((set, get) => ({
     set({ error: null });
     
     try {
-      const response = await api.delete(`/api/users/${userId}`);
+      const response = await api.delete(`/users/${userId}`);
       
       if (response.data.success) {
         set((state) => ({
@@ -197,7 +197,7 @@ export const useAdminStore = create((set, get) => ({
         throw new Error(validationError);
       }
       
-      const response = await api.post('/api/structures', structureData);
+      const response = await api.post('/structures', structureData);
       
       if (response.data.success) {
         const newStructure = response.data.data;
@@ -227,7 +227,7 @@ export const useAdminStore = create((set, get) => ({
     set({ error: null });
     
     try {
-      const response = await api.put(`/api/structures/${structureId}`, structureData);
+      const response = await api.put(`/structures/${structureId}`, structureData);
       
       if (response.data.success) {
         const updatedStructure = response.data.data;
@@ -256,7 +256,7 @@ export const useAdminStore = create((set, get) => ({
     set({ error: null });
     
     try {
-      const response = await api.delete(`/api/structures/${structureId}`);
+      const response = await api.delete(`/structures/${structureId}`);
       
       if (response.data.success) {
         set((state) => ({
@@ -319,7 +319,7 @@ export const useAdminStore = create((set, get) => ({
     set({ loading: true, error: null });
     
     try {
-      const response = await api.get(`/api/admin/stats?days=${dateRange}`);
+      const response = await api.get(`/admin/stats?days=${dateRange}`);
       
       if (response.data.success) {
         const stats = response.data.data || {};

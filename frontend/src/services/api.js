@@ -1,7 +1,7 @@
 // Configuration des services API
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
 
 // Créer une instance Axios
 const api = axios.create({
@@ -24,7 +24,11 @@ api.interceptors.request.use(
     if (process.env.NODE_ENV === 'development') {
       console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     }
-    
+
+    // log pour déboguer
+    console.log('🚀 API Request:', config.method?.toUpperCase(), config.url);
+    console.log('🌐 Full URL:', config.baseURL + config.url);
+
     return config;
   },
   (error) => {

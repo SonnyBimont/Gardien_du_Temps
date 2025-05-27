@@ -300,9 +300,9 @@ const LoginForm = () => {
               Comptes de démonstration
             </h3>
             <div className="text-xs text-yellow-700 space-y-1">
-              <p><strong>Admin:</strong> sanka@test.com / password1234</p>
-              <p><strong>Directeur:</strong> director@gardien.fr / director123</p>
-              <p><strong>Animateur:</strong> animator@gardien.fr / animator123</p>
+              <p><strong>Admin:</strong> admin@gardien-temps.com / password123</p>
+              <p><strong>Directeur:</strong> directeur@gardien-temps.com / password123</p>
+              <p><strong>Animateur:</strong> animateur1@gardien-temps.com / password123</p>
             </div>
           </Card>
         )}

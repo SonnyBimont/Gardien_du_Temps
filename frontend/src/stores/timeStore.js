@@ -1,22 +1,64 @@
 // Store pour le suivi du temps
 import { create } from 'zustand';
 import api from '../services/api';
-import { calculateTotalHours, groupEntriesByDate, getTodayStatus } from '../utils/timeCalculations';
+import { 
+  calculateTotalHours, 
+  groupEntriesByDate, 
+  getTodayStatus,
+} from '../utils/timeCalculations';
 
 export const useTimeStore = create((set, get) => ({
-  // État
   todayEntries: [],
   timeHistory: [],
+  processedHistory: [], 
+  monthlyReport: {},  
+  stats: {},
   weeklyStats: {},
   monthlyStats: {},
   loading: false,
   error: null,
   lastUpdate: null,
+    // Cache simple et efficace
+  _processedCache: null,
+  _cacheKey: null,
+  _cacheTime: 0,
 
-  // Actions
+  // Actions principales avec /today
   fetchTodayEntries: async (userId = null) => {
     set({ loading: true, error: null });
     
+    try {
+      const params = new URLSearchParams();
+      if (userId) params.append('userId', userId);
+      
+      const response = await api.get(`/time-trackings/today?${params}`);
+      
+      if (response.data.success) {
+        set({ 
+          todayEntries: response.data.data || [], 
+          loading: false,
+          lastUpdate: new Date().toISOString()
+        });
+        return { success: true, data: response.data.data };
+      } else {
+        throw new Error(response.data.message || 'Erreur lors du chargement');
+      }
+    } catch (error) {
+      console.warn('API today non disponible, fallback...', error.response?.status);
+      
+      // FALLBACK
+      if (error.response?.status === 404) {
+        return get().fetchTodayEntriesLegacy(userId);
+      }
+      
+      const errorMessage = error.response?.data?.message || error.message;
+      set({ error: errorMessage, loading: false });
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // fallback
+  fetchTodayEntriesLegacy: async (userId = null) => {
     try {
       const today = new Date().toISOString().split('T')[0];
       const params = new URLSearchParams({
@@ -24,9 +66,7 @@ export const useTimeStore = create((set, get) => ({
         endDate: today
       });
       
-      if (userId) {
-        params.append('userId', userId);
-      }
+      if (userId) params.append('userId', userId);
       
       const response = await api.get(`/time-trackings/range?${params}`);
       
@@ -36,21 +76,125 @@ export const useTimeStore = create((set, get) => ({
           loading: false,
           lastUpdate: new Date().toISOString()
         });
-      } else {
-        throw new Error(response.data.message || 'Erreur lors du chargement');
+        return { success: true, data: response.data.data };
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Erreur lors du chargement des pointages du jour';
-      
-      set({ 
-        error: errorMessage, 
-        loading: false 
-      });
-      
-      throw error;
+      const errorMessage = error.response?.data?.message || error.message;
+      set({ error: errorMessage, loading: false });
+      return { success: false, error: errorMessage };
     }
   },
 
+  // Actions rapides optimisées
+  clockIn: async (taskId = null, comment = '') => {
+    return get().performAction('/time-trackings/clock-in', 'arrival', { taskId, comment });
+  },
+
+  clockOut: async (comment = '') => {
+    return get().performAction('/time-trackings/clock-out', 'departure', { comment });
+  },
+
+  startBreak: async (comment = '') => {
+    return get().performAction('/time-trackings/break-start', 'break_start', { comment });
+  },
+
+  endBreak: async (comment = '') => {
+    return get().performAction('/time-trackings/break-end', 'break_end', { comment });
+  },
+
+  // utilitaire pour éviter la duplication
+  performAction: async (endpoint, fallbackType, { taskId = null, comment = '' }) => {
+    set({ error: null });
+    
+    try {
+      const payload = {};
+      if (taskId) payload.task_id = taskId;
+      if (comment) payload.comment = comment.trim();
+
+      const response = await api.post(endpoint, payload);
+      
+      if (response.data.success) {
+        await get().fetchTodayEntries();
+        return { success: true, data: response.data.data };
+      } else {
+        throw new Error(response.data.message || 'Erreur lors du pointage');
+      }
+    } catch (error) {
+      // ✅ FALLBACK vers méthode générique
+      if (error.response?.status === 404) {
+        return get().recordTimeEntry(fallbackType, taskId, comment);
+      }
+      
+      const errorMessage = error.response?.data?.message || error.message;
+      set({ error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // Stats avec fallback
+  fetchStats: async (days = 7, userId = null) => {
+    set({ loading: true, error: null });
+    
+    try {
+      const params = new URLSearchParams({ days: days.toString() });
+      if (userId) params.append('userId', userId);
+      
+      const response = await api.get(`/time-trackings/stats?${params}`);
+      
+      if (response.data.success) {
+        set({ 
+          stats: response.data.data,
+          loading: false,
+          lastUpdate: new Date().toISOString()
+        });
+        return { success: true, data: response.data.data };
+      }
+    } catch (error) {
+      console.warn('API stats non disponible, calcul local...', error.response?.status);
+      
+      // FALLBACK vers calcul local
+      if (error.response?.status === 404) {
+        await get().fetchTimeHistory(days, userId);
+        return { success: true, data: get().stats };
+      }
+      
+      set({ 
+        error: error.response?.data?.message || error.message,
+        loading: false 
+      });
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Rapport mensuel
+  fetchMonthlyReport: async (month = null, year = null, userId = null) => {
+    set({ loading: true, error: null });
+    
+    try {
+      const params = new URLSearchParams();
+      if (month) params.append('month', month);
+      if (year) params.append('year', year);
+      if (userId) params.append('userId', userId);
+      
+      const response = await api.get(`/time-trackings/report/monthly?${params}`);
+      
+      if (response.data.success) {
+        set({ 
+          monthlyReport: response.data.data,
+          loading: false
+        });
+        return { success: true, data: response.data.data };
+      }
+    } catch (error) {
+      set({ 
+        error: error.response?.data?.message || error.message,
+        loading: false 
+      });
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Historique optimisé
   fetchTimeHistory: async (days = 30, userId = null) => {
     set({ loading: true, error: null });
     
@@ -59,14 +203,8 @@ export const useTimeStore = create((set, get) => ({
       const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
         .toISOString().split('T')[0];
       
-      const params = new URLSearchParams({
-        startDate,
-        endDate
-      });
-      
-      if (userId) {
-        params.append('userId', userId);
-      }
+      const params = new URLSearchParams({ startDate, endDate });
+      if (userId) params.append('userId', userId);
       
       const response = await api.get(`/time-trackings/range?${params}`);
       
@@ -78,26 +216,27 @@ export const useTimeStore = create((set, get) => ({
           timeHistory: entries,
           processedHistory: processedData,
           loading: false,
-          lastUpdate: new Date().toISOString()
+          lastUpdate: new Date().toISOString(),
+//  Invalider le cache
+          _processedCache: null,
+          _cacheKey: null,
+          _cacheTime: 0
         });
         
-        // Calculer les statistiques
+        // Calculs automatiques
         get().calculateStats(entries);
+        return { success: true, data: entries };
       } else {
         throw new Error(response.data.message || 'Erreur lors du chargement');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Erreur lors du chargement de l\'historique';
-      
-      set({ 
-        error: errorMessage, 
-        loading: false 
-      });
-      
-      throw error;
+      const errorMessage = error.response?.data?.message || error.message;
+      set({ error: errorMessage, loading: false });
+      return { success: false, error: errorMessage };
     }
   },
 
+  // Actions CRUD
   recordTimeEntry: async (type, taskId = null, comment = '') => {
     set({ error: null });
     
@@ -109,25 +248,25 @@ export const useTimeStore = create((set, get) => ({
         comment: comment.trim()
       };
 
-      if (taskId) {
-        payload.task_id = taskId;
-      }
+      if (taskId) payload.task_id = taskId;
 
       const response = await api.post('/time-trackings', payload);
       
       if (response.data.success) {
-        // Recharger les entrées du jour
-        await get().fetchTodayEntries();
-        
+        await get().fetchTodayEntries();        
+        //  Invalider le cache
+        set({
+          _processedCache: null,
+          _cacheKey: null,
+          _cacheTime: 0
+        });
         return { success: true, data: response.data.data };
       } else {
         throw new Error(response.data.message || 'Erreur lors du pointage');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Erreur lors du pointage';
-      
+      const errorMessage = error.response?.data?.message || error.message;
       set({ error: errorMessage });
-      
       return { success: false, error: errorMessage };
     }
   },
@@ -137,19 +276,17 @@ export const useTimeStore = create((set, get) => ({
       const response = await api.put(`/time-trackings/${entryId}`, updateData);
       
       if (response.data.success) {
-        // Recharger les données
-        await get().fetchTodayEntries();
-        await get().fetchTimeHistory();
-        
+        await Promise.all([
+          get().fetchTodayEntries(),
+          get().fetchTimeHistory()
+        ]);
         return { success: true, data: response.data.data };
       } else {
         throw new Error(response.data.message || 'Erreur lors de la mise à jour');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de la mise à jour';
-      
+      const errorMessage = error.response?.data?.message || error.message;
       set({ error: errorMessage });
-      
       return { success: false, error: errorMessage };
     }
   },
@@ -159,77 +296,108 @@ export const useTimeStore = create((set, get) => ({
       const response = await api.delete(`/time-trackings/${entryId}`);
       
       if (response.data.success) {
-        // Recharger les données
-        await get().fetchTodayEntries();
-        await get().fetchTimeHistory();
-        
+        await Promise.all([
+          get().fetchTodayEntries(),
+          get().fetchTimeHistory()
+        ]);
         return { success: true };
       } else {
         throw new Error(response.data.message || 'Erreur lors de la suppression');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de la suppression';
-      
+      const errorMessage = error.response?.data?.message || error.message;
       set({ error: errorMessage });
-      
       return { success: false, error: errorMessage };
     }
   },
 
+  // Calculs consolidés (utilise les utils)
   calculateStats: (entries) => {
     const grouped = groupEntriesByDate(entries);
     const now = new Date();
     
-    // Statistiques de la semaine courante
+    // Semaine courante
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
     
-    const weekEntries = entries.filter(entry => {
-      const entryDate = new Date(entry.date_time);
-      return entryDate >= startOfWeek;
-    });
+    const weekEntries = entries.filter(entry => 
+      new Date(entry.date_time) >= startOfWeek
+    );
     
-    // Statistiques du mois courant
+    // Mois courant
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEntries = entries.filter(entry => {
-      const entryDate = new Date(entry.date_time);
-      return entryDate >= startOfMonth;
-    });
-    
+    const monthEntries = entries.filter(entry => 
+      new Date(entry.date_time) >= startOfMonth
+    );
+
+        // Calculs simples sans fonction externe manquante
+    const calculateHours = (entriesByDate) => {
+      let totalHours = 0;
+      Object.values(entriesByDate).forEach(dayEntries => {
+        const arrival = dayEntries.find(e => e.tracking_type === 'arrival');
+        const departure = dayEntries.find(e => e.tracking_type === 'departure');
+        
+        if (arrival && departure) {
+          const hours = (new Date(departure.date_time) - new Date(arrival.date_time)) / (1000 * 60 * 60);
+          totalHours += Math.max(0, hours);
+        }
+      });
+      return Math.round(totalHours * 100) / 100;
+    };
+
+    // Utiliser la fonction des utils
     const weeklyStats = {
-      totalHours: calculateTotalWorkingHours(weekEntries),
+      totalHours: calculateHours(groupEntriesByDate(weekEntries)),
       workingDays: Object.keys(groupEntriesByDate(weekEntries)).length,
       averageHoursPerDay: 0
     };
     
     const monthlyStats = {
-      totalHours: calculateTotalWorkingHours(monthEntries),
+      totalHours: calculateHours(groupEntriesByDate(monthEntries)),
       workingDays: Object.keys(groupEntriesByDate(monthEntries)).length,
       averageHoursPerDay: 0
     };
     
-    // Calculer les moyennes
+    // Moyennes
     if (weeklyStats.workingDays > 0) {
-      weeklyStats.averageHoursPerDay = weeklyStats.totalHours / weeklyStats.workingDays;
+      weeklyStats.averageHoursPerDay = Math.round((weeklyStats.totalHours / weeklyStats.workingDays) * 100) / 100;
     }
     
     if (monthlyStats.workingDays > 0) {
-      monthlyStats.averageHoursPerDay = monthlyStats.totalHours / monthlyStats.workingDays;
+      monthlyStats.averageHoursPerDay = Math.round((monthlyStats.totalHours / monthlyStats.workingDays) * 100) / 100;
     }
     
     set({ weeklyStats, monthlyStats });
   },
 
-  // Getters
-  getTodayStatus: () => {
-    return getTodayStatus(get().todayEntries);
-  },
-
+  // Getters (utilise les utils)
+  getTodayStatus: () => getTodayStatus(get().todayEntries),
+  
+  // getProcessedHistory: () => calculateTotalHours(get().timeHistory),
   getProcessedHistory: () => {
-    return calculateTotalHours(get().timeHistory);
+    const { timeHistory, _processedCache, _cacheKey, _cacheTime } = get();
+    const currentKey = timeHistory.length > 0 ? 
+      `${timeHistory.length}-${timeHistory[0]?.id}-${timeHistory[timeHistory.length-1]?.id || 'new'}` : 
+      'empty';
+    const now = Date.now();
+    
+    // Cache simple mais efficace
+    if (_cacheKey === currentKey && now - _cacheTime < 2 * 60 * 1000) {
+      return _processedCache;
+    }
+    
+    // ✅ Calculer et cacher
+    const result = calculateTotalHours(timeHistory);
+    set({
+      _processedCache: result,
+      _cacheKey: currentKey,
+      _cacheTime: now
+    });
+    
+    return result;
   },
-
+  
   canPerformAction: (actionType) => {
     const todayStatus = get().getTodayStatus();
     
@@ -253,61 +421,39 @@ export const useTimeStore = create((set, get) => ({
     const arrivalTime = new Date(todayStatus.arrival.date_time);
     let workingMinutes = (now - arrivalTime) / (1000 * 60);
     
-    // Soustraire le temps de pause si en cours
+    // Déduire les pauses
     if (todayStatus.breakStart && !todayStatus.breakEnd) {
       const breakStartTime = new Date(todayStatus.breakStart.date_time);
-      const breakMinutes = (now - breakStartTime) / (1000 * 60);
-      workingMinutes -= breakMinutes;
+      workingMinutes -= (now - breakStartTime) / (1000 * 60);
     }
     
-    // Soustraire le temps de pause terminée
     if (todayStatus.breakStart && todayStatus.breakEnd) {
       const breakStartTime = new Date(todayStatus.breakStart.date_time);
       const breakEndTime = new Date(todayStatus.breakEnd.date_time);
-      const breakMinutes = (breakEndTime - breakStartTime) / (1000 * 60);
-      workingMinutes -= breakMinutes;
+      workingMinutes -= (breakEndTime - breakStartTime) / (1000 * 60);
     }
     
-    return Math.max(0, workingMinutes / 60); // Retourner en heures
+    return Math.max(0, workingMinutes / 60);
   },
 
+  // Actions utilitaires
   clearError: () => set({ error: null }),
 
   reset: () => set({
     todayEntries: [],
     timeHistory: [],
+    processedHistory: [],
+    monthlyReport: {},
+    stats: {},
     weeklyStats: {},
     monthlyStats: {},
     loading: false,
     error: null,
-    lastUpdate: null
+    lastUpdate: null,
+    _processedCache: null,
+    _cacheKey: null,
+    _cacheTime: 0
   })
+
 }));
 
-// Fonction utilitaire pour calculer le total d'heures travaillées
-function calculateTotalWorkingHours(entries) {
-  const grouped = groupEntriesByDate(entries);
-  let totalHours = 0;
-  
-  Object.values(grouped).forEach(dayEntries => {
-    const arrival = dayEntries.find(e => e.tracking_type === 'arrival');
-    const departure = dayEntries.find(e => e.tracking_type === 'departure');
-    
-    if (arrival && departure) {
-      let dayMinutes = (new Date(departure.date_time) - new Date(arrival.date_time)) / (1000 * 60);
-      
-      // Soustraire les pauses
-      const breakStart = dayEntries.find(e => e.tracking_type === 'break_start');
-      const breakEnd = dayEntries.find(e => e.tracking_type === 'break_end');
-      
-      if (breakStart && breakEnd) {
-        const breakMinutes = (new Date(breakEnd.date_time) - new Date(breakStart.date_time)) / (1000 * 60);
-        dayMinutes -= breakMinutes;
-      }
-      
-      totalHours += Math.max(0, dayMinutes / 60);
-    }
-  });
-  
-  return Math.round(totalHours * 100) / 100;
-}

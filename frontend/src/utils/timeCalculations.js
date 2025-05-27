@@ -59,6 +59,83 @@ export const calculateTotalHours = (entries) => {
     });
 };
 
+// compatibilité avec le timeStore
+export const calculateWorkingHours = (entries) => {
+  const processed = calculateTotalHours(entries);
+  return processed.reduce((total, day) => total + day.workingHours, 0);
+};
+// Optimisation pour de gros volumes de données
+export const calculateTotalHoursOptimized = (entries, options = {}) => {
+  const { 
+    sortDesc = true, 
+    includeIncomplete = true,
+    maxDays = 365 // Limiter pour la performance
+  } = options;
+  
+  const grouped = groupEntriesByDate(entries);
+  const sortedEntries = Object.entries(grouped);
+  
+  // Limiter le nombre de jours si nécessaire
+  const limitedEntries = maxDays ? sortedEntries.slice(0, maxDays) : sortedEntries;
+  
+  if (sortDesc) {
+    limitedEntries.sort(([a], [b]) => new Date(b) - new Date(a));
+  }
+  
+  return limitedEntries.map(([date, dayEntries]) => {
+    // Votre logique existante...
+    const arrival = dayEntries.find(e => e.tracking_type === 'arrival');
+    const departure = dayEntries.find(e => e.tracking_type === 'departure');
+    const breakStart = dayEntries.find(e => e.tracking_type === 'break_start');
+    const breakEnd = dayEntries.find(e => e.tracking_type === 'break_end');
+    
+    let totalMinutes = 0;
+    let breakMinutes = 0;
+    let workingMinutes = 0;
+    
+    if (arrival && departure) {
+      totalMinutes = differenceInMinutes(new Date(departure.date_time), new Date(arrival.date_time));
+      
+      if (breakStart && breakEnd) {
+        breakMinutes = differenceInMinutes(new Date(breakEnd.date_time), new Date(breakStart.date_time));
+      }
+      
+      workingMinutes = totalMinutes - breakMinutes;
+    }
+    
+    // Optimisation : éviter les calculs si journée incomplète et non demandée
+    if (!includeIncomplete && (!arrival || !departure)) {
+      return null;
+    }
+    
+    const totalHours = Math.round(totalMinutes / 60 * 100) / 100;
+    const workingHours = Math.round(workingMinutes / 60 * 100) / 100;
+    const breakHours = Math.round(breakMinutes / 60 * 100) / 100;
+    
+    return {
+      date,
+      formattedDate: formatDate(date),
+      dayName: formatDayName(date),
+      arrival: arrival ? formatTime(arrival.date_time) : null,
+      breakStart: breakStart ? formatTime(breakStart.date_time) : null,
+      breakEnd: breakEnd ? formatTime(breakEnd.date_time) : null,
+      departure: departure ? formatTime(departure.date_time) : null,
+      totalMinutes,
+      workingMinutes,
+      breakMinutes,
+      totalHours: totalHours > 0 ? totalHours : 0,
+      workingHours: workingHours > 0 ? workingHours : 0,
+      breakHours: breakHours > 0 ? breakHours : 0,
+      formattedTotalHours: formatHours(totalHours),
+      formattedWorkingHours: formatHours(workingHours),
+      formattedBreakHours: formatHours(breakHours),
+      isComplete: !!(arrival && departure),
+      isIncomplete: !!(arrival && !departure),
+      status: getWorkDayStatus(arrival, departure, breakStart, breakEnd)
+    };
+  }).filter(Boolean); // ✅ Retirer les null
+};
+
 // Grouper les entrées par date
 export const groupEntriesByDate = (entries) => {
   return entries.reduce((acc, entry) => {
@@ -340,4 +417,163 @@ export const debugTimeEntry = (entry) => {
   console.log('Working Hours:', entry.formattedWorkingHours);
   console.log('Status:', entry.status);
   console.groupEnd();
+};
+
+
+// Calculer le temps de pause total d'une journée
+export const calculateDayBreakTime = (dayEntries) => {
+  const breaks = [];
+  let currentBreakStart = null;
+  
+  dayEntries
+    .sort((a, b) => new Date(a.date_time) - new Date(b.date_time))
+    .forEach(entry => {
+      if (entry.tracking_type === 'break_start') {
+        currentBreakStart = entry.date_time;
+      } else if (entry.tracking_type === 'break_end' && currentBreakStart) {
+        breaks.push({
+          start: currentBreakStart,
+          end: entry.date_time,
+          duration: differenceInMinutes(new Date(entry.date_time), new Date(currentBreakStart))
+        });
+        currentBreakStart = null;
+      }
+    });
+  
+  const totalBreakMinutes = breaks.reduce((sum, breakPeriod) => sum + breakPeriod.duration, 0);
+  
+  return {
+    breaks,
+    totalMinutes: totalBreakMinutes,
+    totalHours: Math.round(totalBreakMinutes / 60 * 100) / 100,
+    formattedTotal: formatMinutesToHours(totalBreakMinutes)
+  };
+};
+
+// Analyser les patterns de travail
+export const analyzeWorkPatterns = (entries) => {
+  const processed = calculateTotalHours(entries);
+  const workingDays = processed.filter(day => day.isComplete);
+  
+  if (workingDays.length === 0) {
+    return {
+      averageArrival: null,
+      averageDeparture: null,
+      averageWorkingHours: 0,
+      mostCommonArrivalHour: null,
+      mostCommonDepartureHour: null
+    };
+  }
+  
+  // Moyennes des heures d'arrivée/départ
+  const arrivalTimes = workingDays.map(day => {
+    const [hours, minutes] = day.arrival.split(':').map(Number);
+    return hours + minutes / 60;
+  });
+  
+  const departureTimes = workingDays.map(day => {
+    const [hours, minutes] = day.departure.split(':').map(Number);
+    return hours + minutes / 60;
+  });
+  
+  const averageArrival = arrivalTimes.reduce((sum, time) => sum + time, 0) / arrivalTimes.length;
+  const averageDeparture = departureTimes.reduce((sum, time) => sum + time, 0) / departureTimes.length;
+  
+  // Heures les plus fréquentes
+  const arrivalHours = arrivalTimes.map(time => Math.floor(time));
+  const departureHours = departureTimes.map(time => Math.floor(time));
+  
+  const mostCommonArrivalHour = getMostFrequent(arrivalHours);
+  const mostCommonDepartureHour = getMostFrequent(departureHours);
+  
+  return {
+    averageArrival: formatDecimalToTime(averageArrival),
+    averageDeparture: formatDecimalToTime(averageDeparture),
+    averageWorkingHours: workingDays.reduce((sum, day) => sum + day.workingHours, 0) / workingDays.length,
+    mostCommonArrivalHour,
+    mostCommonDepartureHour,
+    totalWorkingDays: workingDays.length,
+    consistency: calculateConsistency(arrivalTimes, departureTimes)
+  };
+};
+
+// Fonction utilitaire pour trouver l'élément le plus fréquent
+const getMostFrequent = (arr) => {
+  const frequency = {};
+  arr.forEach(item => frequency[item] = (frequency[item] || 0) + 1);
+  return Object.keys(frequency).reduce((a, b) => frequency[a] > frequency[b] ? a : b);
+};
+
+// Convertir décimal en format HH:MM
+const formatDecimalToTime = (decimal) => {
+  const hours = Math.floor(decimal);
+  const minutes = Math.round((decimal - hours) * 60);
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+};
+
+// Calculer la régularité des horaires
+const calculateConsistency = (arrivalTimes, departureTimes) => {
+  const arrivalVariance = calculateVariance(arrivalTimes);
+  const departureVariance = calculateVariance(departureTimes);
+  
+  // Plus la variance est faible, plus c'est régulier (score sur 100)
+  const arrivalScore = Math.max(0, 100 - arrivalVariance * 10);
+  const departureScore = Math.max(0, 100 - departureVariance * 10);
+  
+  return {
+    arrival: Math.round(arrivalScore),
+    departure: Math.round(departureScore),
+    overall: Math.round((arrivalScore + departureScore) / 2)
+  };
+};
+
+const calculateVariance = (numbers) => {
+  const mean = numbers.reduce((sum, num) => sum + num, 0) / numbers.length;
+  const squaredDiffs = numbers.map(num => Math.pow(num - mean, 2));
+  return squaredDiffs.reduce((sum, diff) => sum + diff, 0) / numbers.length;
+};
+
+// Générer un rapport de productivité
+export const generateProductivityReport = (entries, expectedHoursPerDay = 7) => {
+  const processed = calculateTotalHours(entries);
+  const workingDays = processed.filter(day => day.isComplete);
+  
+  const totalWorkedHours = workingDays.reduce((sum, day) => sum + day.workingHours, 0);
+  const expectedTotalHours = workingDays.length * expectedHoursPerDay;
+  const efficiency = expectedTotalHours > 0 ? (totalWorkedHours / expectedTotalHours) * 100 : 0;
+  
+  const overtime = workingDays.filter(day => day.workingHours > expectedHoursPerDay);
+  const undertime = workingDays.filter(day => day.workingHours < expectedHoursPerDay);
+  
+  return {
+    period: {
+      totalDays: processed.length,
+      workingDays: workingDays.length,
+      incompleteDays: processed.filter(day => day.isIncomplete).length
+    },
+    hours: {
+      totalWorked: Math.round(totalWorkedHours * 100) / 100,
+      expectedTotal: expectedTotalHours,
+      difference: Math.round((totalWorkedHours - expectedTotalHours) * 100) / 100,
+      averagePerDay: workingDays.length > 0 ? Math.round((totalWorkedHours / workingDays.length) * 100) / 100 : 0
+    },
+    efficiency: {
+      percentage: Math.round(efficiency * 100) / 100,
+      rating: getEfficiencyRating(efficiency)
+    },
+    patterns: {
+      overtimeDays: overtime.length,
+      undertimeDays: undertime.length,
+      perfectDays: workingDays.filter(day => Math.abs(day.workingHours - expectedHoursPerDay) < 0.1).length
+    },
+    analysis: analyzeWorkPatterns(entries)
+  };
+};
+
+const getEfficiencyRating = (efficiency) => {
+  if (efficiency >= 95) return 'Excellent';
+  if (efficiency >= 85) return 'Très bien';
+  if (efficiency >= 75) return 'Bien';
+  if (efficiency >= 65) return 'Acceptable';
+  return 'À améliorer';
 };

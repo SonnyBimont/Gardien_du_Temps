@@ -4,6 +4,7 @@ const router = express.Router();
 // Importer toutes les routes
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
+const adminRoutes = require('./adminRoutes');
 const structureRoutes = require('./structureRoutes');
 const projectRoutes = require('./projectRoutes');
 const taskRoutes = require('./taskRoutes');
@@ -15,6 +16,7 @@ const activityLogRoutes = require('./activityLogRoutes');
 // Définir les préfixes de routes pour chaque module
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
+router.use('/admin', adminRoutes);
 router.use('/structures', structureRoutes);
 router.use('/projects', projectRoutes);
 router.use('/tasks', taskRoutes);
