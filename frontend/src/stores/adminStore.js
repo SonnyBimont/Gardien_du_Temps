@@ -16,7 +16,7 @@ export const useAdminStore = create((set, get) => ({
   error: null,
   lastUpdate: null,
 
-  // Actions pour les utilisateurs
+  // ===== ACTIONS UTILISATEURS =====
   fetchUsers: async (filters = {}) => {
     set({ loading: true, error: null });
     
@@ -153,7 +153,7 @@ export const useAdminStore = create((set, get) => ({
     return get().updateUser(userId, { active });
   },
 
-  // Actions pour les structures
+  // ===== ACTIONS STRUCTURES =====
   fetchStructures: async (includeStats = false) => {
     set({ loading: true, error: null });
     
@@ -280,10 +280,10 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
-  // Actions pour les statistiques globales
+ // ===== ACTIONS STATISTIQUES =====
   fetchDashboardStats: async () => {
     try {
-      const response = await api.get('/admin/dashboard/stats');
+      const response = await api.get('/users/admin/dashboard-stats');
       
       if (response.data.success) {
         set((state) => ({
@@ -300,7 +300,7 @@ export const useAdminStore = create((set, get) => ({
 
   fetchRecentActivity: async (limit = 10) => {
     try {
-      const response = await api.get(`/admin/activity?limit=${limit}`);
+      const response = await api.get(`/users/admin/recent-activity?limit=${limit}`);
       
       if (response.data.success) {
         set((state) => ({
@@ -319,7 +319,7 @@ export const useAdminStore = create((set, get) => ({
     set({ loading: true, error: null });
     
     try {
-      const response = await api.get(`/admin/stats?days=${dateRange}`);
+      const response = await api.get(`/users/admin/stats?days=${dateRange}`);
       
       if (response.data.success) {
         const stats = response.data.data || {};
@@ -364,7 +364,7 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
-  // Utilitaires et validation
+  // ===== FONCTIONS UTILITAIRES INCHANGÉES =====
   validateUserData: (userData) => {
     if (!userData.email || !userData.email.includes('@')) {
       return 'Email invalide';

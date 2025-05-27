@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config/config');
 const { User } = require('../models');
 
+// Middleware pour protéger les routes
 exports.protect = async (req, res, next) => {
     try {
         // 1. Vérifier si le token existe
@@ -30,7 +31,7 @@ exports.protect = async (req, res, next) => {
         return res.status(401).json({ message: 'Accès non autorisé' });
     }
 };
-
+// Middleware pour vérifier les rôles d'utilisateur
 exports.authorize = (...roles) => {
     return (req, res, next) => {
         if (!roles.includes(req.user.role)) {

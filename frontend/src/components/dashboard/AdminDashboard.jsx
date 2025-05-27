@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Users, 
   Building, 
@@ -44,24 +44,39 @@ const AdminDashboard = () => {
   
   const { entries = [], fetchAllEntries } = useTimeStore();
 
+// Mémoiser la fonction de chargement
+  const loadData = useCallback(async () => {
+    try {
+      await Promise.allSettled([
+        fetchUsers().catch(err => console.error('Erreur users:', err)),
+        fetchStructures().catch(err => console.error('Erreur structures:', err)),
+        fetchStats?.(dateRange).catch(err => console.error('Erreur stats:', err)),
+        fetchDashboardStats?.().catch(err => console.error('Erreur dashboard stats:', err)),
+        fetchRecentActivity?.(10).catch(err => console.error('Erreur activity:', err)),
+        fetchAllEntries?.({ days: parseInt(dateRange) }).catch(err => console.error('Erreur entries:', err))
+      ]);
+    } catch (error) {
+      console.error('Erreur générale:', error);
+    }
+  }, [dateRange, fetchUsers, fetchStructures, fetchStats, fetchDashboardStats, fetchRecentActivity, fetchAllEntries]);
+
+  // useEffect simplifié
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        await Promise.allSettled([
-          fetchUsers().catch(err => console.error('Erreur users:', err)),
-          fetchStructures().catch(err => console.error('Erreur structures:', err)),
-          fetchStats?.(dateRange).catch(err => console.error('Erreur stats:', err)),
-          fetchDashboardStats?.().catch(err => console.error('Erreur dashboard stats:', err)),
-          fetchRecentActivity?.(10).catch(err => console.error('Erreur activity:', err)),
-          fetchAllEntries?.({ days: parseInt(dateRange) }).catch(err => console.error('Erreur entries:', err))
-        ]);
-      } catch (error) {
-        console.error('Erreur générale:', error);
-      }
-    };
-    
     loadData();
-  }, [fetchUsers, fetchStructures, fetchStats, fetchDashboardStats, fetchRecentActivity, fetchAllEntries, dateRange]);
+  }, [loadData]);
+
+
+  // Fonction pour rafraîchir après création
+  const handleUserCreated = useCallback(() => {
+    userModal.closeModal();
+    loadData(); // Recharger les données
+  }, [userModal, loadData]);
+
+  const handleStructureCreated = useCallback(() => {
+    structureModal.closeModal();
+    loadData(); // Recharger les données
+  }, [structureModal, loadData]);
+
 
   // Calculs des statistiques
   const totalUsers = (users || []).length;
@@ -401,7 +416,7 @@ const AdminDashboard = () => {
         title="Créer un utilisateur"
         size="lg"
       >
-        <CreateUserForm onSuccess={userModal.closeModal} />
+        <CreateUserForm onSuccess={handleUserCreated} />
       </Modal>
 
       <Modal
@@ -410,7 +425,7 @@ const AdminDashboard = () => {
         title="Créer une structure"
         size="lg"
       >
-        <CreateStructureForm onSuccess={structureModal.closeModal} />
+        <CreateStructureForm onSuccess={handleStructureCreated} />
       </Modal>
     </div>
   );
