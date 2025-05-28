@@ -79,13 +79,13 @@ Object.keys(db).forEach(modelName => {
  * Cela aide à identifier rapidement les problèmes de chargement des modèles
  */
 const expectedModels = [
-    'Structure',         // Structure organisationnelle (centre de loisirs, etc.)
     'User',              // Utilisateurs du système (admin, directeur, animateur)
+    'Structure',         // Structure organisationnelle (centre de loisirs, etc.)
     'Time_Tracking',     // Enregistrements de temps de travail
-    'Planned_Schedule',  // Plannings prévus
-    'Project',           // Projets (quoi faire?)
     'Task',              // Tâches liées aux projets (comment faire?)
+    'Project',           // Projets (quoi faire?)
     'User_Task',         // Table de jointure entre utilisateurs et tâches
+    'Planned_Schedule',  // Plannings prévus
     'Activity_Log',      // Journaux d'activité
     'School_Vacations'   // Périodes de vacances scolaires
 ];

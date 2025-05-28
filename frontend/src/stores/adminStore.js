@@ -155,6 +155,11 @@ export const useAdminStore = create((set, get) => ({
 
   // ===== ACTIONS STRUCTURES =====
   fetchStructures: async (includeStats = false) => {
+      const state = get();
+  
+  if (state.loading) {
+    return;
+  }
     set({ loading: true, error: null });
     
     try {

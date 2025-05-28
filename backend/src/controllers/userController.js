@@ -1,6 +1,18 @@
-const { User, Structure, TimeTracking, Task } = require('../models');
+const { User, Structure, TimeTracking, Task, ActivityLog } = require('../models');
 const bcrypt = require('bcryptjs');
 const { Op } = require('sequelize');
+
+// Vérification des modèles
+const checkModels = () => {
+  if (!User || !Structure || !TimeTracking) {
+    console.error('Erreur: Modèles non importés correctement');
+    console.log('User:', !!User);
+    console.log('Structure:', !!Structure);
+    console.log('TimeTracking:', !!TimeTracking);
+    console.log('Task:', !!Task);
+  }
+};
+checkModels();
 
 const subDays = (date, days) => {
     const result = new Date(date);
@@ -127,14 +139,20 @@ exports.getUserById = async (req, res) => {
 // Créer un utilisateur
 exports.createUser = async (req, res) => {
     try {
-        const { 
-            first_name, 
-            last_name, 
-            email, 
-            password, 
-            role, 
+        const {
+            email,
+            password,
+            first_name,
+            last_name,
+            role,
             structure_id,
-            active = true 
+            phone,
+            contract_type,      // Ces champs sont-ils gérés ?
+            weekly_hours,       // Ces champs sont-ils gérés ?
+            annual_hours,       // Ces champs sont-ils gérés ?
+            contract_start_date,// Ces champs sont-ils gérés ?
+            contract_end_date,  // Ces champs sont-ils gérés ?
+            active
         } = req.body;
 
         // Validation des permissions
@@ -142,6 +160,15 @@ exports.createUser = async (req, res) => {
             return res.status(403).json({ 
                 success: false,
                 message: 'Seuls les administrateurs peuvent créer des comptes admin' 
+            });
+        }
+
+        // Validation des champs obligatoires selon votre modèle User
+        if (!email || !password || !first_name || !last_name || !structure_id || !contract_type) {
+            return res.status(400).json({
+                success: false,
+                message: 'Champs obligatoires manquants',
+                required: ['email', 'password', 'first_name', 'last_name', 'structure_id', 'contract_type']
             });
         }
 
@@ -154,20 +181,38 @@ exports.createUser = async (req, res) => {
             });
         }
 
+        // Vérification que la structure existe
+        const structure = await Structure.findByPk(structure_id);
+        if (!structure) {
+            return res.status(400).json({
+                success: false,
+                message: 'Structure introuvable'
+            });
+        }
+
         // Hachage du mot de passe
         const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
-        const userData = {
-            first_name,
-            last_name,
+        // Création de l'utilisateur avec TOUS les champs requis
+        const user = await User.create({
             email,
             password: hashedPassword,
+            first_name,
+            last_name,
             role: role || 'animator',
-            structure_id,
-            active
-        };
+            structure_id: parseInt(structure_id),
+            phone,
+            contract_type,
+            weekly_hours: parseFloat(weekly_hours),
+            annual_hours: parseFloat(annual_hours),
+            contract_start_date: contract_start_date || null,
+            contract_end_date: contract_end_date || null,
+            active: active !== undefined ? active : true
+        });
 
-        const user = await User.create(userData);
+        // Réponse sans mot de passe
+        const userResponse = user.toJSON();
+        delete userResponse.password;
 
         res.status(201).json({
             success: true,
@@ -184,10 +229,31 @@ exports.createUser = async (req, res) => {
         });
     } catch (error) {
         console.error('Erreur createUser:', error);
-        res.status(400).json({ 
+        
+        // Gestion des erreurs de validation Sequelize
+        if (error.name === 'SequelizeValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Données invalides',
+                errors: error.errors.map(err => ({
+                    field: err.path,
+                    message: err.message
+                }))
+            });
+        }
+
+        // Gestion des erreurs de contraintes (email unique, etc.)
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cet email est déjà utilisé'
+            });
+        }
+
+        res.status(500).json({
             success: false,
-            message: 'Erreur lors de la création de l\'utilisateur', 
-            error: error.message 
+            message: 'Erreur lors de la création de l\'utilisateur',
+            error: error.message
         });
     }
 };
@@ -339,6 +405,11 @@ exports.restoreUser = async (req, res) => {
 // Statistiques générales
 exports.getStats = async (req, res) => {
     try {
+    // Vérifier que les modèles sont disponibles
+        if (!User || !Structure || !TimeTracking) {
+            throw new Error('Modèles non disponibles');
+        }
+
         const { days = 7 } = req.query;
         const startDate = subDays(new Date(), parseInt(days));
 
@@ -380,7 +451,7 @@ exports.getStats = async (req, res) => {
                     attributes: ['name']
                 }],
                 where: { role: { [Op.ne]: 'admin' } },
-                group: ['structure_id', 'structure.id'],
+                group: ['structure_id', 'structure.id', 'structure.name'],
                 raw: true
             })
         ]);
@@ -418,6 +489,10 @@ exports.getStats = async (req, res) => {
 // Statistiques dashboard admin
 exports.getDashboardStats = async (req, res) => {
     try {
+
+        if (!User || !Structure || !TimeTracking) {
+            throw new Error('Modèles non disponibles');
+        }
         const today = new Date();
         const startOfToday = startOfDay(today);
         const endOfToday = endOfDay(today);
@@ -471,6 +546,15 @@ exports.getDashboardStats = async (req, res) => {
 // Activité récente des utilisateurs
 exports.getRecentActivity = async (req, res) => {
     try {
+        if (!TimeTracking) {
+            // Si TimeTracking n'existe pas, retourner un tableau vide
+            return res.status(200).json({
+                success: true,
+                count: 0,
+                data: [],
+                message: 'Aucune activité disponible (modèle TimeTracking non configuré)'
+            });
+        }        
         const { limit = 10 } = req.query;
         
         const activities = await TimeTracking.findAll({

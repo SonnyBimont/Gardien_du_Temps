@@ -1,10 +1,6 @@
-// src/components/forms/CreateUserForm.jsx
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, Building, Shield, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, Building, Shield, AlertCircle, Eye, EyeOff, Calendar, Clock, X } from 'lucide-react';
 import { useAdminStore } from '../../stores/adminStore';
-import Input, { Select } from '../common/Input';
-import Button from '../common/Button';
-import Card from '../common/Card';
 
 const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
   const [formData, setFormData] = useState({
@@ -16,7 +12,12 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
     role: 'animator',
     structure_id: '',
     phone: '',
-    is_active: true,
+    contract_type: 'fixed_term', 
+    weekly_hours: '35',       
+    annual_hours: '1607',     
+    contract_start_date: '',  
+    contract_end_date: '',    
+    active: true,
     ...initialData
   });
 
@@ -24,17 +25,19 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const totalSteps = 2;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const totalSteps = 3; 
 
   const { createUser, updateUser, structures, fetchStructures, loading, error, clearError } = useAdminStore();
 
   const isEditing = !!initialData;
 
   useEffect(() => {
-    fetchStructures();
-  }, [fetchStructures]);
+    if (structures.length === 0) {
+      fetchStructures();
+    }
+  }, [fetchStructures, structures.length]);
 
-  // Nettoyer les erreurs
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => {
@@ -50,22 +53,22 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
     if (stepNumber === 1) {
       if (!formData.first_name.trim()) {
         errors.first_name = 'Le prénom est obligatoire';
-      }
-      if (formData.first_name.length < 2) {
+      } else if (formData.first_name.length < 2) {
         errors.first_name = 'Le prénom doit contenir au moins 2 caractères';
       }
+      
       if (!formData.last_name.trim()) {
         errors.last_name = 'Le nom est obligatoire';
-      }
-      if (formData.last_name.length < 2) {
+      } else if (formData.last_name.length < 2) {
         errors.last_name = 'Le nom doit contenir au moins 2 caractères';
       }
+      
       if (!formData.email.trim()) {
         errors.email = 'L\'email est obligatoire';
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
         errors.email = 'L\'email n\'est pas valide';
       }
+      
       if (formData.phone && !/^[\d\s\.\-\+\(\)]{10,}$/.test(formData.phone.replace(/\s/g, ''))) {
         errors.phone = 'Le numéro de téléphone n\'est pas valide';
       }
@@ -75,22 +78,49 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
       if (!isEditing) {
         if (!formData.password) {
           errors.password = 'Le mot de passe est obligatoire';
-        }
-        if (formData.password.length < 8) {
+        } else if (formData.password.length < 8) {
           errors.password = 'Le mot de passe doit contenir au moins 8 caractères';
-        }
-        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+        } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
           errors.password = 'Le mot de passe doit contenir au moins une majuscule, une minuscule et un chiffre';
         }
+        
         if (!formData.confirmPassword) {
           errors.confirmPassword = 'Veuillez confirmer le mot de passe';
-        }
-        if (formData.password !== formData.confirmPassword) {
+        } else if (formData.password !== formData.confirmPassword) {
           errors.confirmPassword = 'Les mots de passe ne correspondent pas';
         }
       }
+      
       if (!formData.structure_id) {
         errors.structure_id = 'Veuillez sélectionner une structure';
+      }
+    }
+
+    if (stepNumber === 3) {
+      if (!formData.contract_type) {
+        errors.contract_type = 'Le type de contrat est obligatoire';
+      }
+      
+      if (!formData.weekly_hours || isNaN(formData.weekly_hours) || formData.weekly_hours <= 0) {
+        errors.weekly_hours = 'Les heures hebdomadaires doivent être un nombre positif';
+      }
+      
+      if (!formData.annual_hours || isNaN(formData.annual_hours) || formData.annual_hours <= 0) {
+        errors.annual_hours = 'Les heures annuelles doivent être un nombre positif';
+      }
+      
+      if (formData.contract_type === 'fixed_term') {
+        if (!formData.contract_start_date) {
+          errors.contract_start_date = 'La date de début est obligatoire pour un CDD';
+        }
+        if (!formData.contract_end_date) {
+          errors.contract_end_date = 'La date de fin est obligatoire pour un CDD';
+        }
+        if (formData.contract_start_date && formData.contract_end_date) {
+          if (new Date(formData.contract_start_date) >= new Date(formData.contract_end_date)) {
+            errors.contract_end_date = 'La date de fin doit être après la date de début';
+          }
+        }
       }
     }
 
@@ -100,12 +130,14 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     clearError();
     
     // Valider tous les steps
     for (let i = 1; i <= totalSteps; i++) {
       if (!validateStep(i)) {
         setStep(i);
+        setIsSubmitting(false);
         return;
       }
     }
@@ -113,23 +145,44 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
     try {
       const userData = { ...formData };
       
-      // Ne pas envoyer confirmPassword
+      // Nettoyer les données
       delete userData.confirmPassword;
+      
+      // Convertir en nombres
+      userData.weekly_hours = parseFloat(userData.weekly_hours);
+      userData.annual_hours = parseFloat(userData.annual_hours);
+      userData.structure_id = parseInt(userData.structure_id);
       
       // Si mode édition et pas de nouveau mot de passe, ne pas l'envoyer
       if (isEditing && !formData.password) {
         delete userData.password;
       }
 
+      // 🔍 LOGS DE DEBUG
+      console.log('=== DONNÉES ENVOYÉES AU BACKEND ===');
+      console.log('userData:', userData);
+      console.log('formData original:', formData);
+      console.log('===================================');
+
       const result = isEditing 
         ? await updateUser(initialData.id, userData)
         : await createUser(userData);
+
+      console.log('=== RÉPONSE DU BACKEND ===');
+      console.log('result:', result);
+      console.log('========================');
 
       if (result.success) {
         onSuccess?.();
       }
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
+      console.error('error:', error);
+      console.error('error.response:', error.response);
+      console.error('error.response.data:', error.response?.data);
+      console.error('================================');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -150,13 +203,26 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
   };
 
   const nextStep = () => {
+    console.log('Tentative passage étape suivante:', step);
+    console.log('Validation actuelle:', validateStep(step));
+    
     if (validateStep(step)) {
+      console.log('Validation OK, passage à l\'étape suivante');
       setStep(prev => Math.min(prev + 1, totalSteps));
+    } else {
+      console.log('Validation échouée, erreurs:', formErrors);
     }
   };
 
   const prevStep = () => {
     setStep(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleClose = () => {
+    console.log('Fermeture du modal');
+    if (onCancel) {
+      onCancel();
+    }
   };
 
   const getRoleDisplayName = (role) => {
@@ -177,9 +243,18 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
     return descriptions[role] || '';
   };
 
+  const getContractTypeDisplayName = (type) => {
+    const types = {
+      permanent: 'CDI (Contrat à Durée Indéterminée)',
+      fixed_term: 'CDD (Contrat à Durée Déterminée)',
+      'etc.': 'Autre'
+    };
+    return types[type] || type;
+  };
+
   const renderStepIndicator = () => (
     <div className="flex items-center justify-center mb-6">
-      {[1, 2].map((stepNumber) => (
+      {[1, 2, 3].map((stepNumber) => (
         <div key={stepNumber} className="flex items-center">
           <div className={`
             w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium
@@ -210,63 +285,99 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input
-          label="Prénom"
-          name="first_name"
-          value={formData.first_name}
-          onChange={handleChange}
-          required
-          placeholder="Jean"
-          error={formErrors.first_name}
-          leftIcon={<User className="w-4 h-4" />}
-        />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Prénom *
+          </label>
+          <input
+            type="text"
+            name="first_name"
+            value={formData.first_name}
+            onChange={handleChange}
+            required
+            placeholder="Jean"
+            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+              formErrors.first_name ? 'border-red-300' : 'border-gray-300'
+            }`}
+          />
+          {formErrors.first_name && (
+            <p className="mt-1 text-sm text-red-600">{formErrors.first_name}</p>
+          )}
+        </div>
 
-        <Input
-          label="Nom"
-          name="last_name"
-          value={formData.last_name}
-          onChange={handleChange}
-          required
-          placeholder="Dupont"
-          error={formErrors.last_name}
-        />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Nom *
+          </label>
+          <input
+            type="text"
+            name="last_name"
+            value={formData.last_name}
+            onChange={handleChange}
+            required
+            placeholder="Dupont"
+            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+              formErrors.last_name ? 'border-red-300' : 'border-gray-300'
+            }`}
+          />
+          {formErrors.last_name && (
+            <p className="mt-1 text-sm text-red-600">{formErrors.last_name}</p>
+          )}
+        </div>
       </div>
 
-      <Input
-        label="Adresse email"
-        name="email"
-        type="email"
-        value={formData.email}
-        onChange={handleChange}
-        required
-        placeholder="jean.dupont@example.com"
-        error={formErrors.email}
-        hint="Cette adresse servira pour la connexion"
-        leftIcon={<Mail className="w-4 h-4" />}
-      />
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Adresse email *
+        </label>
+        <input
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          placeholder="jean.dupont@example.com"
+          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+            formErrors.email ? 'border-red-300' : 'border-gray-300'
+          }`}
+        />
+        {formErrors.email && (
+          <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
+        )}
+        <p className="mt-1 text-sm text-gray-500">Cette adresse servira pour la connexion</p>
+      </div>
 
-      <Input
-        label="Téléphone"
-        name="phone"
-        type="tel"
-        value={formData.phone}
-        onChange={handleChange}
-        placeholder="01 23 45 67 89"
-        error={formErrors.phone}
-        hint="Numéro de téléphone (optionnel)"
-      />
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Téléphone
+        </label>
+        <input
+          type="tel"
+          name="phone"
+          value={formData.phone}
+          onChange={handleChange}
+          placeholder="01 23 45 67 89"
+          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+            formErrors.phone ? 'border-red-300' : 'border-gray-300'
+          }`}
+        />
+        {formErrors.phone && (
+          <p className="mt-1 text-sm text-red-600">{formErrors.phone}</p>
+        )}
+        <p className="mt-1 text-sm text-gray-500">Numéro de téléphone (optionnel)</p>
+      </div>
 
       {isEditing && (
         <div className="flex items-center">
           <input
             type="checkbox"
-            id="is_active"
-            name="is_active"
-            checked={formData.is_active}
+            id="active"
+            name="active"
+            checked={formData.active}
             onChange={handleChange}
             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
-          <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
+          <label htmlFor="active" className="ml-2 block text-sm text-gray-900">
             Compte actif
           </label>
         </div>
@@ -284,63 +395,88 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
 
       {!isEditing && (
         <>
-          <Input
-            label="Mot de passe"
-            name="password"
-            type={showPassword ? 'text' : 'password'}
-            value={formData.password}
-            onChange={handleChange}
-            required={!isEditing}
-            placeholder="••••••••"
-            error={formErrors.password}
-            hint="Minimum 8 caractères avec majuscule, minuscule et chiffre"
-            leftIcon={<Lock className="w-4 h-4" />}
-            rightIcon={
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Mot de passe *
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required={!isEditing}
+                placeholder="••••••••"
+                className={`mt-1 block w-full px-3 py-2 pr-10 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                  formErrors.password ? 'border-red-300' : 'border-gray-300'
+                }`}
+              />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="text-gray-400 hover:text-gray-600"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
-            }
-          />
+            </div>
+            {formErrors.password && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
+            )}
+            <p className="mt-1 text-sm text-gray-500">Minimum 8 caractères avec majuscule, minuscule et chiffre</p>
+          </div>
 
-          <Input
-            label="Confirmer le mot de passe"
-            name="confirmPassword"
-            type={showConfirmPassword ? 'text' : 'password'}
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            required={!isEditing}
-            placeholder="••••••••"
-            error={formErrors.confirmPassword}
-            leftIcon={<Lock className="w-4 h-4" />}
-            rightIcon={
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Confirmer le mot de passe *
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required={!isEditing}
+                placeholder="••••••••"
+                className={`mt-1 block w-full px-3 py-2 pr-10 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                  formErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                }`}
+              />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="text-gray-400 hover:text-gray-600"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
               >
                 {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
-            }
-          />
+            </div>
+            {formErrors.confirmPassword && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
+            )}
+          </div>
         </>
       )}
 
-      <Select
-        label="Rôle"
-        name="role"
-        value={formData.role}
-        onChange={handleChange}
-        required
-        error={formErrors.role}
-      >
-        <option value="animator">Animateur</option>
-        <option value="director">Directeur</option>
-        <option value="admin">Administrateur</option>
-      </Select>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Rôle *
+        </label>
+        <select
+          name="role"
+          value={formData.role}
+          onChange={handleChange}
+          required
+          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+            formErrors.role ? 'border-red-300' : 'border-gray-300'
+          }`}
+        >
+          <option value="animator">Animateur</option>
+          <option value="director">Directeur</option>
+          <option value="admin">Administrateur</option>
+        </select>
+        {formErrors.role && (
+          <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>
+        )}
+      </div>
 
       {/* Description du rôle */}
       <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
@@ -352,26 +488,156 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
         </p>
       </div>
 
-      <Select
-        label="Structure"
-        name="structure_id"
-        value={formData.structure_id}
-        onChange={handleChange}
-        required
-        error={formErrors.structure_id}
-        placeholder="Sélectionner une structure"
-        leftIcon={<Building className="w-4 h-4" />}
-      >
-        <option value="">Choisir une structure</option>
-        {structures.map((structure) => (
-          <option key={structure.id} value={structure.id}>
-            {structure.name} - {structure.city}
-          </option>
-        ))}
-      </Select>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Structure *
+        </label>
+        <select
+          name="structure_id"
+          value={formData.structure_id}
+          onChange={handleChange}
+          required
+          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+            formErrors.structure_id ? 'border-red-300' : 'border-gray-300'
+          }`}
+        >
+          <option value="">Choisir une structure</option>
+          {structures.map((structure) => (
+            <option key={structure.id} value={structure.id}>
+              {structure.name} - {structure.city}
+            </option>
+          ))}
+        </select>
+        {formErrors.structure_id && (
+          <p className="mt-1 text-sm text-red-600">{formErrors.structure_id}</p>
+        )}
+      </div>
+    </div>
+  );
 
-      {/* Résumé */}
-      <Card variant="info" className="mt-6">
+  const renderStep3 = () => (
+    <div className="space-y-4">
+      <div className="text-center mb-6">
+        <Calendar className="w-12 h-12 text-blue-600 mx-auto mb-2" />
+        <h3 className="text-lg font-semibold text-gray-900">Informations contractuelles</h3>
+        <p className="text-gray-600">Définissez les conditions de travail</p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Type de contrat *
+        </label>
+        <select
+          name="contract_type"
+          value={formData.contract_type}
+          onChange={handleChange}
+          required
+          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+            formErrors.contract_type ? 'border-red-300' : 'border-gray-300'
+          }`}
+        >
+          <option value="permanent">CDI (Contrat à Durée Indéterminée)</option>
+          <option value="fixed_term">CDD (Contrat à Durée Déterminée)</option>
+          <option value="etc.">Autre</option>
+        </select>
+        {formErrors.contract_type && (
+          <p className="mt-1 text-sm text-red-600">{formErrors.contract_type}</p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Heures hebdomadaires *
+          </label>
+          <input
+            type="number"
+            step="0.5"
+            min="1"
+            max="48"
+            name="weekly_hours"
+            value={formData.weekly_hours}
+            onChange={handleChange}
+            required
+            placeholder="35"
+            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+              formErrors.weekly_hours ? 'border-red-300' : 'border-gray-300'
+            }`}
+          />
+          {formErrors.weekly_hours && (
+            <p className="mt-1 text-sm text-red-600">{formErrors.weekly_hours}</p>
+          )}
+          <p className="mt-1 text-sm text-gray-500">Nombre d'heures par semaine</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Heures annuelles *
+          </label>
+          <input
+            type="number"
+            step="1"
+            min="1"
+            name="annual_hours"
+            value={formData.annual_hours}
+            onChange={handleChange}
+            required
+            placeholder="1607"
+            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+              formErrors.annual_hours ? 'border-red-300' : 'border-gray-300'
+            }`}
+          />
+          {formErrors.annual_hours && (
+            <p className="mt-1 text-sm text-red-600">{formErrors.annual_hours}</p>
+          )}
+          <p className="mt-1 text-sm text-gray-500">Total d'heures par an</p>
+        </div>
+      </div>
+
+      {formData.contract_type === 'fixed_term' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date de début *
+            </label>
+            <input
+              type="date"
+              name="contract_start_date"
+              value={formData.contract_start_date}
+              onChange={handleChange}
+              required={formData.contract_type === 'fixed_term'}
+              className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                formErrors.contract_start_date ? 'border-red-300' : 'border-gray-300'
+              }`}
+            />
+            {formErrors.contract_start_date && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.contract_start_date}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date de fin *
+            </label>
+            <input
+              type="date"
+              name="contract_end_date"
+              value={formData.contract_end_date}
+              onChange={handleChange}
+              required={formData.contract_type === 'fixed_term'}
+              className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                formErrors.contract_end_date ? 'border-red-300' : 'border-gray-300'
+              }`}
+            />
+            {formErrors.contract_end_date && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.contract_end_date}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Résumé complet */}
+      <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mt-6">
         <h4 className="font-semibold text-gray-900 mb-3">Résumé de l'utilisateur</h4>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
@@ -394,8 +660,24 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
               </span>
             </div>
           )}
+          <div className="flex justify-between">
+            <span className="text-gray-600">Contrat:</span>
+            <span className="font-medium">{getContractTypeDisplayName(formData.contract_type)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Heures:</span>
+            <span className="font-medium">{formData.weekly_hours}h/semaine ({formData.annual_hours}h/an)</span>
+          </div>
+          {formData.contract_type === 'fixed_term' && formData.contract_start_date && formData.contract_end_date && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Période:</span>
+              <span className="font-medium">
+                {new Date(formData.contract_start_date).toLocaleDateString('fr-FR')} → {new Date(formData.contract_end_date).toLocaleDateString('fr-FR')}
+              </span>
+            </div>
+          )}
         </div>
-      </Card>
+      </div>
     </div>
   );
 
@@ -403,73 +685,102 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
     switch (step) {
       case 1: return renderStep1();
       case 2: return renderStep2();
+      case 3: return renderStep3();
       default: return renderStep1();
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
-      {/* Indicateur d'étapes */}
-      {renderStepIndicator()}
-
-      {/* Erreur générale */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-          <div className="flex">
-            <AlertCircle className="w-5 h-5 text-red-400 mr-2" />
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Contenu de l'étape */}
-      <div className="min-h-96">
-        {renderCurrentStep()}
-      </div>
-
-      {/* Navigation */}
-      <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-        <div>
-          {step > 1 && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={prevStep}
-            >
-              Précédent
-            </Button>
-          )}
-        </div>
-
-        <div className="flex space-x-3">
-          <Button
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 xl:w-1/2 shadow-lg rounded-md bg-white">
+        {/* Header avec bouton X */}
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900">
+            {isEditing ? 'Modifier l\'utilisateur' : 'Créer un nouvel utilisateur'}
+          </h3>
+          <button
             type="button"
-            variant="ghost"
-            onClick={onCancel || onSuccess}
+            onClick={handleClose}
+            className="text-gray-400 hover:text-gray-600 focus:outline-none"
           >
-            Annuler
-          </Button>
-          
-          {step < totalSteps ? (
-            <Button
-              type="button"
-              onClick={nextStep}
-            >
-              Suivant
-            </Button>
-          ) : (
-            <Button
-              type="submit"
-              disabled={loading}
-              loading={loading}
-              loadingText={isEditing ? 'Modification...' : 'Création...'}
-            >
-              {isEditing ? 'Modifier l\'utilisateur' : 'Créer l\'utilisateur'}
-            </Button>
-          )}
+            <X className="w-6 h-6" />
+          </button>
         </div>
+
+        <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
+          {/* Indicateur d'étapes */}
+          {renderStepIndicator()}
+
+          {/* Erreur générale */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+              <div className="flex">
+                <AlertCircle className="w-5 h-5 text-red-400 mr-2" />
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Contenu de l'étape */}
+          <div className="min-h-96">
+            {renderCurrentStep()}
+          </div>
+
+          {/* Navigation */}
+          <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+            <div>
+              {step > 1 && (
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
+                  Précédent
+                </button>
+              )}
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Annuler
+              </button>
+              
+              {step < totalSteps ? (
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  Suivant
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isSubmitting || loading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting || loading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      {isEditing ? 'Modification...' : 'Création...'}
+                    </>
+                  ) : (
+                    isEditing ? 'Modifier l\'utilisateur' : 'Créer l\'utilisateur'
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </form>
       </div>
-    </form>
+    </div>
   );
 };
 

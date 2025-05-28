@@ -2,12 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Users, 
   Building, 
-  Plus, 
   Activity, 
   Clock, 
-  TrendingUp, 
-  AlertTriangle,
-  Calendar,
   BarChart3,
   Settings,
   Search,
@@ -53,12 +49,11 @@ const AdminDashboard = () => {
         fetchStats?.(dateRange).catch(err => console.error('Erreur stats:', err)),
         fetchDashboardStats?.().catch(err => console.error('Erreur dashboard stats:', err)),
         fetchRecentActivity?.(10).catch(err => console.error('Erreur activity:', err)),
-        fetchAllEntries?.({ days: parseInt(dateRange) }).catch(err => console.error('Erreur entries:', err))
       ]);
     } catch (error) {
       console.error('Erreur générale:', error);
     }
-  }, [dateRange, fetchUsers, fetchStructures, fetchStats, fetchDashboardStats, fetchRecentActivity, fetchAllEntries]);
+  }, [dateRange, fetchUsers, fetchStructures, fetchStats, fetchDashboardStats, fetchRecentActivity]);
 
   // useEffect simplifié
   useEffect(() => {
@@ -80,7 +75,7 @@ const AdminDashboard = () => {
 
   // Calculs des statistiques
   const totalUsers = (users || []).length;
-  const activeUsers = (users || []).filter(u => u.is_active).length;
+  const activeUsers = (users || []).filter(u => u.active).length;
   const totalStructures = (structures || []).length;
   const directors = (users || []).filter(u => u.role === 'director').length;
   const animators = (users || []).filter(u => u.role === 'animator').length;
@@ -300,7 +295,7 @@ const AdminDashboard = () => {
                 {user.role === 'animator' && 'Animateur'}
               </span>
               <div className={`w-2 h-2 rounded-full ${
-                user.is_active ? 'bg-green-400' : 'bg-gray-300'
+                user.active ? 'bg-green-400' : 'bg-gray-300'
               }`} />
             </div>
           </div>
