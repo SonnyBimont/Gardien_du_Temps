@@ -182,7 +182,7 @@ const { protect, authorize } = require('../middlewares/auth');
  */
 router
     .route('/')
-    .get(protect, authorize('admin'), structureController.getStructures)
+    .get(protect, authorize(), structureController.getStructures)
     .post(protect, authorize('admin'), structureController.createStructure);
 
 /**

@@ -49,8 +49,8 @@ const CreateStructureForm = ({ onSuccess, onCancel, initialData = null }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+<div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+  <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
         <div className="mt-3">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             {isEditing ? 'Modifier la structure' : 'Créer une nouvelle structure'}

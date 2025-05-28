@@ -408,19 +408,17 @@ const AdminDashboard = () => {
       <Modal
         isOpen={userModal.isOpen}
         onClose={userModal.closeModal}
-        title="Créer un utilisateur"
-        size="lg"
       >
-        <CreateUserForm onSuccess={handleUserCreated} />
+        <CreateUserForm onSuccess={handleUserCreated} 
+        onCancel={userModal.closeModal}/>
       </Modal>
 
       <Modal
         isOpen={structureModal.isOpen}
         onClose={structureModal.closeModal}
-        title="Créer une structure"
-        size="lg"
       >
-        <CreateStructureForm onSuccess={handleStructureCreated} />
+        <CreateStructureForm onSuccess={handleStructureCreated} 
+        onCancel={structureModal.closeModal}/>
       </Modal>
     </div>
   );
