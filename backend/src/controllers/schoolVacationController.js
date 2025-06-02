@@ -151,7 +151,8 @@ exports.syncVacationsFromAPI = async (req, res) => {
             for (const schoolYear of schoolYears) {
                 try {
                     // Format de l'API : exemple pour 2023-2024, zone A
-                    const apiUrl = `https://data.education.gouv.fr/api/records/1.0/search/`
+                    // biome-ignore lint/style/useTemplate: <explanation>
+                                        const apiUrl = `https://data.education.gouv.fr/api/records/1.0/search/`
                         + `?dataset=fr-en-calendrier-scolaire`
                         + `&q=`
                         + `&rows=100`

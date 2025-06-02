@@ -1,376 +1,456 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  FolderPlus, 
   Clock, 
   Calendar, 
-  CheckCircle, 
-  AlertCircle,
-  TrendingUp,
-  Target,
-  Play,
-  Pause,
-  Coffee,
-  LogOut as Leave,
-  BarChart3
+  Activity,
+  PlayCircle,
+  PauseCircle,
+  StopCircle,
+  MapPin,
+  CheckCircle
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTimeStore } from '../../stores/timeStore';
-import { useProjectStore } from '../../stores/projectStore';
-import { calculateTotalHours, calculateCurrentWorkingTime, getTodayStatus, formatHours } from '../../utils/timeCalculations';
-import TimeTracker from '../timetracking/TimeTracker';
-import TimeTable from '../timetracking/TimeTable';
-import Button from '../common/Button';
-import Card, { StatsCard } from '../common/Card';
-import Modal, { useModal } from '../common/Modal';
-import CreateTaskForm from '../forms/CreateTaskForm';
+import Card from '../common/Card';
+import StatsCard from '../common/StatsCard';
 
 const AnimatorDashboard = () => {
   const { user } = useAuthStore();
-  const { entries, fetchUserEntries, loading: timeLoading } = useTimeStore();
   const { 
-    tasks, 
-    projects, 
-    fetchTasks, 
-    fetchProjects,
-    getUserTasks,
-    getTasksByStatus,
-    loading: projectLoading 
-  } = useProjectStore();
+    todayEntries = [], 
+    loading,
+    fetchTodayEntries,
+    clockIn,
+    clockOut,
+    startBreak,
+    endBreak
+  } = useTimeStore();
 
-  const [selectedPeriod, setSelectedPeriod] = useState('week');
-  const taskModal = useModal();
+  const [actionLoading, setActionLoading] = useState(null);
 
+  // Chargement des données
   useEffect(() => {
     const loadData = async () => {
-      if (user?.id) {
-        await Promise.all([
-          fetchUserEntries(user.id),
-          fetchTasks(),
-          fetchProjects()
-        ]);
+      try {
+        if (fetchTodayEntries) await fetchTodayEntries();
+      } catch (error) {
+        console.error('Erreur lors du chargement des données:', error);
       }
     };
-    
-    loadData();
-  }, [user?.id, fetchUserEntries, fetchTasks, fetchProjects]);
 
-  // Calculs des statistiques
-  const processedEntries = calculateTotalHours(entries);
-  const todayStatus = getTodayStatus(entries);
-  const currentWorkingTime = calculateCurrentWorkingTime(entries);
-  
-  // Tâches de l'utilisateur
-  const userTasks = getUserTasks(user?.id || 0);
-  const todoTasks = getTasksByStatus('todo').filter(task => task.assigned_to === user?.id);
-  const inProgressTasks = getTasksByStatus('in_progress').filter(task => task.assigned_to === user?.id);
-  const completedTasks = getTasksByStatus('completed').filter(task => task.assigned_to === user?.id);
+    if (user?.id) {
+      loadData();
+    }
+  }, [user?.id, fetchTodayEntries]);
 
-  // Statistiques temporelles
-  const todayEntry = processedEntries.find(entry => 
-    entry.date === new Date().toISOString().split('T')[0]
-  );
-  
-  const weekEntries = processedEntries.slice(0, 7);
-  const weekTotal = weekEntries.reduce((sum, entry) => sum + entry.workingHours, 0);
-  
-  const monthEntries = processedEntries.slice(0, 30);
-  const monthTotal = monthEntries.reduce((sum, entry) => sum + entry.workingHours, 0);
-
-  const getStatusDisplay = () => {
-    if (todayStatus.hasLeft) return { text: 'Journée terminée', color: 'text-gray-600', icon: '✅' };
-    if (todayStatus.isOnBreak) return { text: 'En pause', color: 'text-yellow-600', icon: '⏸️' };
-    if (todayStatus.isPresent) return { text: 'Au travail', color: 'text-green-600', icon: '🟢' };
-    return { text: 'Non pointé', color: 'text-gray-400', icon: '⚪' };
-  };
-
-  const getTaskPriorityColor = (priority) => {
-    const colors = {
-      low: 'bg-gray-100 text-gray-800',
-      medium: 'bg-blue-100 text-blue-800',
-      high: 'bg-orange-100 text-orange-800',
-      urgent: 'bg-red-100 text-red-800'
-    };
-    return colors[priority] || colors.medium;
-  };
-
-  const renderQuickActions = () => (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      <Card clickable onClick={taskModal.openModal} hoverable className="p-4">
-        <div className="flex items-center">
-          <div className="p-3 bg-blue-100 rounded-lg">
-            <FolderPlus className="w-6 h-6 text-blue-600" />
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Créer</p>
-            <p className="text-lg font-semibold text-gray-900">Tâche</p>
-          </div>
-        </div>
-      </Card>
-
-      <Card clickable hoverable className="p-4">
-        <div className="flex items-center">
-          <div className="p-3 bg-green-100 rounded-lg">
-            <BarChart3 className="w-6 h-6 text-green-600" />
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Voir</p>
-            <p className="text-lg font-semibold text-gray-900">Rapports</p>
-          </div>
-        </div>
-      </Card>
-
-      <Card clickable hoverable className="p-4">
-        <div className="flex items-center">
-          <div className="p-3 bg-purple-100 rounded-lg">
-            <Calendar className="w-6 h-6 text-purple-600" />
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Planning</p>
-            <p className="text-lg font-semibold text-gray-900">Semaine</p>
-          </div>
-        </div>
-      </Card>
-
-      <Card clickable hoverable className="p-4">
-        <div className="flex items-center">
-          <div className="p-3 bg-orange-100 rounded-lg">
-            <Target className="w-6 h-6 text-orange-600" />
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Mes</p>
-            <p className="text-lg font-semibold text-gray-900">Objectifs</p>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
-
-  const renderStatsCards = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-      <StatsCard
-        title="Aujourd'hui"
-        value={todayEntry ? formatHours(todayEntry.workingHours) : '0h00'}
-        change={todayStatus.isPresent ? `En cours: ${formatHours(currentWorkingTime)}` : getStatusDisplay().text}
-        trend={todayEntry?.workingHours > 7 ? 'positive' : 'neutral'}
-        icon={<Clock className="w-6 h-6" />}
-      />
-
-      <StatsCard
-        title="Cette semaine"
-        value={formatHours(weekTotal)}
-        change={`${weekEntries.filter(e => e.isComplete).length} jours travaillés`}
-        trend={weekTotal > 35 ? 'positive' : 'neutral'}
-        icon={<TrendingUp className="w-6 h-6" />}
-      />
-
-      <StatsCard
-        title="Tâches en cours"
-        value={inProgressTasks.length}
-        change={`${todoTasks.length} à faire`}
-        trend="neutral"
-        icon={<Target className="w-6 h-6" />}
-      />
-
-      <StatsCard
-        title="Tâches terminées"
-        value={completedTasks.length}
-        change={`${userTasks.length} total`}
-        trend="positive"
-        icon={<CheckCircle className="w-6 h-6" />}
-      />
-    </div>
-  );
-
-  const renderCurrentStatus = () => {
-    const status = getStatusDisplay();
-    
+  // Guard clause
+  if (loading) {
     return (
-      <Card className="mb-6">
-        <div className="flex items-center justify-between p-6">
-          <div className="flex items-center">
-            <span className="text-2xl mr-3">{status.icon}</span>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                Statut actuel
-              </h3>
-              <p className={`text-sm ${status.color}`}>{status.text}</p>
-            </div>
-          </div>
-          
-          {todayStatus.isPresent && (
-            <div className="text-right">
-              <p className="text-2xl font-bold text-gray-900">
-                {formatHours(currentWorkingTime)}
-              </p>
-              <p className="text-sm text-gray-500">Temps travaillé</p>
-            </div>
-          )}
+      <div className="flex items-center justify-center min-h-64 px-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement de votre espace...</p>
         </div>
-      </Card>
-    );
-  };
-
-  const renderTasksList = () => (
-    <Card 
-      title="Mes tâches"
-      header={
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Mes tâches ({userTasks.length})
-          </h3>
-          <Button variant="outline" size="sm" onClick={taskModal.openModal}>
-            <FolderPlus className="w-4 h-4 mr-2" />
-            Nouvelle tâche
-          </Button>
-        </div>
-      }
-    >
-      <div className="space-y-3 max-h-64 overflow-y-auto">
-        {userTasks.length > 0 ? (
-          userTasks.slice(0, 5).map((task) => (
-            <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">{task.title}</p>
-                <p className="text-sm text-gray-500 truncate">
-                  {task.description || 'Pas de description'}
-                </p>
-                {task.due_date && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Échéance: {new Date(task.due_date).toLocaleDateString('fr-FR')}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center space-x-2 ml-4">
-                <span className={`px-2 py-1 text-xs rounded-full font-medium ${getTaskPriorityColor(task.priority)}`}>
-                  {task.priority}
-                </span>
-                <div className={`w-3 h-3 rounded-full ${
-                  task.status === 'completed' ? 'bg-green-500' :
-                  task.status === 'in_progress' ? 'bg-blue-500' :
-                  'bg-gray-300'
-                }`} />
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            <Target className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>Aucune tâche assignée</p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="mt-2"
-              onClick={taskModal.openModal}
-            >
-              Créer ma première tâche
-            </Button>
-          </div>
-        )}
-      </div>
-    </Card>
-  );
-
-  const renderWeeklyOverview = () => (
-    <Card title="Vue hebdomadaire" className="h-80">
-      <div className="space-y-3 max-h-64 overflow-y-auto">
-        {weekEntries.map((entry, index) => (
-          <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
-            <div>
-              <p className="font-medium text-gray-900">{entry.dayName}</p>
-              <p className="text-sm text-gray-500">{entry.formattedDate}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-semibold text-gray-900">
-                {entry.formattedWorkingHours}
-              </p>
-              <p className="text-xs text-gray-500">
-                {entry.arrival && entry.departure 
-                  ? `${entry.arrival} - ${entry.departure}`
-                  : entry.arrival 
-                  ? `${entry.arrival} - En cours`
-                  : 'Non pointé'
-                }
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-
-  if (timeLoading || projectLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Tableau de bord - Animateur
+  // Calculs sécurisés
+  const myTodayEntries = todayEntries.filter(entry => entry?.user_id === user?.id);
+  
+  // Déterminer le statut actuel et les actions possibles
+  const getTodayStatus = () => {
+    const status = {
+      arrival: null,
+      departure: null,
+      breakStart: null,
+      breakEnd: null,
+    };
+
+    myTodayEntries.forEach(entry => {
+      switch (entry.tracking_type) {
+        case 'arrival':
+          status.arrival = entry;
+          break;
+        case 'departure':
+          status.departure = entry;
+          break;
+        case 'break_start':
+          status.breakStart = entry;
+          break;
+        case 'break_end':
+          status.breakEnd = entry;
+          break;
+      }
+    });
+
+    return status;
+  };
+
+  const status = getTodayStatus();
+  const currentTime = new Date().toLocaleTimeString('fr-FR', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+
+  // Actions de pointage
+  const handleClockAction = async (action) => {
+    if (actionLoading) return;
+    
+    setActionLoading(action);
+    try {
+      switch (action) {
+        case 'arrival':
+          await clockIn();
+          break;
+        case 'departure':
+          await clockOut();
+          break;
+        case 'break_start':
+          await startBreak();
+          break;
+        case 'break_end':
+          await endBreak();
+          break;
+      }
+    } catch (error) {
+      console.error('Erreur lors du pointage:', error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const renderHeader = () => (
+    <div className="bg-white rounded-lg shadow mx-4 sm:mx-0 p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="flex flex-col space-y-3">
+        <div className="flex items-center">
+          <span className="text-2xl mr-3">👋</span>
+          <h1 className="text-lg sm:text-2xl font-bold text-gray-900">
+            Bonjour {user?.first_name}
           </h1>
-          <p className="text-gray-600 mt-1">
-            Bonjour {user?.first_name}, gérez votre temps et vos tâches
-          </p>
         </div>
         
-        {/* Contrôles de période */}
-        <div className="flex items-center space-x-2">
-          <select
-            value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+        <div className="flex items-center text-gray-600 text-sm">
+          <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
+          <span className="truncate">Structure: {user?.structure?.name || 'Centre Enfance'}</span>
+        </div>
+
+        <div className="text-lg font-semibold text-gray-900">
+          Heure actuelle: {currentTime}
+        </div>
+      </div>
+
+      <div className="border-t mt-4 pt-4">
+        <h3 className="text-base font-semibold text-gray-900 mb-3">
+          Pointages du jour:
+        </h3>
+        
+        <div className="space-y-2">
+          {/* Arrivée */}
+          <div className="flex items-center">
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-3 flex-shrink-0 ${
+              status.arrival ? 'bg-green-500' : 'bg-gray-300'
+            }`}>
+              {status.arrival ? (
+                <CheckCircle className="w-3 h-3 text-white" />
+              ) : (
+                <div className="w-1.5 h-1.5 bg-white rounded-full" />
+              )}
+            </div>
+            <span className="text-sm text-gray-900">
+              Arrivée : {status.arrival 
+                ? new Date(status.arrival.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                : '--:--'
+              }
+            </span>
+          </div>
+
+          {/* Pause début */}
+          <div className="flex items-center">
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-3 flex-shrink-0 ${
+              status.breakStart ? 'bg-orange-500' : 'bg-gray-300'
+            }`}>
+              {status.breakStart ? (
+                <PauseCircle className="w-3 h-3 text-white" />
+              ) : (
+                <div className="w-1.5 h-1.5 bg-white rounded-full" />
+              )}
+            </div>
+            <span className="text-sm text-gray-900">
+              Pause début : {status.breakStart 
+                ? new Date(status.breakStart.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                : '--:--'
+              }
+            </span>
+          </div>
+
+          {/* Pause fin */}
+          <div className="flex items-center">
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-3 flex-shrink-0 ${
+              status.breakEnd ? 'bg-blue-500' : 'bg-gray-300'
+            }`}>
+              {status.breakEnd ? (
+                <PlayCircle className="w-3 h-3 text-white" />
+              ) : (
+                <div className="w-1.5 h-1.5 bg-white rounded-full" />
+              )}
+            </div>
+            <span className="text-sm text-gray-900">
+              Pause fin : {status.breakEnd 
+                ? new Date(status.breakEnd.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                : '--:--'
+              }
+            </span>
+          </div>
+
+          {/* Départ */}
+          <div className="flex items-center">
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-3 flex-shrink-0 ${
+              status.departure ? 'bg-red-500' : 'bg-gray-300'
+            }`}>
+              {status.departure ? (
+                <StopCircle className="w-3 h-3 text-white" />
+              ) : (
+                <div className="w-1.5 h-1.5 bg-white rounded-full" />
+              )}
+            </div>
+            <span className="text-sm text-gray-900">
+              Départ : {status.departure 
+                ? new Date(status.departure.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                : '--:--'
+              }
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderActionButtons = () => {
+    const canClockIn = !status.arrival && !status.departure;
+    const canStartBreak = status.arrival && !status.breakStart && !status.departure;
+    const canEndBreak = status.breakStart && !status.breakEnd && !status.departure;
+    const canClockOut = status.arrival && !status.departure;
+
+    return (
+      <div className="bg-white rounded-lg shadow mx-4 sm:mx-0 p-4 mb-4">
+        <div className="grid grid-cols-1 gap-3">
+          {/* Bouton Arrivée */}
+          <button
+            onClick={() => handleClockAction('arrival')}
+            disabled={!canClockIn || actionLoading === 'arrival'}
+            className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${
+              canClockIn && actionLoading !== 'arrival'
+                ? 'border-green-300 bg-green-50 hover:bg-green-100 text-green-700'
+                : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+            }`}
           >
-            <option value="week">Cette semaine</option>
-            <option value="month">Ce mois</option>
-            <option value="quarter">Ce trimestre</option>
-          </select>
+            <div className="flex items-center justify-center space-x-3">
+              <PlayCircle className="w-6 h-6" />
+              <span className="font-medium text-base">
+                {actionLoading === 'arrival' ? 'En cours...' : 'Pointer l\'arrivée'}
+              </span>
+            </div>
+          </button>
+
+          {/* Bouton Pause */}
+          <button
+            onClick={() => handleClockAction(canStartBreak ? 'break_start' : 'break_end')}
+            disabled={(!canStartBreak && !canEndBreak) || (actionLoading === 'break_start' || actionLoading === 'break_end')}
+            className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${
+              (canStartBreak || canEndBreak) && !actionLoading
+                ? 'border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700'
+                : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <div className="flex items-center justify-center space-x-3">
+              <PauseCircle className="w-6 h-6" />
+              <span className="font-medium text-base">
+                {actionLoading === 'break_start' || actionLoading === 'break_end' 
+                  ? 'En cours...' 
+                  : canStartBreak 
+                    ? 'Début pause' 
+                    : canEndBreak 
+                      ? 'Fin de pause'
+                      : 'Pause'
+                }
+              </span>
+            </div>
+          </button>
+
+          {/* Bouton Départ */}
+          <button
+            onClick={() => handleClockAction('departure')}
+            disabled={!canClockOut || actionLoading === 'departure'}
+            className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${
+              canClockOut && actionLoading !== 'departure'
+                ? 'border-red-300 bg-red-50 hover:bg-red-100 text-red-700'
+                : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <div className="flex items-center justify-center space-x-3">
+              <StopCircle className="w-6 h-6" />
+              <span className="font-medium text-base">
+                {actionLoading === 'departure' ? 'En cours...' : 'Pointer départ'}
+              </span>
+            </div>
+          </button>
+        </div>
+
+        {/* Version desktop en grille */}
+        <div className="hidden sm:grid sm:grid-cols-3 sm:gap-4 sm:mt-6">
+          <button
+            onClick={() => handleClockAction('arrival')}
+            disabled={!canClockIn || actionLoading === 'arrival'}
+            className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+              canClockIn && actionLoading !== 'arrival'
+                ? 'border-green-300 bg-green-50 hover:bg-green-100 text-green-700'
+                : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <div className="flex flex-col items-center">
+              <PlayCircle className="w-8 h-8 mb-2" />
+              <span className="font-medium text-base">
+                {actionLoading === 'arrival' ? 'En cours...' : 'Pointer l\'arrivée'}
+              </span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleClockAction(canStartBreak ? 'break_start' : 'break_end')}
+            disabled={(!canStartBreak && !canEndBreak) || (actionLoading === 'break_start' || actionLoading === 'break_end')}
+            className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+              (canStartBreak || canEndBreak) && !actionLoading
+                ? 'border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700'
+                : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <div className="flex flex-col items-center">
+              <PauseCircle className="w-8 h-8 mb-2" />
+              <span className="font-medium text-base">
+                {actionLoading === 'break_start' || actionLoading === 'break_end' 
+                  ? 'En cours...' 
+                  : canStartBreak 
+                    ? 'Début pause' 
+                    : canEndBreak 
+                      ? 'Fin de pause'
+                      : 'Pause'
+                }
+              </span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleClockAction('departure')}
+            disabled={!canClockOut || actionLoading === 'departure'}
+            className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+              canClockOut && actionLoading !== 'departure'
+                ? 'border-red-300 bg-red-50 hover:bg-red-100 text-red-700'
+                : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <div className="flex flex-col items-center">
+              <StopCircle className="w-8 h-8 mb-2" />
+              <span className="font-medium text-base">
+                {actionLoading === 'departure' ? 'En cours...' : 'Pointer départ'}
+              </span>
+            </div>
+          </button>
         </div>
       </div>
+    );
+  };
 
-      {/* Actions rapides */}
-      {renderQuickActions()}
+  const renderStatsCards = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mx-4 sm:mx-0 mb-4">
+      <StatsCard
+        title="Aujourd'hui"
+        value="0h00"
+        change="En cours"
+        trend="neutral"
+        icon={<Clock className="w-5 h-5" />}
+      />
 
-      {/* Statut actuel */}
-      {renderCurrentStatus()}
-      
-      {/* Statistiques */}
-      {renderStatsCards()}
+      <StatsCard
+        title="Cette semaine"
+        value="--h--"
+        change="À développer"
+        trend="neutral"
+        icon={<Calendar className="w-5 h-5" />}
+      />
 
-      {/* Grille principale */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pointage */}
-        <TimeTracker />
-        
-        {/* Vue hebdomadaire */}
-        {renderWeeklyOverview()}
-      </div>
+      <StatsCard
+        title="Pointages"
+        value={myTodayEntries.length}
+        change="aujourd'hui"
+        trend="positive"
+        icon={<Activity className="w-5 h-5" />}
+      />
+    </div>
+  );
 
-      {/* Contenu secondaire */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Mes tâches */}
-        {renderTasksList()}
-        
-        {/* Tableau des pointages */}
-        <div className="lg:col-span-1">
-          <TimeTable />
+  const renderHistoryTable = () => (
+    <div className="mx-4 sm:mx-0">
+      <Card title="Historique" className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Arrivée</th>
+                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pause</th>
+                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reprise</th>
+                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Départ</th>
+                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {myTodayEntries.length > 0 ? (
+                <tr>
+                  <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+                    {new Date().toLocaleDateString('fr-FR', { 
+                      day: '2-digit', 
+                      month: '2-digit'
+                    })}
+                  </td>
+                  <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+                    {status.arrival ? new Date(status.arrival.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                  </td>
+                  <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+                    {status.breakStart ? new Date(status.breakStart.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                  </td>
+                  <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+                    {status.breakEnd ? new Date(status.breakEnd.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                  </td>
+                  <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+                    {status.departure ? new Date(status.departure.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                  </td>
+                  <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+                    --h--
+                  </td>
+                </tr>
+              ) : (
+                <tr>
+                  <td colSpan="6" className="px-6 py-8 text-center text-gray-500 text-sm">
+                    Aucun pointage aujourd'hui
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      </div>
+      </Card>
+    </div>
+  );
 
-      {/* Modal */}
-      <Modal
-        isOpen={taskModal.isOpen}
-        onClose={taskModal.closeModal}
-        title="Créer une tâche"
-        size="lg"
-      >
-        <CreateTaskForm onSuccess={taskModal.closeModal} />
-      </Modal>
+  return (
+    <div className="min-h-screen bg-gray-50 pb-4">
+      <div className="max-w-7xl mx-auto">
+        {renderHeader()}
+        {renderActionButtons()}
+        {renderStatsCards()}
+        {renderHistoryTable()}
+      </div>
     </div>
   );
 };
