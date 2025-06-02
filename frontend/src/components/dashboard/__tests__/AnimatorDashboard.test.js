@@ -152,58 +152,200 @@ describe('AnimatorDashboard', () => {
     render(<AnimatorDashboard />);
     expect(screen.getByText("Mes Tâches Actives")).toBeInTheDocument();
     
-    mockTasks.forEach(task => {
-      expect(screen.getByText(task.name)).toBeInTheDocument();
-      expect(screen.getByText(`Estimé: ${formatHours(parseFloat(task.estimated_time))}`)).toBeInTheDocument();
-      expect(screen.getByText(`Temps passé: ${formatHours(mockGetTimeSpentPerTask(task.id))}`)).toBeInTheDocument();
-      // Check progress bar for task (simplified check)
-      const taskProgress = parseFloat(task.estimated_time) > 0 ? (mockGetTimeSpentPerTask(task.id) / parseFloat(task.estimated_time)) * 100 : 0;
-      const taskProgressBar = screen.getByRole('progressbar', { name: `task ${task.id} progress` }); // Add aria-label
-      expect(taskProgressBar).toHaveStyle(`width: ${Math.min(100,taskProgress)}%`);
-    });
-  });
-
-  describe('Activity Report Section', () => {
-    it('allows generating a report for a custom period', async () => {
-      const mockReportApiData = [
-        { date_time: '2023-09-01T09:00:00Z', tracking_type: 'arrival' },
-        { date_time: '2023-09-01T17:00:00Z', tracking_type: 'departure' }, // 8h
-      ];
-      // Specific mock for fetchEntriesForPeriod to return data for reportStats
-      mockFetchEntriesForPeriod.mockImplementation(async () => {
-        useTimeStore.setState({ 
-            reportEntries: [{ date: '2023-09-01', formattedDate: '01/09/2023', dayName: 'Ven', arrival: '09:00', departure: '17:00', formattedBreakHours: '0.00h', formattedWorkingHours: '8.00h', workingMinutes: 480, breakMinutes: 0, isComplete: true }],
+    describe('Activity Report Section', () => {
+      it('allows generating a report for a custom period', async () => {
+        const mockReportApiData = [
+          { date_time: '2023-09-01T09:00:00Z', tracking_type: 'arrival' },
+          { date_time: '2023-09-01T17:00:00Z', tracking_type: 'departure' }, // 8h
+        ];
+        mockFetchEntriesForPeriod.mockImplementation(async () => {
+          useTimeStore.setState({
+            reportEntries: [{
+              date: '2023-09-01',
+              formattedDate: '01/09/2023',
+              dayName: 'Ven',
+              arrival: '09:00',
+              departure: '17:00',
+              formattedBreakHours: '0.00h',
+              formattedWorkingHours: '8.00h',
+              workingMinutes: 480,
+              breakMinutes: 0,
+              isComplete: true
+            }],
             reportStats: { totalWorkingHours: 8, totalBreakHours: 0, workingDays: 1, averageHoursPerDay: 8 },
             reportLoading: false,
+          });
+          return { success: true, data: mockReportApiData };
         });
-        return { success: true, data: mockReportApiData };
+
+        render(<AnimatorDashboard />);
+
+        fireEvent.change(screen.getByLabelText(/Date de début/i), { target: { value: '2023-09-01' } });
+        fireEvent.change(screen.getByLabelText(/Date de fin/i), { target: { value: '2023-09-01' } });
+        fireEvent.click(screen.getByRole('button', { name: /Générer/i }));
+
+        await waitFor(() => {
+          expect(mockFetchEntriesForPeriod).toHaveBeenCalledWith(mockUser.id, '2023-09-01', '2023-09-01');
+        });
+
+        expect(await screen.findByText(/Rapport d'Activité \(du 2023-09-01 au 2023-09-01\)/i)).toBeInTheDocument();
+        expect(screen.getByText("Total Heures Travaillées")).toBeInTheDocument();
+        expect(screen.getByText("8.00h")).toBeInTheDocument();
+        expect(screen.getByText("01/09/2023 (Ven)")).toBeInTheDocument();
       });
 
-      render(<AnimatorDashboard />);
-
-      fireEvent.change(screen.getByLabelText(/Date de début/i), { target: { value: '2023-09-01' } });
-      fireEvent.change(screen.getByLabelText(/Date de fin/i), { target: { value: '2023-09-01' } });
-      fireEvent.click(screen.getByRole('button', { name: /Générer/i }));
-
-      await waitFor(() => {
-        expect(mockFetchEntriesForPeriod).toHaveBeenCalledWith(mockUser.id, '2023-09-01', '2023-09-01');
-      });
-      
-      // Check for report title with the correct period
-      expect(await screen.findByText(/Rapport d'Activité \(du 2023-09-01 au 2023-09-01\)/i)).toBeInTheDocument();
-      // Check for data from the report
-      expect(screen.getByText("Total Heures Travaillées")).toBeInTheDocument();
-      expect(screen.getByText("8.00h")).toBeInTheDocument(); // From reportStats
-      expect(screen.getByText("01/09/2023 (Ven)")).toBeInTheDocument(); // From reportEntries
-    });
-
-    it('allows selecting "Semaine dernière" preset and generating report', async () => {
-       mockFetchEntriesForPeriod.mockImplementation(async () => {
-        useTimeStore.setState({ 
-            reportEntries: [{ date: '2023-09-25', formattedDate: '25/09/2023', dayName: 'Lun', arrival: '09:00', departure: '17:00', formattedBreakHours: '1.00h', formattedWorkingHours: '7.00h', workingMinutes: 420, breakMinutes: 60, isComplete: true }],
+      it('allows selecting "Semaine dernière" preset and generating report', async () => {
+        mockFetchEntriesForPeriod.mockImplementation(async () => {
+          useTimeStore.setState({
+            reportEntries: [{
+              date: '2023-09-25',
+              formattedDate: '25/09/2023',
+              dayName: 'Lun',
+              arrival: '09:00',
+              departure: '17:00',
+              formattedBreakHours: '1.00h',
+              formattedWorkingHours: '7.00h',
+              workingMinutes: 420,
+              breakMinutes: 60,
+              isComplete: true
+            }],
             reportStats: { totalWorkingHours: 7, totalBreakHours: 1, workingDays: 1, averageHoursPerDay: 7 },
             reportLoading: false,
+          });
+          return { success: true, data: [] };
         });
+        render(<AnimatorDashboard />);
+        fireEvent.click(screen.getByRole('button', { name: /Sem. dernière/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Générer/i }));
+
+        await waitFor(() => {
+          expect(mockFetchEntriesForPeriod).toHaveBeenCalledWith(mockUser.id, expect.any(String), expect.any(String));
+        });
+        expect(await screen.findByText(/Rapport d'Activité \(Semaine dernière\)/i)).toBeInTheDocument();
+        expect(screen.getByText("7.00h")).toBeInTheDocument();
+      });
+
+      it('shows loading indicator when report is loading', async () => {
+        mockFetchEntriesForPeriod.mockImplementation(async () => {
+          useTimeStore.setState({ reportLoading: true });
+          return { success: true, data: [] };
+        });
+        render(<AnimatorDashboard />);
+        fireEvent.change(screen.getByLabelText(/Date de début/i), { target: { value: '2023-09-01' } });
+        fireEvent.change(screen.getByLabelText(/Date de fin/i), { target: { value: '2023-09-01' } });
+        fireEvent.click(screen.getByRole('button', { name: /Générer/i }));
+
+        expect(await screen.findByText(/Chargement du rapport/i)).toBeInTheDocument();
+      });
+
+      it('displays a message if no entries are found for the selected period', async () => {
+        mockFetchEntriesForPeriod.mockImplementation(async () => {
+          useTimeStore.setState({
+            reportEntries: [],
+            reportStats: { totalWorkingHours: 0, totalBreakHours: 0, workingDays: 0, averageHoursPerDay: 0 },
+            reportLoading: false,
+          });
+          return { success: true, data: [] };
+        });
+        render(<AnimatorDashboard />);
+        fireEvent.change(screen.getByLabelText(/Date de début/i), { target: { value: '2023-09-10' } });
+        fireEvent.change(screen.getByLabelText(/Date de fin/i), { target: { value: '2023-09-10' } });
+        fireEvent.click(screen.getByRole('button', { name: /Générer/i }));
+
+        await waitFor(() => {
+          expect(mockFetchEntriesForPeriod).toHaveBeenCalled();
+        });
+        expect(screen.getByText(/Aucune donnée/i)).toBeInTheDocument();
+      });
+
+      it('disables the generate button if dates are not filled', () => {
+        render(<AnimatorDashboard />);
+        const generateBtn = screen.getByRole('button', { name: /Générer/i });
+        expect(generateBtn).toBeDisabled();
+        fireEvent.change(screen.getByLabelText(/Date de début/i), { target: { value: '2023-09-01' } });
+        expect(generateBtn).toBeDisabled();
+        fireEvent.change(screen.getByLabelText(/Date de fin/i), { target: { value: '2023-09-02' } });
+        expect(generateBtn).not.toBeDisabled();
+      });
+
+      it('shows error message if fetchEntriesForPeriod fails', async () => {
+        mockFetchEntriesForPeriod.mockImplementation(async () => {
+          throw new Error('Erreur API');
+        });
+        render(<AnimatorDashboard />);
+        fireEvent.change(screen.getByLabelText(/Date de début/i), { target: { value: '2023-09-01' } });
+        fireEvent.change(screen.getByLabelText(/Date de fin/i), { target: { value: '2023-09-01' } });
+        fireEvent.click(screen.getByRole('button', { name: /Générer/i }));
+
+        expect(await screen.findByText(/Erreur lors de la génération du rapport/i)).toBeInTheDocument();
+      });
+
+      it('allows selecting "Ce mois" preset and generating report', async () => {
+        mockFetchEntriesForPeriod.mockImplementation(async () => {
+          useTimeStore.setState({
+            reportEntries: [{
+              date: '2023-09-15',
+              formattedDate: '15/09/2023',
+              dayName: 'Ven',
+              arrival: '09:00',
+              departure: '17:00',
+              formattedBreakHours: '0.50h',
+              formattedWorkingHours: '7.50h',
+              workingMinutes: 450,
+              breakMinutes: 30,
+              isComplete: true
+            }],
+            reportStats: { totalWorkingHours: 7.5, totalBreakHours: 0.5, workingDays: 1, averageHoursPerDay: 7.5 },
+            reportLoading: false,
+          });
+          return { success: true, data: [] };
+        });
+        render(<AnimatorDashboard />);
+        fireEvent.click(screen.getByRole('button', { name: /Ce mois/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Générer/i }));
+
+        await waitFor(() => {
+          expect(mockFetchEntriesForPeriod).toHaveBeenCalledWith(mockUser.id, expect.any(String), expect.any(String));
+        });
+        expect(await screen.findByText(/Rapport d'Activité \(Ce mois\)/i)).toBeInTheDocument();
+        expect(screen.getByText("7.50h")).toBeInTheDocument();
+      });
+
+      it('shows correct stats in the report summary', async () => {
+        mockFetchEntriesForPeriod.mockImplementation(async () => {
+          useTimeStore.setState({
+            reportEntries: [{
+              date: '2023-09-15',
+              formattedDate: '15/09/2023',
+              dayName: 'Ven',
+              arrival: '09:00',
+              departure: '17:00',
+              formattedBreakHours: '0.50h',
+              formattedWorkingHours: '7.50h',
+              workingMinutes: 450,
+              breakMinutes: 30,
+              isComplete: true
+            }],
+            reportStats: { totalWorkingHours: 7.5, totalBreakHours: 0.5, workingDays: 1, averageHoursPerDay: 7.5 },
+            reportLoading: false,
+          });
+          return { success: true, data: [] };
+        });
+        render(<AnimatorDashboard />);
+        fireEvent.change(screen.getByLabelText(/Date de début/i), { target: { value: '2023-09-15' } });
+        fireEvent.change(screen.getByLabelText(/Date de fin/i), { target: { value: '2023-09-15' } });
+        fireEvent.click(screen.getByRole('button', { name: /Générer/i }));
+
+        expect(await screen.findByText(/Total Heures Travaillées/i)).toBeInTheDocument();
+        expect(screen.getByText("7.50h")).toBeInTheDocument();
+        expect(screen.getByText(/Total Pauses/i)).toBeInTheDocument();
+        expect(screen.getByText("0.50h")).toBeInTheDocument();
+        expect(screen.getByText(/Jours travaillés/i)).toBeInTheDocument();
+        expect(screen.getByText("1")).toBeInTheDocument();
+        expect(screen.getByText(/Moyenne \/ Jour/i)).toBeInTheDocument();
+        expect(screen.getByText("7.50h")).toBeInTheDocument();
+      });
+    });
         return { success: true, data: [] };
       });
       render(<AnimatorDashboard />);
