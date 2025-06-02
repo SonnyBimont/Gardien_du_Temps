@@ -41,26 +41,44 @@ const AdminDashboard = () => {
   const { entries = [], fetchAllEntries } = useTimeStore();
 
 // Mémoiser la fonction de chargement
-  const loadData = useCallback(async () => {
-    try {
-      await Promise.allSettled([
-        fetchUsers().catch(err => console.error('Erreur users:', err)),
-        fetchStructures().catch(err => console.error('Erreur structures:', err)),
+const loadData = useCallback(async (includeStats = true) => {
+  try {
+    const promises = [
+      fetchUsers().catch(err => console.error('Erreur users:', err)),
+      fetchStructures().catch(err => console.error('Erreur structures:', err)),
+    ];
+    
+    // Charger les stats seulement si demandé
+    if (includeStats) {
+      promises.push(
         fetchStats?.(dateRange).catch(err => console.error('Erreur stats:', err)),
         fetchDashboardStats?.().catch(err => console.error('Erreur dashboard stats:', err)),
-        fetchRecentActivity?.(10).catch(err => console.error('Erreur activity:', err)),
-      ]);
-    } catch (error) {
-      console.error('Erreur générale:', error);
+        fetchRecentActivity?.(10).catch(err => console.error('Erreur activity:', err))
+      );
     }
-  }, [dateRange, fetchUsers, fetchStructures, fetchStats, fetchDashboardStats, fetchRecentActivity]);
+    
+    await Promise.allSettled(promises);
+  } catch (error) {
+    console.error('Erreur générale:', error);
+  }
+}, [dateRange, fetchUsers, fetchStructures, fetchStats, fetchDashboardStats, fetchRecentActivity]);
 
   // useEffect simplifié
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+// Ajouter cet useEffect après les autres :
 
+useEffect(() => {
+  // Recharger les stats quand dateRange change
+  if (dateRange) {
+    fetchStats?.(dateRange).catch(err => 
+      console.error('Erreur rechargement stats:', err)
+    );
+  }
+  
+}, [dateRange, fetchStats]);
   // Fonction pour rafraîchir après création
   const handleUserCreated = useCallback(() => {
     userModal.closeModal();
@@ -96,9 +114,17 @@ const AdminDashboard = () => {
     (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleDateRangeChange = (range) => {
-    setDateRange(range);
-  };
+const handleDateRangeChange = useCallback(async (range) => {
+  setDateRange(range);
+  
+  // Recharger les stats avec la nouvelle période
+  try {
+    await fetchStats?.(range);
+    console.log('Stats rechargées pour la période:', range);
+  } catch (error) {
+    console.error('Erreur lors du rechargement des stats:', error);
+  }
+}, [fetchStats]);
 
   const getActivityIcon = (type) => {
     const icons = {
@@ -169,48 +195,43 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const renderStatsCards = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-      <StatsCard
-        title="Total Utilisateurs"
-        value={totalUsers}
-        change={`${activeUsers} actifs`}
-        trend="positive"
-        icon={<Users className="w-6 h-6" />}
-      />
+// Remplace le renderStatsCards() actuel par :
 
-      <StatsCard
-        title="Structures"
-        value={totalStructures}
-        change="+2 ce mois"
-        trend="positive"
-        icon={<Building className="w-6 h-6" />}
-      />
+const renderStatsCards = () => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <StatsCard
+      title="Total Utilisateurs"
+      value={totalUsers}
+      change={`${activeUsers} actifs`}
+      trend="positive"
+      icon={<Users className="w-6 h-6" />}
+    />
 
-      <StatsCard
-        title="Directeurs"
-        value={directors}
-        change={`${animators} animateurs`}
-        trend="neutral"
-        icon={<Activity className="w-6 h-6" />}
-      />
+    <StatsCard
+      title="Structures"
+      value={totalStructures}
+      change={`+${stats.newStructuresThisWeek || 0} ${dateRange === '1' ? 'aujourd\'hui' : dateRange === '7' ? 'cette semaine' : dateRange === '30' ? 'ce mois' : 'cette période'}`}
+      trend={stats.newStructuresThisWeek > 0 ? "positive" : "neutral"}
+      icon={<Building className="w-6 h-6" />}
+    />
 
-      <StatsCard
-        title="Activité Aujourd'hui"
-        value={(entries || []).filter(e => {
-          try {
-            return new Date(e.date_time).toDateString() === new Date().toDateString()
-          } catch {
-            return false;
-          }
-        }).length}
-        change="pointages"
-        trend="positive"
-        icon={<Clock className="w-6 h-6" />}
-      />
-    </div>
-  );
+    <StatsCard
+      title="Nouveaux Utilisateurs"
+      value={stats.newUsersThisWeek || 0}
+      change={`${dateRange === '1' ? 'aujourd\'hui' : dateRange === '7' ? 'cette semaine' : dateRange === '30' ? 'ce mois' : 'cette période'}`}
+      trend={stats.newUsersThisWeek > 0 ? "positive" : "neutral"}
+      icon={<Activity className="w-6 h-6" />}
+    />
 
+    <StatsCard
+      title="Connexions"
+      value={stats.connectionsToday || 0}
+      change={stats.connectionsChange || 'Aucune donnée'}
+      trend="positive"
+      icon={<Clock className="w-6 h-6" />}
+    />
+  </div>
+);
   const renderActivityFeed = () => (
     <Card title="Activité Récente" className="h-96">
       <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -408,6 +429,7 @@ const AdminDashboard = () => {
       <Modal
         isOpen={userModal.isOpen}
         onClose={userModal.closeModal}
+         showCloseButton={false} 
       >
         <CreateUserForm onSuccess={handleUserCreated} 
         onCancel={userModal.closeModal}/>
@@ -416,6 +438,7 @@ const AdminDashboard = () => {
       <Modal
         isOpen={structureModal.isOpen}
         onClose={structureModal.closeModal}
+        showCloseButton={false}
       >
         <CreateStructureForm onSuccess={handleStructureCreated} 
         onCancel={structureModal.closeModal}/>

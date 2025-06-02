@@ -1095,3 +1095,21 @@ body {
   background: var(--gray-400);
   border-radius: 3px;
 }
+
+/* MODAL */
+.modal-open {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  overflow: hidden;
+}
+
+.modal-open::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 40;
+  pointer-events: none;
+}

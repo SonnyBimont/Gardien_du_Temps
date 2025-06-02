@@ -700,7 +700,7 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
           </h3>
           <button
             type="button"
-            onClick={handleClose}
+            onClick={onCancel}
             className="text-gray-400 hover:text-gray-600 focus:outline-none"
           >
             <X className="w-6 h-6" />
@@ -727,7 +727,7 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
           </div>
 
           {/* Navigation */}
-          <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+          <div className="flex justify-end space-x-3 pt-4 space-y-4">
             <div>
               {step > 1 && (
                 <button
@@ -740,7 +740,7 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
               )}
             </div>
 
-            <div className="flex space-x-3">
+            <div className="flex justify-end space-x-3">
               <button
                 type="button"
                 onClick={handleClose}

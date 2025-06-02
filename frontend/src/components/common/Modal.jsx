@@ -40,6 +40,7 @@ const Modal = ({
     if (isOpen) {
       // Sauvegarder le focus précédent
       previousFocus.current = document.activeElement;
+      document.body.classList.add('modal-open');
       
       // Focus sur le modal
       if (modalRef.current) {
@@ -52,6 +53,7 @@ const Modal = ({
       // Restaurer le focus
       if (previousFocus.current) {
         previousFocus.current.focus();
+        document.body.classList.remove('modal-open');
       }
       
       // Restaurer le scroll
@@ -60,6 +62,7 @@ const Modal = ({
 
     return () => {
       document.body.style.overflow = 'unset';
+      document.body.classList.remove('modal-open');
     };
   }, [isOpen]);
 
@@ -102,8 +105,8 @@ const Modal = ({
       >
         {/* Overlay avec animation */}
         <div 
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity duration-300"
-          aria-hidden="true"
+      className="fixed inset-0 bg-gray-900 bg-opacity-80 transition-opacity duration-300"
+      aria-hidden="true"
         />
 
         {/* Spacer pour centrer le modal */}
@@ -114,13 +117,7 @@ const Modal = ({
         {/* Modal avec animations */}
         <div 
           ref={modalRef}
-          className={`
-            inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl 
-            transform transition-all duration-300 sm:my-8 sm:align-middle sm:w-full
-            ${sizes[size]}
-            ${variants[variant]}
-            ${className}
-          `}
+          className=""
           onClick={handleModalClick}
           tabIndex={-1}
           {...props}

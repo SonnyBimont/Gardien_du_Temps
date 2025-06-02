@@ -320,54 +320,72 @@ export const useAdminStore = create((set, get) => ({
     }
   },
   
-  fetchStats: async (dateRange = '7') => {
-    set({ loading: true, error: null });
+fetchStats: async (dateRange = '7') => {
+  set({ loading: true, error: null });
+  
+  try {
+    console.log('🔄 Chargement stats pour période:', dateRange, 'jours');
     
-    try {
-      const response = await api.get(`/users/admin/stats?days=${dateRange}`);
+    const response = await api.get(`/users/admin/stats?days=${dateRange}`);
+    
+    if (response.data?.success) {
+      const stats = response.data.data || {};
       
-      if (response.data.success) {
-        const stats = response.data.data || {};
-        
-        set(state => ({ 
-          stats: {
-            ...state.stats,
-            ...stats,
-            newUsersThisWeek: stats.newUsersThisWeek || 0,
-            newStructuresThisWeek: stats.newStructuresThisWeek || 0,
-            connectionsToday: stats.connectionsToday || 0,
-            connectionsChange: stats.connectionsChange || "Aucune donnée"
-          },
-          loading: false
-        }));
-        
-        return { success: true };
-      } else {
-        throw new Error(response.data.message || 'Erreur lors du chargement');
-      }
-    } catch (error) {
-      console.error('Erreur fetch stats:', error);
-      
-      // Fallback avec stats par défaut
-      const defaultStats = {
-        newUsersThisWeek: 0,
-        newStructuresThisWeek: 0,
-        connectionsToday: 0,
-        connectionsChange: "Aucune donnée"
+      // Calculer les labels selon la période
+      const getPeriodLabel = (days) => {
+        switch(days) {
+          case '1': return 'aujourd\'hui';
+          case '7': return 'cette semaine';
+          case '30': return 'ce mois';
+          case '90': return 'ces 3 mois';
+          default: return 'cette période';
+        }
       };
+      
+      const periodLabel = getPeriodLabel(dateRange);
       
       set(state => ({ 
         stats: {
           ...state.stats,
-          ...defaultStats
+          newUsersThisWeek: stats.newUsers || 0,
+          newStructuresThisWeek: stats.newStructures || 0,
+          connectionsToday: stats.connections || 0,
+          connectionsChange: stats.connectionsChange || `${stats.connections || 0} ${periodLabel}`,
+          periodLabel: periodLabel,
+          lastStatsUpdate: new Date().toISOString()
         },
-        error: error.response?.data?.message || 'Erreur lors du chargement des stats',
         loading: false
       }));
       
-      return { success: false, error: error.message };
+      console.log('✅ Stats mises à jour:', {
+        newUsers: stats.newUsers,
+        newStructures: stats.newStructures,
+        connections: stats.connections,
+        period: periodLabel
+      });
+      
+      return { success: true };
+    } else {
+      throw new Error(response.data?.message || 'Réponse invalide du serveur');
     }
-  },
+  } catch (error) {
+    console.error('❌ Erreur fetch stats:', error);
+    
+    // Fallback avec stats par défaut
+    set(state => ({ 
+      stats: {
+        ...state.stats,
+        newUsersThisWeek: 0,
+        newStructuresThisWeek: 0,
+        connectionsToday: 0,
+        connectionsChange: "Service indisponible"
+      },
+      loading: false
+    }));
+    
+    return { success: false, error: error.message };
+  }
+},
 
   // ===== FONCTIONS UTILITAIRES INCHANGÉES =====
   validateUserData: (userData) => {

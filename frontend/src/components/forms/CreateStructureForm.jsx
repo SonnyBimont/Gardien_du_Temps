@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAdminStore } from '../../stores/adminStore';
+import { X } from 'lucide-react';
 
 const CreateStructureForm = ({ onSuccess, onCancel, initialData = null }) => {
   const [formData, setFormData] = useState({
@@ -50,12 +51,20 @@ const CreateStructureForm = ({ onSuccess, onCancel, initialData = null }) => {
 
   return (
 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-  <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-        <div className="mt-3">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
+  <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
+            {/* Header avec bouton X */}
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900">
             {isEditing ? 'Modifier la structure' : 'Créer une nouvelle structure'}
           </h3>
-
+      <button
+        type="button"
+        onClick={onCancel}
+        className="text-gray-400 hover:text-gray-600 focus:outline-none"
+      >
+        <X className="w-6 h-6" />
+      </button>
+             </div>
           {error && (
             <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {error}
@@ -168,7 +177,7 @@ const CreateStructureForm = ({ onSuccess, onCancel, initialData = null }) => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>
@@ -185,7 +194,6 @@ const CreateStructureForm = ({ onSuccess, onCancel, initialData = null }) => {
             </div>
           </form>
         </div>
-      </div>
     </div>
   );
 };
