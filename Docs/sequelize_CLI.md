@@ -231,3 +231,45 @@ Chaque fois que vous utilisez une syntaxe comme { [Op.quelqueChose]: valeur } da
 const { Op } = require('sequelize');
 ```
 
+----------------------------------------------
+
+Commandes pour réinitialiser ta base de données
+
+📍 Depuis le dossier backend :
+# Se placer dans le dossier backend
+cd backend
+
+# Option 1 : Réinitialisation complète (recommandée)
+npm run db:reset
+
+# Option 2 : Si la commande précédente n'existe pas, faire manuellement :
+npm run db:drop      # Supprimer toutes les tables
+npm run db:migrate   # Recréer les tables
+npm run db:seed      # Insérer les données de test
+
+# Option 3 : Commandes Sequelize directes
+npx sequelize-cli db:drop
+npx sequelize-cli db:create
+npx sequelize-cli db:migrate
+npx sequelize-cli db:seed:all
+
+⚠️ Alternative si problème :
+# Supprimer le fichier SQLite directement
+rm database/gardien_du_temps.db
+
+# Puis recréer
+npm run db:create
+npm run db:migrate
+npm run db:seed
+
+🔍 Vérifier après réinitialisation :
+# Lister les tables créées
+npm run db:status
+# ou
+npx sequelize-cli db:migrate:status
+
+📋 Ordre recommandé :
+Arrêter le serveur backend (Ctrl+C)
+Réinitialiser la DB avec les commandes ci-dessus
+Redémarrer le serveur (npm run dev)
+Tester le dashboard frontend

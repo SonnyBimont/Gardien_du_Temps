@@ -19,13 +19,13 @@ const Modal = ({
   const modalRef = useRef(null);
   const previousFocus = useRef(null);
 
-  const sizes = {
-    sm: 'sm:max-w-md',
-    md: 'sm:max-w-lg',
-    lg: 'sm:max-w-2xl',
-    xl: 'sm:max-w-4xl',
-    full: 'sm:max-w-full sm:m-4'
-  };
+const sizes = {
+  sm: 'sm:max-w-md',
+  md: 'sm:max-w-lg lg:max-w-2xl',
+  lg: 'sm:max-w-2xl lg:max-w-4xl',
+  xl: 'sm:max-w-4xl lg:max-w-6xl',
+  full: 'sm:max-w-full'
+};
 
   const variants = {
     default: 'bg-white',
@@ -36,35 +36,49 @@ const Modal = ({
   };
 
   // Gestion du focus et de l'échappement
-  useEffect(() => {
-    if (isOpen) {
-      // Sauvegarder le focus précédent
-      previousFocus.current = document.activeElement;
-      document.body.classList.add('modal-open');
-      
-      // Focus sur le modal
+useEffect(() => {
+  if (isOpen) {
+    // Sauvegarder le focus précédent
+    previousFocus.current = document.activeElement;
+    document.body.classList.add('modal-open');
+    
+    // Bloquer le scroll du body
+    document.body.style.overflow = 'hidden';
+    
+    // Focus sur le premier champ de saisie après un court délai
+    const timer = setTimeout(() => {
       if (modalRef.current) {
-        modalRef.current.focus();
+        // Chercher le premier input, select ou textarea
+        const firstInput = modalRef.current.querySelector(
+          'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])'
+        );
+        
+        if (firstInput) {
+          firstInput.focus();
+        } else {
+          // Fallback: focus sur le modal lui-même
+          modalRef.current.focus();
+        }
       }
-      
-      // Bloquer le scroll du body
-      document.body.style.overflow = 'hidden';
-    } else {
-      // Restaurer le focus
-      if (previousFocus.current) {
-        previousFocus.current.focus();
-        document.body.classList.remove('modal-open');
-      }
-      
-      // Restaurer le scroll
-      document.body.style.overflow = 'unset';
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset';
+    }, 150); // Délai pour laisser le modal s'ouvrir complètement
+    
+    return () => clearTimeout(timer);
+  } else {
+    // Restaurer le focus
+    if (previousFocus.current) {
+      previousFocus.current.focus();
       document.body.classList.remove('modal-open');
-    };
-  }, [isOpen]);
+    }
+    
+    // Restaurer le scroll
+    document.body.style.overflow = 'unset';
+  }
+
+  return () => {
+    document.body.style.overflow = 'unset';
+    document.body.classList.remove('modal-open');
+  };
+}, [isOpen]);
 
   // Gestion de la touche Escape
   useEffect(() => {
@@ -92,75 +106,75 @@ const Modal = ({
 
   if (!isOpen) return null;
 
-  return (
+return (
+  <div 
+    className="fixed inset-0 z-50 overflow-y-auto"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-title"
+  >
+    {/* Overlay */}
     <div 
-      className="fixed inset-0 z-50 overflow-y-auto"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
-      <div 
-        className="flex items-end justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0"
-        onClick={handleOverlayClick}
-      >
-        {/* Overlay avec animation */}
-        <div 
       className="fixed inset-0 bg-gray-900 bg-opacity-80 transition-opacity duration-300"
+      onClick={closeOnOverlay ? onClose : undefined}
       aria-hidden="true"
-        />
+    />
 
-        {/* Spacer pour centrer le modal */}
-        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">
-          &#8203;
-        </span>
-
-        {/* Modal avec animations */}
-        <div 
-          ref={modalRef}
-          className=""
-          onClick={handleModalClick}
-          tabIndex={-1}
-          {...props}
-        >
-          {/* Header */}
-          {(title || showCloseButton) && (
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              {title && (
-                <h3 
-                  id="modal-title"
-                  className="text-lg font-semibold text-gray-900"
-                >
-                  {title}
-                </h3>
-              )}
-              
-              {showCloseButton && (
-                <button
-                  onClick={onClose}
-                  className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-1"
-                  aria-label="Fermer"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Body */}
-          <div className="px-6 py-4">
-            {children}
+    {/* Container centré avec responsive */}
+    <div className="flex min-h-screen items-center justify-center p-2 sm:p-4">
+      {/* Modal */}
+      <div 
+        ref={modalRef}
+        className={`
+          relative bg-white rounded-lg shadow-xl 
+          w-full max-w-[95vw] max-h-[95vh] overflow-y-auto
+          ${sizes[size]}
+          ${variants[variant]}
+          ${className}
+        `}
+        onClick={handleModalClick}
+        role="document"
+        {...props}
+      >
+        {/* Header */}
+        {(title || showCloseButton) && (
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-200">
+            {title && (
+              <h3 
+                id="modal-title"
+                className="text-lg font-semibold text-gray-900 pr-4"
+              >
+                {title}
+              </h3>
+            )}
+            
+            {showCloseButton && (
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-1 flex-shrink-0"
+                aria-label="Fermer"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            )}
           </div>
+        )}
 
-          {/* Footer */}
-          {footer && (
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-              {footer}
-            </div>
-          )}
+        {/* Body */}
+        <div className="px-4 sm:px-6 py-4">
+          {children}
         </div>
+
+        {/* Footer */}
+        {footer && (
+          <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 // Composant Modal de confirmation

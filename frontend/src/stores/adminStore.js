@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import api from '../services/api';
 
+// Importer les types de données si nécessaire
 export const useAdminStore = create((set, get) => ({
   // État
   users: [],
@@ -17,6 +18,7 @@ export const useAdminStore = create((set, get) => ({
   lastUpdate: null,
 
   // ===== ACTIONS UTILISATEURS =====
+// Fonction pour récupérer les utilisateurs avec des filtres optionnels
   fetchUsers: async (filters = {}) => {
     set({ loading: true, error: null });
     
@@ -56,6 +58,7 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+// Fonction pour créer un nouvel utilisateur
   createUser: async (userData) => {
     set({ error: null });
     
@@ -92,6 +95,7 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+// Fonction pour mettre à jour un utilisateur
   updateUser: async (userId, userData) => {
     set({ error: null });
     
@@ -120,7 +124,7 @@ export const useAdminStore = create((set, get) => ({
       return { success: false, error: errorMessage };
     }
   },
-
+// Fonction pour supprimer un utilisateur
   deleteUser: async (userId) => {
     set({ error: null });
     
@@ -149,11 +153,13 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  // Fonction pour activer/désactiver un utilisateur
   toggleUserStatus: async (userId, active) => {
     return get().updateUser(userId, { active });
   },
 
   // ===== ACTIONS STRUCTURES =====
+  // Fonction pour récupérer les structures
   fetchStructures: async (includeStats = false) => {
       const state = get();
   
@@ -191,7 +197,7 @@ export const useAdminStore = create((set, get) => ({
       throw error;
     }
   },
-
+// Fonction pour créer une nouvelle structure
   createStructure: async (structureData) => {
     set({ error: null });
     
@@ -228,6 +234,7 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+// Fonction pour mettre à jour une structure
   updateStructure: async (structureId, structureData) => {
     set({ error: null });
     
@@ -256,7 +263,7 @@ export const useAdminStore = create((set, get) => ({
       return { success: false, error: errorMessage };
     }
   },
-
+// Fonction pour supprimer une structure
   deleteStructure: async (structureId) => {
     set({ error: null });
     
@@ -286,6 +293,7 @@ export const useAdminStore = create((set, get) => ({
   },
 
  // ===== ACTIONS STATISTIQUES =====
+ // Fonction pour récupérer les statistiques du tableau de bord
   fetchDashboardStats: async () => {
     try {
       const response = await api.get('/users/admin/dashboard-stats');
@@ -303,6 +311,7 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  // Fonction pour récupérer l'activité récente des utilisateurs
   fetchRecentActivity: async (limit = 10) => {
     try {
       const response = await api.get(`/users/admin/recent-activity?limit=${limit}`);
@@ -320,13 +329,23 @@ export const useAdminStore = create((set, get) => ({
     }
   },
   
+// Fonction pour récupérer les statistiques avec gestion des erreurs et des périodes  
 fetchStats: async (dateRange = '7') => {
+  const currentState = get();
+  
+  if (currentState.loading) {
+    console.log('⏳ Stats déjà en cours de chargement, ignorer');
+    return { success: false, error: 'Chargement en cours' };
+  }
+  
   set({ loading: true, error: null });
   
   try {
-    console.log('🔄 Chargement stats pour période:', dateRange, 'jours');
+    console.log('🔄 fetchStats appelé avec dateRange:', dateRange);
     
     const response = await api.get(`/users/admin/stats?days=${dateRange}`);
+    
+    console.log('📡 Réponse API stats:', response.data);
     
     if (response.data?.success) {
       const stats = response.data.data || {};
@@ -344,41 +363,49 @@ fetchStats: async (dateRange = '7') => {
       
       const periodLabel = getPeriodLabel(dateRange);
       
+      const newStats = {
+        newUsersThisWeek: stats.newUsers || 0,
+        newStructuresThisWeek: stats.newStructures || 0,
+        connectionsToday: stats.connections || 0,
+        connectionsChange: stats.connectionsChange || `${stats.connections || 0} ${periodLabel}`,
+        periodLabel: periodLabel,
+        lastStatsUpdate: new Date().toISOString()
+      };
+      
       set(state => ({ 
         stats: {
           ...state.stats,
-          newUsersThisWeek: stats.newUsers || 0,
-          newStructuresThisWeek: stats.newStructures || 0,
-          connectionsToday: stats.connections || 0,
-          connectionsChange: stats.connectionsChange || `${stats.connections || 0} ${periodLabel}`,
-          periodLabel: periodLabel,
-          lastStatsUpdate: new Date().toISOString()
+          ...newStats
         },
         loading: false
       }));
       
-      console.log('✅ Stats mises à jour:', {
-        newUsers: stats.newUsers,
-        newStructures: stats.newStructures,
-        connections: stats.connections,
-        period: periodLabel
-      });
+      console.log('✅ Stats mises à jour:', newStats);
       
-      return { success: true };
+      return { success: true, data: newStats };
     } else {
       throw new Error(response.data?.message || 'Réponse invalide du serveur');
     }
   } catch (error) {
-    console.error('❌ Erreur fetch stats:', error);
+    console.error('❌ Erreur fetch stats détaillée:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      config: error.config
+    });
     
     // Fallback avec stats par défaut
+    const fallbackStats = {
+      newUsersThisWeek: 0,
+      newStructuresThisWeek: 0,
+      connectionsToday: 0,
+      connectionsChange: "Service indisponible"
+    };
+    
     set(state => ({ 
       stats: {
         ...state.stats,
-        newUsersThisWeek: 0,
-        newStructuresThisWeek: 0,
-        connectionsToday: 0,
-        connectionsChange: "Service indisponible"
+        ...fallbackStats
       },
       loading: false
     }));
@@ -388,6 +415,7 @@ fetchStats: async (dateRange = '7') => {
 },
 
   // ===== FONCTIONS UTILITAIRES INCHANGÉES =====
+// Fonction de validation des données utilisateur et structure
   validateUserData: (userData) => {
     if (!userData.email || !userData.email.includes('@')) {
       return 'Email invalide';
@@ -412,6 +440,7 @@ fetchStats: async (dateRange = '7') => {
     return null;
   },
 
+  // Fonction de validation des données de structure
   validateStructureData: (structureData) => {
     if (!structureData.name || structureData.name.trim().length < 3) {
       return 'Le nom de la structure doit contenir au moins 3 caractères';
@@ -439,7 +468,8 @@ fetchStats: async (dateRange = '7') => {
     
     return null;
   },
-
+  
+// Fonction pour mettre à jour les statistiques des utilisateurs
   updateUserStats: (users) => {
     const totalUsers = users.length;
     const activeUsers = users.filter(user => user.active !== false).length;
@@ -460,6 +490,7 @@ fetchStats: async (dateRange = '7') => {
     }));
   },
 
+// Fonction pour mettre à jour les statistiques des structures
   updateStructureStats: (structures) => {
     const totalStructures = structures.length;
     
@@ -555,6 +586,7 @@ fetchStats: async (dateRange = '7') => {
     }
   },
 
+  // Fonction pour exporter les utilisateurs
   exportUsers: async (format = 'csv') => {
     try {
       const response = await api.get(`/users/export?format=${format}`, {

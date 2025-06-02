@@ -1113,3 +1113,41 @@ body {
   z-index: 40;
   pointer-events: none;
 }
+
+/* Corrections responsive globales */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Modal responsive */
+.modal-open {
+  overflow: hidden;
+}
+
+/* Corrections pour les petits écrans */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Correction pour les boutons dans les modals sur mobile */
+@media (max-width: 640px) {
+  .modal-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .modal-buttons button {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+}

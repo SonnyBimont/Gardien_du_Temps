@@ -707,7 +707,7 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
+        <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-4">
           {/* Indicateur d'étapes */}
           {renderStepIndicator()}
 
@@ -727,35 +727,32 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
           </div>
 
           {/* Navigation */}
-          <div className="flex justify-end space-x-3 pt-4 space-y-4">
-            <div>
-              {step > 1 && (
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                  Précédent
-                </button>
-              )}
-            </div>
+<div className="flex justify-end space-x-3 pt-4">
+  {step > 1 && (
+    <button
+      type="button"
+      onClick={prevStep}
+      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+    >
+      Précédent
+    </button>
+  )}
 
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
-              >
-                Annuler
-              </button>
-              
-              {step < totalSteps ? (
-                <button
-                  type="button"
-                  onClick={nextStep}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  Suivant
+  <button
+    type="button"
+    onClick={handleClose}
+    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+  >
+    Annuler
+  </button>
+  
+  {step < totalSteps ? (
+    <button
+      type="button"
+      onClick={nextStep}
+      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    >
+      Suivant
                 </button>
               ) : (
                 <button
@@ -776,7 +773,6 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
                   )}
                 </button>
               )}
-            </div>
           </div>
         </form>
       </div>

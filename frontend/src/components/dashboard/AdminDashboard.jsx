@@ -41,14 +41,17 @@ const AdminDashboard = () => {
   const { entries = [], fetchAllEntries } = useTimeStore();
 
 // Mémoiser la fonction de chargement
+// Remplace loadData par :
 const loadData = useCallback(async (includeStats = true) => {
+  console.log('🔄 Chargement des données, includeStats:', includeStats);
+  
   try {
     const promises = [
       fetchUsers().catch(err => console.error('Erreur users:', err)),
       fetchStructures().catch(err => console.error('Erreur structures:', err)),
     ];
     
-    // Charger les stats seulement si demandé
+    // Charger les stats SEULEMENT au premier chargement ou si demandé explicitement
     if (includeStats) {
       promises.push(
         fetchStats?.(dateRange).catch(err => console.error('Erreur stats:', err)),
@@ -58,27 +61,17 @@ const loadData = useCallback(async (includeStats = true) => {
     }
     
     await Promise.allSettled(promises);
+    console.log('✅ Données chargées');
   } catch (error) {
-    console.error('Erreur générale:', error);
+    console.error('❌ Erreur générale:', error);
   }
-}, [dateRange, fetchUsers, fetchStructures, fetchStats, fetchDashboardStats, fetchRecentActivity]);
+}, [fetchUsers, fetchStructures, fetchStats, fetchDashboardStats, fetchRecentActivity, dateRange]);
 
   // useEffect simplifié
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-// Ajouter cet useEffect après les autres :
-
-useEffect(() => {
-  // Recharger les stats quand dateRange change
-  if (dateRange) {
-    fetchStats?.(dateRange).catch(err => 
-      console.error('Erreur rechargement stats:', err)
-    );
-  }
-  
-}, [dateRange, fetchStats]);
   // Fonction pour rafraîchir après création
   const handleUserCreated = useCallback(() => {
     userModal.closeModal();
@@ -114,18 +107,20 @@ useEffect(() => {
     (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Gestion du changement de période
 const handleDateRangeChange = useCallback(async (range) => {
+  console.log('🔄 Changement de période vers:', range);
   setDateRange(range);
   
-  // Recharger les stats avec la nouvelle période
   try {
     await fetchStats?.(range);
-    console.log('Stats rechargées pour la période:', range);
+    console.log('✅ Stats rechargées pour la période:', range);
   } catch (error) {
-    console.error('Erreur lors du rechargement des stats:', error);
+    console.error('❌ Erreur lors du rechargement des stats:', error);
   }
 }, [fetchStats]);
 
+// Fonction pour obtenir l'icône d'activité
   const getActivityIcon = (type) => {
     const icons = {
       arrival: '🟢',
@@ -136,6 +131,7 @@ const handleDateRangeChange = useCallback(async (range) => {
     return icons[type] || '⚪';
   };
 
+  // Fonction pour formater l'heure
   const formatTime = (dateTime) => {
     return new Date(dateTime).toLocaleTimeString('fr-FR', {
       hour: '2-digit',
@@ -143,6 +139,7 @@ const handleDateRangeChange = useCallback(async (range) => {
     });
   };
 
+  // Rendu des actions rapides
   const renderQuickActions = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       <Card clickable onClick={userModal.openModal} hoverable className="p-4">
@@ -197,7 +194,16 @@ const handleDateRangeChange = useCallback(async (range) => {
 
 // Remplace le renderStatsCards() actuel par :
 
-const renderStatsCards = () => (
+const renderStatsCards = () => {
+    console.log('🎨 Rendu des stats:', {
+    dateRange,
+    stats,
+    newUsersThisWeek: stats.newUsersThisWeek,
+    newStructuresThisWeek: stats.newStructuresThisWeek,
+    connectionsToday: stats.connectionsToday
+  });
+
+  return (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
     <StatsCard
       title="Total Utilisateurs"
@@ -232,6 +238,8 @@ const renderStatsCards = () => (
     />
   </div>
 );
+};
+
   const renderActivityFeed = () => (
     <Card title="Activité Récente" className="h-96">
       <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -429,6 +437,7 @@ const renderStatsCards = () => (
       <Modal
         isOpen={userModal.isOpen}
         onClose={userModal.closeModal}
+        size="lg"
          showCloseButton={false} 
       >
         <CreateUserForm onSuccess={handleUserCreated} 
@@ -438,6 +447,7 @@ const renderStatsCards = () => (
       <Modal
         isOpen={structureModal.isOpen}
         onClose={structureModal.closeModal}
+        size="lg"
         showCloseButton={false}
       >
         <CreateStructureForm onSuccess={handleStructureCreated} 

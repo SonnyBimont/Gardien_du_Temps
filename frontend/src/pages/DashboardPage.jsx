@@ -176,9 +176,9 @@ const DashboardPage = () => {
       {renderOfflineBanner()}
       
       {/* Contenu principal */}
-      <div className="p-6">
-        {renderDashboard()}
-      </div>
+<div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-7xl">
+  {renderDashboard()}
+</div>
     </div>
   );
 };
