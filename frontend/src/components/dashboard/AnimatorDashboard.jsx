@@ -20,44 +20,36 @@ const AnimatorDashboard = () => {
     todayEntries = [], 
     loading,
     fetchTodayEntries,
+    fetchTimeHistory,
+    fetchMonthlyReport,
     clockIn,
     clockOut,
     startBreak,
-    endBreak
+    endBreak,
+    weeklyStats,
+    monthlyStats
   } = useTimeStore();
 
   const [actionLoading, setActionLoading] = useState(null);
 
-  // Chargement des données
   useEffect(() => {
     const loadData = async () => {
       try {
         if (fetchTodayEntries) await fetchTodayEntries();
+        if (fetchTimeHistory && user?.id) await fetchTimeHistory(7, user.id);
+        if (fetchMonthlyReport && user?.id) await fetchMonthlyReport(null, null, user.id);
       } catch (error) {
         console.error('Erreur lors du chargement des données:', error);
       }
     };
-
     if (user?.id) {
       loadData();
     }
-  }, [user?.id, fetchTodayEntries]);
-
-  // Guard clause
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-64 px-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement de votre espace...</p>
-        </div>
-      </div>
-    );
-  }
+  }, [user?.id, fetchTodayEntries, fetchTimeHistory, fetchMonthlyReport]);
 
   // Calculs sécurisés
   const myTodayEntries = todayEntries.filter(entry => entry?.user_id === user?.id);
-  
+
   // Déterminer le statut actuel et les actions possibles
   const getTodayStatus = () => {
     const status = {
@@ -81,6 +73,8 @@ const AnimatorDashboard = () => {
         case 'break_end':
           status.breakEnd = entry;
           break;
+        default:
+          break;
       }
     });
 
@@ -93,10 +87,55 @@ const AnimatorDashboard = () => {
     minute: '2-digit' 
   });
 
+  // Calcul du temps travaillé (hors pause)
+  const getWorkedTime = () => {
+    if (status.arrival && status.departure) {
+      const start = new Date(status.arrival.date_time);
+      const end = new Date(status.departure.date_time);
+      let totalMinutes = (end - start) / (1000 * 60);
+      if (status.breakStart && status.breakEnd) {
+        const breakStart = new Date(status.breakStart.date_time);
+        const breakEnd = new Date(status.breakEnd.date_time);
+        totalMinutes -= (breakEnd - breakStart) / (1000 * 60);
+      }
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = Math.round(totalMinutes % 60);
+      return `${hours}h${minutes.toString().padStart(2, '0')}`;
+    }
+    return '--h--';
+  };
+
+  // Formatage des heures et minutes
+const formatHoursMinutes = (totalMinutes) => {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = Math.round(totalMinutes % 60);
+  return `${hours}h${minutes.toString().padStart(2, '0')}`;
+};
+
+// Calcul du temps travaillé pour la semaine
+const getWeeklyWorkedTime = () => {
+  if (weeklyStats && weeklyStats.totalMinutes !== undefined) {
+    return formatHoursMinutes(weeklyStats.totalMinutes);
+  }
+  if (weeklyStats && weeklyStats.totalHours !== undefined) {
+    return `${weeklyStats.totalHours}h00`;
+  }
+  return '--h--';
+};
+
+// Calcul du temps travaillé pour le mois
+const getMonthlyWorkedTime = () => {
+  if (monthlyStats && monthlyStats.totalMinutes !== undefined) {
+    return formatHoursMinutes(monthlyStats.totalMinutes);
+  }
+  if (monthlyStats && monthlyStats.totalHours !== undefined) {
+    return `${monthlyStats.totalHours}h00`;
+  }
+  return '--h--';
+};
   // Actions de pointage
   const handleClockAction = async (action) => {
     if (actionLoading) return;
-    
     setActionLoading(action);
     try {
       switch (action) {
@@ -112,7 +151,12 @@ const AnimatorDashboard = () => {
         case 'break_end':
           await endBreak();
           break;
+        default:
+          break;
       }
+      await fetchTodayEntries();
+      await fetchTimeHistory(7, user?.id);
+      await fetchMonthlyReport(null, null, user?.id);
     } catch (error) {
       console.error('Erreur lors du pointage:', error);
     } finally {
@@ -121,7 +165,7 @@ const AnimatorDashboard = () => {
   };
 
   const renderHeader = () => (
-    <div className="bg-white rounded-lg shadow mx-4 sm:mx-0 p-4 sm:p-6 mb-4 sm:mb-6">
+    <div className="bg-white rounded-lg shadow mx-4 sm:mx-0 p-4 sm:p-6 mb-4 sm:mb-6 flex flex-col items-center flex-nowrap">
       <div className="flex flex-col space-y-3">
         <div className="flex items-center">
           <span className="text-2xl mr-3">👋</span>
@@ -129,99 +173,62 @@ const AnimatorDashboard = () => {
             Bonjour {user?.first_name}
           </h1>
         </div>
-        
         <div className="flex items-center text-gray-600 text-sm">
           <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
-          <span className="truncate">Structure: {user?.structure?.name || 'Centre Enfance'}</span>
+          <span className="truncate">
+            Structure : {user?.structure?.name || JSON.stringify(user?.structure) || 'Non renseignée'}
+          </span>
         </div>
-
         <div className="text-lg font-semibold text-gray-900">
           Heure actuelle: {currentTime}
         </div>
       </div>
-
       <div className="border-t mt-4 pt-4">
         <h3 className="text-base font-semibold text-gray-900 mb-3">
           Pointages du jour:
         </h3>
-        
-        <div className="space-y-2">
-          {/* Arrivée */}
-          <div className="flex items-center">
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-3 flex-shrink-0 ${
-              status.arrival ? 'bg-green-500' : 'bg-gray-300'
-            }`}>
-              {status.arrival ? (
-                <CheckCircle className="w-3 h-3 text-white" />
-              ) : (
-                <div className="w-1.5 h-1.5 bg-white rounded-full" />
-              )}
-            </div>
-            <span className="text-sm text-gray-900">
-              Arrivée : {status.arrival 
-                ? new Date(status.arrival.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-                : '--:--'
-              }
-            </span>
-          </div>
-
-          {/* Pause début */}
-          <div className="flex items-center">
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-3 flex-shrink-0 ${
-              status.breakStart ? 'bg-orange-500' : 'bg-gray-300'
-            }`}>
-              {status.breakStart ? (
-                <PauseCircle className="w-3 h-3 text-white" />
-              ) : (
-                <div className="w-1.5 h-1.5 bg-white rounded-full" />
-              )}
-            </div>
-            <span className="text-sm text-gray-900">
-              Pause début : {status.breakStart 
-                ? new Date(status.breakStart.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-                : '--:--'
-              }
-            </span>
-          </div>
-
-          {/* Pause fin */}
-          <div className="flex items-center">
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-3 flex-shrink-0 ${
-              status.breakEnd ? 'bg-blue-500' : 'bg-gray-300'
-            }`}>
-              {status.breakEnd ? (
-                <PlayCircle className="w-3 h-3 text-white" />
-              ) : (
-                <div className="w-1.5 h-1.5 bg-white rounded-full" />
-              )}
-            </div>
-            <span className="text-sm text-gray-900">
-              Pause fin : {status.breakEnd 
-                ? new Date(status.breakEnd.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-                : '--:--'
-              }
-            </span>
-          </div>
-
-          {/* Départ */}
-          <div className="flex items-center">
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-3 flex-shrink-0 ${
-              status.departure ? 'bg-red-500' : 'bg-gray-300'
-            }`}>
-              {status.departure ? (
-                <StopCircle className="w-3 h-3 text-white" />
-              ) : (
-                <div className="w-1.5 h-1.5 bg-white rounded-full" />
-              )}
-            </div>
-            <span className="text-sm text-gray-900">
-              Départ : {status.departure 
-                ? new Date(status.departure.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-                : '--:--'
-              }
-            </span>
-          </div>
-        </div>
+<div className="space-y-2">
+  {/* Arrivée */}
+  <div className="flex items-center">
+    <PlayCircle className="w-4 h-4 mr-2 text-green-600" />
+    <span className="text-sm text-gray-900">
+      Arrivée : {status.arrival 
+        ? new Date(status.arrival.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        : '--:--'
+      }
+    </span>
+  </div>
+  {/* Pause début */}
+  <div className="flex items-center">
+    <PauseCircle className="w-4 h-4 mr-2 text-orange-500" />
+    <span className="text-sm text-gray-900">
+      Pause début : {status.breakStart 
+        ? new Date(status.breakStart.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        : '--:--'
+      }
+    </span>
+  </div>
+  {/* Pause fin */}
+  <div className="flex items-center">
+    <PauseCircle className="w-4 h-4 mr-2 text-blue-500" />
+    <span className="text-sm text-gray-900">
+      Pause fin : {status.breakEnd 
+        ? new Date(status.breakEnd.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        : '--:--'
+      }
+    </span>
+  </div>
+  {/* Départ */}
+  <div className="flex items-center">
+    <StopCircle className="w-4 h-4 mr-2 text-red-500" />
+    <span className="text-sm text-gray-900">
+      Départ : {status.departure 
+        ? new Date(status.departure.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        : '--:--'
+      }
+    </span>
+  </div>
+</div>
       </div>
     </div>
   );
@@ -252,7 +259,6 @@ const AnimatorDashboard = () => {
               </span>
             </div>
           </button>
-
           {/* Bouton Pause */}
           <button
             onClick={() => handleClockAction(canStartBreak ? 'break_start' : 'break_end')}
@@ -277,7 +283,6 @@ const AnimatorDashboard = () => {
               </span>
             </div>
           </button>
-
           {/* Bouton Départ */}
           <button
             onClick={() => handleClockAction('departure')}
@@ -296,7 +301,6 @@ const AnimatorDashboard = () => {
             </div>
           </button>
         </div>
-
         {/* Version desktop en grille */}
         <div className="hidden sm:grid sm:grid-cols-3 sm:gap-4 sm:mt-6">
           <button
@@ -315,7 +319,6 @@ const AnimatorDashboard = () => {
               </span>
             </div>
           </button>
-
           <button
             onClick={() => handleClockAction(canStartBreak ? 'break_start' : 'break_end')}
             disabled={(!canStartBreak && !canEndBreak) || (actionLoading === 'break_start' || actionLoading === 'break_end')}
@@ -339,7 +342,6 @@ const AnimatorDashboard = () => {
               </span>
             </div>
           </button>
-
           <button
             onClick={() => handleClockAction('departure')}
             disabled={!canClockOut || actionLoading === 'departure'}
@@ -365,25 +367,20 @@ const AnimatorDashboard = () => {
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mx-4 sm:mx-0 mb-4">
       <StatsCard
         title="Aujourd'hui"
-        value="0h00"
-        change="En cours"
+        value={getWorkedTime() === '--h--' ? '0h00' : getWorkedTime()}
         trend="neutral"
         icon={<Clock className="w-5 h-5" />}
       />
-
       <StatsCard
         title="Cette semaine"
-        value="--h--"
-        change="À développer"
+        value={getWeeklyWorkedTime()}
         trend="neutral"
         icon={<Calendar className="w-5 h-5" />}
       />
-
       <StatsCard
-        title="Pointages"
-        value={myTodayEntries.length}
-        change="aujourd'hui"
-        trend="positive"
+        title="Ce mois-ci"
+        value={getMonthlyWorkedTime()}
+        trend="neutral"
         icon={<Activity className="w-5 h-5" />}
       />
     </div>
@@ -426,7 +423,7 @@ const AnimatorDashboard = () => {
                     {status.departure ? new Date(status.departure.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                   </td>
                   <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">
-                    --h--
+                    {getWorkedTime()}
                   </td>
                 </tr>
               ) : (
@@ -442,6 +439,17 @@ const AnimatorDashboard = () => {
       </Card>
     </div>
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64 px-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement de votre espace...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-4">

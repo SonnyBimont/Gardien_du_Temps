@@ -31,7 +31,7 @@ export const useTimeStore = create((set, get) => ({
       const params = new URLSearchParams();
       if (userId) params.append('userId', userId);
       
-      const response = await api.get(`/time-trackings/today?${params}`);
+      const response = await api.get(`/time-tracking/today?${params}`);
       
       if (response.data.success) {
         set({ 
@@ -68,7 +68,7 @@ export const useTimeStore = create((set, get) => ({
       
       if (userId) params.append('userId', userId);
       
-      const response = await api.get(`/time-trackings/range?${params}`);
+      const response = await api.get(`/time-tracking/range?${params}`);
       
       if (response.data.success) {
         set({ 
@@ -87,19 +87,19 @@ export const useTimeStore = create((set, get) => ({
 
   // Actions rapides optimisées
   clockIn: async (taskId = null, comment = '') => {
-    return get().performAction('/time-trackings/clock-in', 'arrival', { taskId, comment });
+    return get().performAction('/time-tracking/clock-in', 'arrival', { taskId, comment });
   },
 
   clockOut: async (comment = '') => {
-    return get().performAction('/time-trackings/clock-out', 'departure', { comment });
+    return get().performAction('/time-tracking/clock-out', 'departure', { comment });
   },
 
   startBreak: async (comment = '') => {
-    return get().performAction('/time-trackings/break-start', 'break_start', { comment });
+    return get().performAction('/time-tracking/break-start', 'break_start', { comment });
   },
 
   endBreak: async (comment = '') => {
-    return get().performAction('/time-trackings/break-end', 'break_end', { comment });
+    return get().performAction('/time-tracking/break-end', 'break_end', { comment });
   },
 
   // utilitaire pour éviter la duplication
@@ -139,7 +139,7 @@ export const useTimeStore = create((set, get) => ({
       const params = new URLSearchParams({ days: days.toString() });
       if (userId) params.append('userId', userId);
       
-      const response = await api.get(`/time-trackings/stats?${params}`);
+      const response = await api.get(`/time-tracking/stats?${params}`);
       
       if (response.data.success) {
         set({ 
@@ -176,7 +176,7 @@ export const useTimeStore = create((set, get) => ({
       if (year) params.append('year', year);
       if (userId) params.append('userId', userId);
       
-      const response = await api.get(`/time-trackings/report/monthly?${params}`);
+      const response = await api.get(`/time-tracking/report/monthly?${params}`);
       
       if (response.data.success) {
         set({ 
@@ -206,7 +206,7 @@ export const useTimeStore = create((set, get) => ({
       const params = new URLSearchParams({ startDate, endDate });
       if (userId) params.append('userId', userId);
       
-      const response = await api.get(`/time-trackings/range?${params}`);
+      const response = await api.get(`/time-tracking/range?${params}`);
       
       if (response.data.success) {
         const entries = response.data.data || [];
@@ -250,7 +250,7 @@ export const useTimeStore = create((set, get) => ({
 
       if (taskId) payload.task_id = taskId;
 
-      const response = await api.post('/time-trackings', payload);
+      const response = await api.post('/time-tracking', payload);
       
       if (response.data.success) {
         await get().fetchTodayEntries();        
@@ -273,7 +273,7 @@ export const useTimeStore = create((set, get) => ({
 
   updateTimeEntry: async (entryId, updateData) => {
     try {
-      const response = await api.put(`/time-trackings/${entryId}`, updateData);
+      const response = await api.put(`/time-tracking/${entryId}`, updateData);
       
       if (response.data.success) {
         await Promise.all([
@@ -293,7 +293,7 @@ export const useTimeStore = create((set, get) => ({
 
   deleteTimeEntry: async (entryId) => {
     try {
-      const response = await api.delete(`/time-trackings/${entryId}`);
+      const response = await api.delete(`/time-tracking/${entryId}`);
       
       if (response.data.success) {
         await Promise.all([
