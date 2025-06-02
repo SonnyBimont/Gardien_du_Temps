@@ -19,9 +19,21 @@ export const useTimeStore = create((set, get) => ({
   error: null,
   lastUpdate: null,
     // Cache simple et efficace
-  _processedCache: null,
-  _cacheKey: null,
-  _cacheTime: 0,
+  _processedCache: null, // For processedHistory
+  _cacheKey: null,       // Key for processedHistory cache
+  _cacheTime: 0,         // Timestamp for processedHistory cache
+  _timeSpentPerTaskCache: {}, // Cache for time spent per task { taskId: { time: X, timestamp: Y } }
+
+  // State for custom period report
+  reportEntries: [],
+  reportStats: {
+    totalWorkingHours: 0,
+    totalBreakHours: 0,
+    workingDays: 0,
+    averageHoursPerDay: 0,
+    expectedWorkingHours: 0, // Could be calculated based on period
+  },
+  reportLoading: false,
 
   // Actions principales avec /today
   fetchTodayEntries: async (userId = null) => {
@@ -452,8 +464,126 @@ export const useTimeStore = create((set, get) => ({
     lastUpdate: null,
     _processedCache: null,
     _cacheKey: null,
-    _cacheTime: 0
-  })
+    _cacheTime: 0,
+    _timeSpentPerTaskCache: {},
+    reportEntries: [],
+    reportStats: {
+      totalWorkingHours: 0,
+      totalBreakHours: 0,
+      workingDays: 0,
+      averageHoursPerDay: 0,
+      expectedWorkingHours: 0,
+    },
+    reportLoading: false,
+  }),
 
+  // Action to fetch entries for a custom period
+  fetchEntriesForPeriod: async (userId, startDate, endDate) => {
+    set({ reportLoading: true, error: null, reportEntries: [], reportStats: {} });
+    try {
+      const params = new URLSearchParams({ startDate, endDate });
+      if (userId) params.append('userId', userId);
+
+      const response = await api.get(`/time-trackings/range?${params}`);
+      
+      if (response.data.success) {
+        const entries = response.data.data || [];
+        const processedEntries = calculateTotalHours(entries); // from timeCalculations.js
+        
+        // Calculate summary stats for the period
+        let totalWorkingMinutes = 0;
+        let totalBreakMinutes = 0;
+        const workingDaysDates = new Set();
+
+        processedEntries.forEach(day => {
+          totalWorkingMinutes += day.workingMinutes;
+          totalBreakMinutes += day.breakMinutes;
+          if (day.isComplete || day.isIncomplete) { // Count day if any activity
+            workingDaysDates.add(day.date);
+          }
+        });
+        
+        const workingDays = workingDaysDates.size;
+        const totalWorkingHours = Math.round((totalWorkingMinutes / 60) * 100) / 100;
+        const totalBreakHours = Math.round((totalBreakMinutes / 60) * 100) / 100;
+        const averageHoursPerDay = workingDays > 0 ? Math.round((totalWorkingHours / workingDays) * 100) / 100 : 0;
+
+        set({
+          reportEntries: processedEntries,
+          reportStats: {
+            totalWorkingHours,
+            totalBreakHours,
+            workingDays,
+            averageHoursPerDay,
+            // expectedWorkingHours could be calculated here if logic is available
+          },
+          reportLoading: false,
+          lastUpdate: new Date().toISOString()
+        });
+        return { success: true, data: processedEntries };
+      } else {
+        throw new Error(response.data.message || 'Erreur lors du chargement des pointages pour la période');
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message;
+      set({ error: errorMessage, reportLoading: false });
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // Getter pour calculer le temps passé par tâche (version simplifiée)
+  // This is a simplified calculation. A robust solution might need backend support
+  // or more complex logic to handle overlapping tasks, etc.
+  getTimeSpentPerTask: (taskId) => {
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    const now = Date.now();
+    const cached = get()._timeSpentPerTaskCache[taskId];
+
+    if (cached && (now - cached.timestamp < CACHE_DURATION)) {
+      return cached.time;
+    }
+
+    const history = get().timeHistory; // Use raw history
+    let totalMinutesForTask = 0;
+    let currentTaskSessionStart = null;
+    let activeTaskIdInSession = null;
+
+    // Sort entries chronologically
+    const sortedHistory = [...history].sort((a, b) => new Date(a.date_time) - new Date(b.date_time));
+
+    for (const entry of sortedHistory) {
+      const entryTime = new Date(entry.date_time);
+
+      if (entry.tracking_type === 'arrival' || entry.tracking_type === 'break_end') {
+        // If starting a new session or resuming after a break
+        if (currentTaskSessionStart && activeTaskIdInSession) {
+          // End previous task session if a new one starts without explicit end
+          totalMinutesForTask += (entryTime - currentTaskSessionStart) / (1000 * 60);
+        }
+        currentTaskSessionStart = entryTime;
+        activeTaskIdInSession = entry.task_id; 
+      } else if (entry.tracking_type === 'departure' || entry.tracking_type === 'break_start') {
+        if (currentTaskSessionStart && activeTaskIdInSession === taskId) {
+          totalMinutesForTask += (entryTime - currentTaskSessionStart) / (1000 * 60);
+        }
+        currentTaskSessionStart = null;
+        activeTaskIdInSession = null;
+      }
+    }
+    
+    // If current session is for the task and ongoing (no departure yet for the day)
+    // This part is tricky because "ongoing" could span across days if not handled carefully.
+    // For simplicity, this example doesn't calculate ongoing for history, only completed segments.
+
+    const hours = Math.round((totalMinutesForTask / 60) * 100) / 100;
+    
+    set(state => ({
+      _timeSpentPerTaskCache: {
+        ...state._timeSpentPerTaskCache,
+        [taskId]: { time: hours, timestamp: now }
+      }
+    }));
+    return hours;
+  }
 }));
 

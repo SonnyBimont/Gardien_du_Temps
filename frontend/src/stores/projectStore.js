@@ -296,12 +296,20 @@ export const useProjectStore = create(
         
         try {
           // Validation des données
-          const validationError = get().validateTaskData(taskData);
+          const validationError = get().validateTaskData(taskData); // Ensure this handles estimated_time if needed
           if (validationError) {
             throw new Error(validationError);
           }
           
-          const response = await api.post('/tasks', taskData);
+          // Ensure estimated_time is part of taskData if provided
+          const payload = { ...taskData };
+          if (payload.estimated_time) {
+            // Backend expects estimated_time as a string or number, adjust if needed
+            // For example, if it's in hours and backend expects minutes:
+            // payload.estimated_time = parseFloat(payload.estimated_time) * 60; 
+          }
+
+          const response = await api.post('/tasks', payload);
           
           if (response.data.success) {
             const newTask = response.data.data;
@@ -331,7 +339,14 @@ export const useProjectStore = create(
         set({ error: null });
         
         try {
-          const response = await api.put(`/tasks/${taskId}`, taskData);
+          // Ensure estimated_time is part of taskData if provided
+          const payload = { ...taskData };
+          if (payload.estimated_time) {
+            // Adjust format if necessary, e.g., hours to minutes
+            // payload.estimated_time = parseFloat(payload.estimated_time) * 60;
+          }
+
+          const response = await api.put(`/tasks/${taskId}`, payload);
           
           if (response.data.success) {
             const updatedTask = response.data.data;
@@ -470,6 +485,11 @@ export const useProjectStore = create(
           return 'Le projet est obligatoire';
         }
         
+        // estimated_time could be optional or have specific validation
+        if (taskData.estimated_time && (isNaN(parseFloat(taskData.estimated_time)) || parseFloat(taskData.estimated_time) < 0)) {
+          return 'Le temps estimé doit être un nombre positif.';
+        }
+
         if (!taskData.status || !['todo', 'in_progress', 'completed', 'cancelled'].includes(taskData.status)) {
           return 'Statut de la tâche invalide';
         }

@@ -310,22 +310,38 @@ export const calculateCurrentWorkingTime = (todayEntries) => {
 };
 
 // Obtenir les heures prévues (configurable)
-export const getExpectedHours = (date = new Date()) => {
+export const getExpectedHours = (date = new Date(), weeklyScheduleConfig = null) => {
   const dayOfWeek = date.getDay();
   
-  // Configuration par défaut (peut être externalisée)
-  const weeklySchedule = {
-    0: 0,    // Dimanche
-    1: 7,    // Lundi
+  const schedule = weeklyScheduleConfig || {
+    0: 0,    // Dimanche (Sunday)
+    1: 7,    // Lundi (Monday)
     2: 7,    // Mardi
     3: 7,    // Mercredi
     4: 7,    // Jeudi
     5: 7,    // Vendredi
-    6: 0     // Samedi
+    6: 0     // Samedi (Saturday)
   };
   
-  return weeklySchedule[dayOfWeek] || 0;
+  return schedule[dayOfWeek] || 0;
 };
+
+// Calculer les heures attendues pour une période donnée
+export const getExpectedHoursForPeriod = (startDate, endDate, weeklyScheduleConfig = null) => {
+  let totalExpectedHours = 0;
+  const start = parseISO(startDate);
+  const end = parseISO(endDate);
+  let currentDate = start;
+
+  while (currentDate <= end) {
+    if (isWorkingDay(currentDate)) { // Assumes isWorkingDay considers only Mon-Fri by default
+      totalExpectedHours += getExpectedHours(currentDate, weeklyScheduleConfig);
+    }
+    currentDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
+  }
+  return totalExpectedHours;
+};
+
 
 // Calculer les heures supplémentaires
 export const calculateOvertime = (workedHours, expectedHours = 7) => {

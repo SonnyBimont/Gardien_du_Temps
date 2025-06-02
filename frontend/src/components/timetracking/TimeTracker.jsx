@@ -8,12 +8,17 @@ import Card from '../common/Card';
 const TimeTracker = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [notification, setNotification] = useState(null);
+  // Utiliser les actions spécifiques et canPerformAction
   const { 
     todayEntries, 
     fetchTodayEntries, 
-    recordTimeEntry, 
     loading, 
-    error 
+    error,
+    clockIn,
+    clockOut,
+    startBreak,
+    endBreak,
+    canPerformAction 
   } = useTimeStore();
 
   // Mise à jour temps réel
@@ -32,26 +37,38 @@ const TimeTracker = () => {
   const todayStatus = getTodayStatus(todayEntries);
   const currentWorkingTime = calculateCurrentWorkingTime(todayEntries);
   
-  // Logique des boutons disponibles
-  const canRecord = {
-    arrival: !todayStatus.arrival,
-    break_start: todayStatus.arrival && !todayStatus.breakStart && !todayStatus.departure,
-    break_end: todayStatus.breakStart && !todayStatus.breakEnd && !todayStatus.departure,
-    departure: todayStatus.arrival && !todayStatus.departure && 
-               (!todayStatus.breakStart || todayStatus.breakEnd)
-  };
-
   // Gestion des pointages avec notifications
-  const handleTimeAction = async (type) => {
-    const result = await recordTimeEntry(type);
-    if (result.success) {
-      const messages = {
-        arrival: '✅ Arrivée enregistrée',
-        break_start: '⏸️ Pause commencée',
-        break_end: '▶️ Reprise du travail',
-        departure: '🏁 Départ enregistré'
-      };
-      showNotification(messages[type], 'success');
+  const handleTimeAction = async (actionType, comment = '', taskId = null) => {
+    let result;
+    const actionMessages = {
+      arrival: '✅ Arrivée enregistrée',
+      break_start: '⏸️ Pause commencée',
+      break_end: '▶️ Reprise du travail',
+      departure: '🏁 Départ enregistré'
+    };
+
+    switch (actionType) {
+      case 'arrival':
+        result = await clockIn(taskId, comment);
+        break;
+      case 'break_start':
+        result = await startBreak(comment);
+        break;
+      case 'break_end':
+        result = await endBreak(comment);
+        break;
+      case 'departure':
+        result = await clockOut(comment);
+        break;
+      default:
+        console.error("Unknown action type:", actionType);
+        return;
+    }
+
+    if (result && result.success) {
+      showNotification(actionMessages[actionType], 'success');
+    } else if (result && result.error) {
+      showNotification(result.error, 'error');
     }
   };
 
@@ -185,11 +202,11 @@ const TimeTracker = () => {
       <div className="grid grid-cols-2 gap-3">
         <Button
           onClick={() => handleTimeAction('arrival')}
-          disabled={!canRecord.arrival || loading}
-          variant={canRecord.arrival ? "success" : "outline"}
+          disabled={!canPerformAction('arrival') || loading}
+          variant={canPerformAction('arrival') ? "success" : "outline"}
           size="lg"
           className="flex items-center justify-center h-12"
-          loading={loading}
+          loading={loading && todayStatus.arrival === undefined} // specific loading for this button
         >
           <Play className="w-5 h-5 mr-2" />
           Arrivée
@@ -197,11 +214,11 @@ const TimeTracker = () => {
         
         <Button
           onClick={() => handleTimeAction('break_start')}
-          disabled={!canRecord.break_start || loading}
-          variant={canRecord.break_start ? "warning" : "outline"}
+          disabled={!canPerformAction('break_start') || loading}
+          variant={canPerformAction('break_start') ? "warning" : "outline"}
           size="lg"
           className="flex items-center justify-center h-12"
-          loading={loading}
+          loading={loading && todayStatus.breakStart === undefined && todayStatus.arrival !== undefined}
         >
           <Coffee className="w-5 h-5 mr-2" />
           Pause
@@ -209,11 +226,11 @@ const TimeTracker = () => {
         
         <Button
           onClick={() => handleTimeAction('break_end')}
-          disabled={!canRecord.break_end || loading}
-          variant={canRecord.break_end ? "primary" : "outline"}
+          disabled={!canPerformAction('break_end') || loading}
+          variant={canPerformAction('break_end') ? "primary" : "outline"}
           size="lg"
           className="flex items-center justify-center h-12"
-          loading={loading}
+          loading={loading && todayStatus.breakEnd === undefined && todayStatus.breakStart !== undefined}
         >
           <Play className="w-5 h-5 mr-2" />
           Reprendre
@@ -221,11 +238,11 @@ const TimeTracker = () => {
         
         <Button
           onClick={() => handleTimeAction('departure')}
-          disabled={!canRecord.departure || loading}
-          variant={canRecord.departure ? "danger" : "outline"}
+          disabled={!canPerformAction('departure') || loading}
+          variant={canPerformAction('departure') ? "danger" : "outline"}
           size="lg"
           className="flex items-center justify-center h-12"
-          loading={loading}
+          loading={loading && todayStatus.departure === undefined && todayStatus.arrival !== undefined}
         >
           <Square className="w-5 h-5 mr-2" />
           Départ
