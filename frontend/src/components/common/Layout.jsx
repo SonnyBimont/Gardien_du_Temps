@@ -104,12 +104,12 @@ const Layout = ({ children, title, sidebar, breadcrumbs, actions }) => {
       </button>
 
       {userMenuOpen && (
-        <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+        <div className="absolute right-0 mt-2 min-w-[1000px] max-w-[98vw] w-full sm:w-800 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
           <div className="px-4 py-3 border-b border-gray-200">
-            <p className="text-sm font-medium text-gray-900">
+            <p className="text-sm font-medium text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">
               {user?.first_name} {user?.last_name}
             </p>
-            <p className="text-sm text-gray-500">{user?.email}</p>
+            <p className="text-sm text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">{user?.email}</p>
             <span className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium ${getRoleBadgeColor(user?.role)}`}>
               {getRoleDisplayName(user?.role)}
             </span>
@@ -120,9 +120,9 @@ const Layout = ({ children, title, sidebar, breadcrumbs, actions }) => {
               setUserMenuOpen(false);
               navigate('/profile');
             }}
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+            className="block w-full text-left px-5 py-2 text-sm text-gray-700 hover:bg-gray-100 border-0 rounded-none flex items-center justify-start"
           >
-            <User className="w-4 h-4 mr-3" />
+            <User className="w-5 h-5 mr-5 flex-shrink-0" />
             Mon profil
           </button>
           
@@ -131,24 +131,24 @@ const Layout = ({ children, title, sidebar, breadcrumbs, actions }) => {
               setUserMenuOpen(false);
               navigate('/settings');
             }}
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+            className="block w-full text-left px-5 py-2 text-sm text-gray-700 hover:bg-gray-100 border-0 rounded-none flex items-center justify-start"
           >
-            <Settings className="w-4 h-4 mr-3" />
+            <Settings className="w-5 h-5 mr-5 flex-shrink-0" />
             Paramètres
           </button>
           
-          <div className="border-t border-gray-200 mt-2 pt-2">
             <button
               onClick={() => {
                 setUserMenuOpen(false);
                 handleLogout();
               }}
-              className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center"
+              className="block w-full text-left px-5 py-2 text-sm text-red-700 hover:bg-red-50 border-0 rounded-none flex items-center justify-start"
             >
-              <LogOut className="w-4 h-4 mr-3" />
+              <LogOut className="w-5 h-5 mr-5 flex-shrink-0" />
+              <span className="truncate">
               Déconnexion
+              </span>
             </button>
-          </div>
         </div>
       )}
     </div>

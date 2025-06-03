@@ -191,9 +191,7 @@ const handleDateRangeChange = useCallback(async (range) => {
       </Card>
     </div>
   );
-
-// Remplace le renderStatsCards() actuel par :
-
+// Rendu des cartes de statistiques
 const renderStatsCards = () => {
     console.log('🎨 Rendu des stats:', {
     dateRange,
@@ -239,7 +237,7 @@ const renderStatsCards = () => {
   </div>
 );
 };
-
+// Rendu du fil d'activité
   const renderActivityFeed = () => (
     <Card title="Activité Récente" className="h-96">
       <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -274,7 +272,7 @@ const renderStatsCards = () => {
       </div>
     </Card>
   );
-
+// Rendu de la gestion des utilisateurs
   const renderUsersManagement = () => (
     <Card 
       title="Gestion des Utilisateurs"
@@ -340,7 +338,7 @@ const renderStatsCards = () => {
       )}
     </Card>
   );
-
+// Rendu de la vue d'ensemble des structures
   const renderStructuresOverview = () => (
     <Card title="Structures" className="h-96">
       <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -353,9 +351,6 @@ const renderStatsCards = () => {
                   <p className="text-sm text-gray-500">{structure.address}</p>
                   <p className="text-sm text-gray-500">{structure.city}</p>
                 </div>
-                <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
-                  {structure.type}
-                </span>
               </div>
               <div className="mt-2 flex items-center text-xs text-gray-500">
                 <Users className="w-3 h-3 mr-1" />

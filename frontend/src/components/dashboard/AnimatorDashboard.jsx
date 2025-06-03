@@ -389,24 +389,24 @@ const getMonthlyWorkedTime = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Arrivée</th>
-                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pause</th>
-                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reprise</th>
-                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Départ</th>
-                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">Date</th>
+                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-20">Arrivée</th>
+                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-20">Pause</th>
+                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-20">Reprise</th>
+                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-20">Départ</th>
+                <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-16">Total</th>
               </tr>
             </thead>
 <tbody className="bg-white divide-y divide-gray-200">
   {processedHistory.length > 0 ? (
     processedHistory.map((day) => (
       <tr key={day.date}>
-        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{day.formattedDate}</td>
-        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{day.arrival || '--:--'}</td>
-        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{day.breakStart || '--:--'}</td>
-        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{day.breakEnd || '--:--'}</td>
-        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{day.departure || '--:--'}</td>
-        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{day.formattedWorkingHours}</td>
+        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900 w-32">{day.formattedDate}</td>
+        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900 w-20">{day.arrival || '--:--'}</td>
+        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900 w-20">{day.breakStart || '--:--'}</td>
+        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900 w-20">{day.breakEnd || '--:--'}</td>
+        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900 w-20">{day.departure || '--:--'}</td>
+        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900 w-16">{day.formattedWorkingHours}</td>
       </tr>
     ))
   ) : (

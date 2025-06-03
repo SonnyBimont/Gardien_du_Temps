@@ -173,7 +173,7 @@ export const useAdminStore = create((set, get) => ({
       
       if (response.data.success) {
         const structures = response.data.data || [];
-        
+        console.log('🏢 Structures à mettre dans le store:', structures);
         set({ 
           structures,
           loading: false,

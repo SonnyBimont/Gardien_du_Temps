@@ -47,6 +47,7 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
     }
   }, [error, clearError]);
 
+  // Initialiser les données du formulaire si en mode édition
   const validateStep = (stepNumber) => {
     const errors = {};
 
@@ -127,13 +128,13 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
-
+// Fonction pour valider tous les champs du formulaire
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     clearError();
     
-    // Valider tous les steps
+// Valider tous les steps
     for (let i = 1; i <= totalSteps; i++) {
       if (!validateStep(i)) {
         setStep(i);
@@ -411,13 +412,19 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
                   formErrors.password ? 'border-red-300' : 'border-gray-300'
                 }`}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+            <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: "0.75rem",
+                    top: "50%",
+                   transform: "translateY(-50%)"
+                 }}
+                  className="text-gray-400 hover:text-gray-600 bg-transparent border-0 p-0 m-0 focus:outline-none">
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
             </div>
             {formErrors.password && (
               <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
@@ -443,9 +450,15 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
               />
               <button
                 type="button"
+                tabIndex={-1}
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-              >
+                style={{
+                    position: "absolute",
+                    right: "0.75rem",
+                    top: "50%",
+                   transform: "translateY(-50%)"
+                 }}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
                 {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
