@@ -1,4 +1,3 @@
-// Store Zustand pour l'authentification
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import api from '../services/api';
@@ -13,47 +12,38 @@ export const useAuthStore = create(
       loading: false,
       error: null,
 
-      // Actions
+// Connexion
       login: async (credentials) => {
-        set({ loading: true, error: null });
-        
-        try {
-          const response = await api.post('/auth/login', credentials);
-          
-          if (response.data.success) {
-            const { token, user } = response.data;
-            
-            // Stocker le token
-            localStorage.setItem('authToken', token);
-            
-            // Mettre à jour l'état
-            set({ 
-              user, 
-              token, 
-              isAuthenticated: true, 
-              loading: false,
-              error: null
-            });
-            
-            return { success: true, user };
-          } else {
-            throw new Error(response.data.message || 'Échec de la connexion');
-          }
-        } catch (error) {
-          const errorMessage = error.response?.data?.message || error.message || 'Erreur de connexion';
-          
-          set({ 
-            error: errorMessage, 
-            loading: false,
-            user: null,
-            token: null,
-            isAuthenticated: false
-          });
-          
-          return { success: false, error: errorMessage };
-        }
+  set({ loading: true, error: null });
+  try {
+    const response = await api.post('/auth/login', credentials);
+
+    if (response.data.success && response.data.token) {
+      const token = response.data.token;
+      localStorage.setItem('authToken', token);
+
+      // Recharge le user depuis /auth/me pour avoir la structure à jour
+      await get().checkAuth();
+
+      set({ token, isAuthenticated: true, loading: false, error: null });
+      return { success: true };
+    } else {
+      throw new Error(response.data.message || 'Échec de la connexion');
+    }
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || error.message || 'Erreur de connexion';
+    set({ 
+      error: errorMessage, 
+      loading: false,
+      user: null,
+      token: null,
+      isAuthenticated: false
+    });
+    return { success: false, error: errorMessage };
+  }
       },
 
+// Déconnexion
       logout: () => {
         // Nettoyer le stockage local
         localStorage.removeItem('authToken');
@@ -71,7 +61,8 @@ export const useAuthStore = create(
         // Rediriger vers la page de connexion
         window.location.href = '/login';
       },
-
+      
+// Vérification de l'authentification
       checkAuth: async () => {
         const token = localStorage.getItem('authToken');
         
@@ -92,7 +83,7 @@ export const useAuthStore = create(
           
           if (response.data.success) {
             set({ 
-              user: response.data.user, 
+              user: response.data.data, 
               token, 
               isAuthenticated: true,
               loading: false,
@@ -107,6 +98,7 @@ export const useAuthStore = create(
         }
       },
 
+// Mise à jour de l'utilisateur
       updateUser: (userData) => {
         set((state) => ({
           user: { ...state.user, ...userData }

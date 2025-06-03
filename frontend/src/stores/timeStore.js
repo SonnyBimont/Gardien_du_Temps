@@ -1,9 +1,9 @@
 // Store pour le suivi du temps
 import { create } from 'zustand';
 import api from '../services/api';
-import { 
+import { calculateWeeklyStats, 
+  calculateMonthlyStats,
   calculateTotalHours, 
-  groupEntriesByDate, 
   getTodayStatus,
 } from '../utils/timeCalculations';
 
@@ -199,8 +199,11 @@ export const useTimeStore = create((set, get) => ({
     set({ loading: true, error: null });
     
     try {
-      const endDate = new Date().toISOString().split('T')[0];
-      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+        const today = new Date();
+        const endDateObj = new Date(today);
+        endDateObj.setDate(today.getDate() + 1);
+        const endDate = endDateObj.toISOString().split('T')[0];
+        const startDate = new Date(today - days * 24 * 60 * 60 * 1000)
         .toISOString().split('T')[0];
       
       const params = new URLSearchParams({ startDate, endDate });
@@ -217,7 +220,6 @@ export const useTimeStore = create((set, get) => ({
           processedHistory: processedData,
           loading: false,
           lastUpdate: new Date().toISOString(),
-//  Invalider le cache
           _processedCache: null,
           _cacheKey: null,
           _cacheTime: 0
@@ -236,7 +238,7 @@ export const useTimeStore = create((set, get) => ({
     }
   },
 
-  // Actions CRUD
+// Enregistrer une entrée de temps
   recordTimeEntry: async (type, taskId = null, comment = '') => {
     set({ error: null });
     
@@ -271,6 +273,7 @@ export const useTimeStore = create((set, get) => ({
     }
   },
 
+// Mettre à jour une entrée de temps
   updateTimeEntry: async (entryId, updateData) => {
     try {
       const response = await api.put(`/time-tracking/${entryId}`, updateData);
@@ -290,7 +293,7 @@ export const useTimeStore = create((set, get) => ({
       return { success: false, error: errorMessage };
     }
   },
-
+// Supprimer une entrée de temps
   deleteTimeEntry: async (entryId) => {
     try {
       const response = await api.delete(`/time-tracking/${entryId}`);
@@ -313,62 +316,10 @@ export const useTimeStore = create((set, get) => ({
 
   // Calculs consolidés (utilise les utils)
   calculateStats: (entries) => {
-    const grouped = groupEntriesByDate(entries);
-    const now = new Date();
-    
-    // Semaine courante
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-    startOfWeek.setHours(0, 0, 0, 0);
-    
-    const weekEntries = entries.filter(entry => 
-      new Date(entry.date_time) >= startOfWeek
-    );
-    
-    // Mois courant
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEntries = entries.filter(entry => 
-      new Date(entry.date_time) >= startOfMonth
-    );
-
-        // Calculs simples sans fonction externe manquante
-    const calculateHours = (entriesByDate) => {
-      let totalHours = 0;
-      Object.values(entriesByDate).forEach(dayEntries => {
-        const arrival = dayEntries.find(e => e.tracking_type === 'arrival');
-        const departure = dayEntries.find(e => e.tracking_type === 'departure');
-        
-        if (arrival && departure) {
-          const hours = (new Date(departure.date_time) - new Date(arrival.date_time)) / (1000 * 60 * 60);
-          totalHours += Math.max(0, hours);
-        }
-      });
-      return Math.round(totalHours * 100) / 100;
-    };
-
-    // Utiliser la fonction des utils
-    const weeklyStats = {
-      totalHours: calculateHours(groupEntriesByDate(weekEntries)),
-      workingDays: Object.keys(groupEntriesByDate(weekEntries)).length,
-      averageHoursPerDay: 0
-    };
-    
-    const monthlyStats = {
-      totalHours: calculateHours(groupEntriesByDate(monthEntries)),
-      workingDays: Object.keys(groupEntriesByDate(monthEntries)).length,
-      averageHoursPerDay: 0
-    };
-    
-    // Moyennes
-    if (weeklyStats.workingDays > 0) {
-      weeklyStats.averageHoursPerDay = Math.round((weeklyStats.totalHours / weeklyStats.workingDays) * 100) / 100;
-    }
-    
-    if (monthlyStats.workingDays > 0) {
-      monthlyStats.averageHoursPerDay = Math.round((monthlyStats.totalHours / monthlyStats.workingDays) * 100) / 100;
-    }
-    
-    set({ weeklyStats, monthlyStats });
+  const weeklyStats = calculateWeeklyStats(entries);
+  const monthlyStats = calculateMonthlyStats(entries);
+  
+  set({ weeklyStats, monthlyStats });
   },
 
   // Getters (utilise les utils)

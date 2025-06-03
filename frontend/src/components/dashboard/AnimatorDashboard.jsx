@@ -18,6 +18,8 @@ const AnimatorDashboard = () => {
   const { user } = useAuthStore();
   const { 
     todayEntries = [], 
+    timeHistory = [],
+    processedHistory = [], 
     loading,
     fetchTodayEntries,
     fetchTimeHistory,
@@ -36,15 +38,13 @@ const AnimatorDashboard = () => {
     const loadData = async () => {
       try {
         if (fetchTodayEntries) await fetchTodayEntries();
-        if (fetchTimeHistory && user?.id) await fetchTimeHistory(7, user.id);
+        if (fetchTimeHistory && user?.id) await fetchTimeHistory(30, user.id);
         if (fetchMonthlyReport && user?.id) await fetchMonthlyReport(null, null, user.id);
       } catch (error) {
         console.error('Erreur lors du chargement des données:', error);
       }
     };
-    if (user?.id) {
-      loadData();
-    }
+    if (user?.id) loadData();
   }, [user?.id, fetchTodayEntries, fetchTimeHistory, fetchMonthlyReport]);
 
   // Calculs sécurisés
@@ -114,22 +114,16 @@ const formatHoursMinutes = (totalMinutes) => {
 
 // Calcul du temps travaillé pour la semaine
 const getWeeklyWorkedTime = () => {
-  if (weeklyStats && weeklyStats.totalMinutes !== undefined) {
-    return formatHoursMinutes(weeklyStats.totalMinutes);
-  }
-  if (weeklyStats && weeklyStats.totalHours !== undefined) {
-    return `${weeklyStats.totalHours}h00`;
+  if (weeklyStats && weeklyStats.formattedTotalHours) {
+    return weeklyStats.formattedTotalHours;
   }
   return '--h--';
 };
 
 // Calcul du temps travaillé pour le mois
 const getMonthlyWorkedTime = () => {
-  if (monthlyStats && monthlyStats.totalMinutes !== undefined) {
-    return formatHoursMinutes(monthlyStats.totalMinutes);
-  }
-  if (monthlyStats && monthlyStats.totalHours !== undefined) {
-    return `${monthlyStats.totalHours}h00`;
+  if (monthlyStats && monthlyStats.formattedTotalHours) {
+    return monthlyStats.formattedTotalHours;
   }
   return '--h--';
 };
@@ -155,7 +149,7 @@ const getMonthlyWorkedTime = () => {
           break;
       }
       await fetchTodayEntries();
-      await fetchTimeHistory(7, user?.id);
+      await fetchTimeHistory(30, user?.id);
       await fetchMonthlyReport(null, null, user?.id);
     } catch (error) {
       console.error('Erreur lors du pointage:', error);
@@ -176,7 +170,7 @@ const getMonthlyWorkedTime = () => {
         <div className="flex items-center text-gray-600 text-sm">
           <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
           <span className="truncate">
-            Structure : {user?.structure?.name || JSON.stringify(user?.structure) || 'Non renseignée'}
+            Structure : {user?.structure?.name || 'Non renseignée'}
           </span>
         </div>
         <div className="text-lg font-semibold text-gray-900">
@@ -232,7 +226,7 @@ const getMonthlyWorkedTime = () => {
       </div>
     </div>
   );
-
+// Render les boutons d'action de pointage
   const renderActionButtons = () => {
     const canClockIn = !status.arrival && !status.departure;
     const canStartBreak = status.arrival && !status.breakStart && !status.departure;
@@ -363,6 +357,7 @@ const getMonthlyWorkedTime = () => {
     );
   };
 
+// Rendu des cartes de statistiques
   const renderStatsCards = () => (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mx-4 sm:mx-0 mb-4">
       <StatsCard
@@ -386,9 +381,10 @@ const getMonthlyWorkedTime = () => {
     </div>
   );
 
+// Rendu du tableau d'historique  
   const renderHistoryTable = () => (
     <div className="mx-4 sm:mx-0">
-      <Card title="Historique" className="overflow-hidden">
+      <Card title="Historique (30 derniers jours)" className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -401,39 +397,26 @@ const getMonthlyWorkedTime = () => {
                 <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {myTodayEntries.length > 0 ? (
-                <tr>
-                  <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">
-                    {new Date().toLocaleDateString('fr-FR', { 
-                      day: '2-digit', 
-                      month: '2-digit'
-                    })}
-                  </td>
-                  <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">
-                    {status.arrival ? new Date(status.arrival.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                  </td>
-                  <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">
-                    {status.breakStart ? new Date(status.breakStart.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                  </td>
-                  <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">
-                    {status.breakEnd ? new Date(status.breakEnd.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                  </td>
-                  <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">
-                    {status.departure ? new Date(status.departure.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                  </td>
-                  <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">
-                    {getWorkedTime()}
-                  </td>
-                </tr>
-              ) : (
-                <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-gray-500 text-sm">
-                    Aucun pointage aujourd'hui
-                  </td>
-                </tr>
-              )}
-            </tbody>
+<tbody className="bg-white divide-y divide-gray-200">
+  {processedHistory.length > 0 ? (
+    processedHistory.map((day) => (
+      <tr key={day.date}>
+        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{day.formattedDate}</td>
+        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{day.arrival || '--:--'}</td>
+        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{day.breakStart || '--:--'}</td>
+        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{day.breakEnd || '--:--'}</td>
+        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{day.departure || '--:--'}</td>
+        <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900">{day.formattedWorkingHours}</td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan="6" className="px-6 py-8 text-center text-gray-500 text-sm">
+        Aucun pointage sur les 30 derniers jours
+      </td>
+    </tr>
+  )}
+</tbody>
           </table>
         </div>
       </Card>

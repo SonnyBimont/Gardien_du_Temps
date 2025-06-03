@@ -1,4 +1,3 @@
-// Store pour Admin
 import { create } from 'zustand';
 import api from '../services/api';
 

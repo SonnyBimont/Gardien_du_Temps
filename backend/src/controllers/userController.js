@@ -147,11 +147,11 @@ exports.createUser = async (req, res) => {
             role,
             structure_id,
             phone,
-            contract_type,      // Ces champs sont-ils gérés ?
-            weekly_hours,       // Ces champs sont-ils gérés ?
-            annual_hours,       // Ces champs sont-ils gérés ?
-            contract_start_date,// Ces champs sont-ils gérés ?
-            contract_end_date,  // Ces champs sont-ils gérés ?
+            contract_type,      
+            weekly_hours,       
+            annual_hours,       
+            contract_start_date,
+            contract_end_date,  
             active
         } = req.body;
 
