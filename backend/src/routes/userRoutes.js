@@ -401,7 +401,10 @@ router
     .put(protect, authorize('admin', 'director'), userController.updateUser)
     .delete(protect, authorize('admin', 'director'), userController.deleteUser);
 
+
 router.post('/:id/restore', protect, authorize('admin','director'), userController.restoreUser);  
+
+router.patch('/:id/toggle-status', protect, authorize('admin','director'), userController.toggleUserStatus);  
 
 // ===== ROUTES STATISTIQUES ADMIN ===== // ===== SYSTÈME ET AUDIT =====
 router.get('/admin/stats', protect, authorize('admin'), userController.getStats);

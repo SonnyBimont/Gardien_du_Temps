@@ -153,9 +153,44 @@ export const useAdminStore = create((set, get) => ({
   },
 
   // Fonction pour activer/désactiver un utilisateur
-  toggleUserStatus: async (userId, active) => {
-    return get().updateUser(userId, { active });
-  },
+toggleUserStatus: async (userId, active) => {
+  set({ error: null });
+  
+  try {
+    console.log(`🔄 Toggle user ${userId} to ${active ? 'active' : 'inactive'}`);
+    
+    // UTILISER la route PATCH spécifique
+    const response = await api.patch(`/users/${userId}/toggle-status`, { active });
+    
+    if (response.data.success) {
+      const updatedUser = response.data.data;
+      
+      set((state) => ({
+        users: state.users.map(user => 
+          user.id === userId ? updatedUser : user
+        ),
+        lastUpdate: new Date().toISOString()
+      }));
+      
+      // Mettre à jour les statistiques
+      get().updateUserStats(get().users);
+      
+      console.log(`✅ User ${userId} ${active ? 'activé' : 'désactivé'}`);
+      
+      return { success: true, data: updatedUser };
+    } else {
+      throw new Error(response.data.message || 'Erreur lors de la mise à jour');
+    }
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de la modification du statut';
+    
+    set({ error: errorMessage });
+    
+    console.error('❌ Erreur toggle user status:', errorMessage);
+    
+    return { success: false, error: errorMessage };
+  }
+},
 
   // ===== ACTIONS STRUCTURES =====
   // Fonction pour récupérer les structures

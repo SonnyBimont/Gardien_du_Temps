@@ -38,7 +38,7 @@ const endOfDay = (date) => {
 exports.getUsers = async (req, res) => {
     try {
         const { 
-            includeInactive = false,
+            includeInactive = 'true', // CHANGER la valeur par défaut
             structureId,
             role,
             search 
@@ -46,10 +46,11 @@ exports.getUsers = async (req, res) => {
 
         const whereConditions = {};
         
-        // Filtrage selon les permissions
-        if (!includeInactive || req.user.role !== 'admin') {
+        // TOUJOURS inclure les inactifs sauf si explicitement demandé
+        if (includeInactive === 'false') {
             whereConditions.active = true;
         }
+        // Sinon on récupère TOUS les utilisateurs (actifs et inactifs)
         
         if (structureId) {
             whereConditions.structure_id = structureId;
@@ -67,6 +68,8 @@ exports.getUsers = async (req, res) => {
             ];
         }
 
+        console.log('🔍 Conditions de recherche utilisateurs:', whereConditions);
+
         const users = await User.findAll({
             attributes: { exclude: ['password'] },
             where: whereConditions,
@@ -75,8 +78,10 @@ exports.getUsers = async (req, res) => {
                 as: 'structure',
                 attributes: ['id', 'name', 'city']
             }],
-            order: [['createdAt', 'DESC']]
+            order: [['active', 'DESC'], ['createdAt', 'DESC']] // Actifs en premier
         });
+
+        console.log(`📊 Trouvé ${users.length} utilisateurs (actifs: ${users.filter(u => u.active).length}, inactifs: ${users.filter(u => !u.active).length})`);
 
         res.status(200).json({
             success: true,
@@ -92,7 +97,6 @@ exports.getUsers = async (req, res) => {
         });
     }
 };
-
 // Récupérer un utilisateur par ID
 exports.getUserById = async (req, res) => {
     try {
@@ -400,6 +404,58 @@ exports.restoreUser = async (req, res) => {
     }
 };
 
+exports.toggleUserStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { active } = req.body;
+
+        // Vérifications de permissions
+        if (req.user.role !== 'admin' && req.user.role !== 'director') {
+            return res.status(403).json({ 
+                success: false,
+                message: 'Seuls les administrateurs et directeurs peuvent modifier le statut des utilisateurs' 
+            });
+        }
+
+        // Empêcher la désactivation de son propre compte
+        if (req.user.id === parseInt(id) && !active) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'Vous ne pouvez pas désactiver votre propre compte' 
+            });
+        }
+
+        const [updated] = await User.update(
+            { active },
+            { where: { id } }
+        );
+
+        if (!updated) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'Utilisateur non trouvé' 
+            });
+        }
+
+        const updatedUser = await User.findByPk(id, {
+            attributes: { exclude: ['password'] },
+            include: [{ model: Structure, as: 'structure' }]
+        });
+
+        res.status(200).json({
+            success: true,
+            message: `Utilisateur ${active ? 'activé' : 'désactivé'} avec succès`,
+            data: updatedUser
+        });
+    } catch (error) {
+        console.error('Erreur toggleUserStatus:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Erreur lors de la modification du statut', 
+            error: error.message 
+        });
+    }
+};
 // ===== STATISTIQUES ADMIN (FUSIONNÉES) =====
 
 // Statistiques générales

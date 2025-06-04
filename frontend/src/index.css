@@ -1169,3 +1169,44 @@ html, body {
     display: none;
   }
 }
+/* Toggle switch pour le statut utilisateur */
+.user-toggle {
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.user-toggle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.user-toggle:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+}
+
+.user-toggle-thumb {
+  transition: transform 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Utilisateur inactif */
+.user-inactive {
+  opacity: 0.7;
+  background: linear-gradient(90deg, transparent, rgba(0,0,0,0.02), transparent);
+}
+
+.user-inactive .user-toggle {
+  filter: grayscale(30%);
+}
+
+/* Animation de changement */
+@keyframes statusChange {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.user-status-changed {
+  animation: statusChange 0.5s ease;
+}
