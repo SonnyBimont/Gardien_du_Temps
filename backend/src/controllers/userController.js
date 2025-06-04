@@ -405,95 +405,91 @@ exports.restoreUser = async (req, res) => {
 // Statistiques générales
 exports.getStats = async (req, res) => {
     try {
-        if (!User || !Structure || !TimeTracking) {
-            throw new Error('Modèles non disponibles');
+        console.log('📊 getStats appelé avec query:', req.query);
+        
+        // Vérification des modèles essentiels
+        if (!User || !Structure) {
+            console.error('❌ Modèles User ou Structure manquants');
+            return res.status(500).json({
+                success: false,
+                message: 'Erreur lors de la récupération des statistiques',
+                error: 'Modèles essentiels non disponibles'
+            });
         }
 
         const { days = 7 } = req.query;
         const startDate = subDays(new Date(), parseInt(days));
 
-        const [
-            totalUsers,
-            activeUsers,
-            totalEntries,
-            activeUsersInPeriod,
-            newUsersInPeriod,
-            newStructuresInPeriod,
-            byRole,
-            byStructure
-        ] = await Promise.all([
-            User.count({ where: { role: { [Op.ne]: 'admin' } } }),
-            User.count({ where: { active: true, role: { [Op.ne]: 'admin' } } }),
-            TimeTracking.count({
-                where: { date_time: { [Op.gte]: startDate } }
-            }),
-            TimeTracking.count({
-                distinct: true,
-                col: 'user_id',
-                where: { date_time: { [Op.gte]: startDate } }
-            }),
-            // CALCUL CORRECT des nouveaux utilisateurs
-            User.count({
-                where: {
-                    role: { [Op.ne]: 'admin' },
-                    createdAt: { [Op.gte]: startDate }
-                }
-            }),
-            // CALCUL CORRECT des nouvelles structures
-            Structure.count({
-                where: {
-                    createdAt: { [Op.gte]: startDate }
-                }
-            }),
-            User.findAll({
-                attributes: [
-                    'role',
-                    [User.sequelize.fn('COUNT', User.sequelize.col('id')), 'count']
-                ],
-                where: { role: { [Op.ne]: 'admin' } },
-                group: ['role'],
-                raw: true
-            }),
-            User.findAll({
-                attributes: [
-                    'structure_id',
-                    [User.sequelize.fn('COUNT', User.sequelize.col('id')), 'count']
-                ],
-                include: [{
-                    model: Structure,
-                    as: 'structure',
-                    attributes: ['name']
-                }],
-                where: { role: { [Op.ne]: 'admin' } },
-                group: ['structure_id', 'structure.id', 'structure.name'],
-                raw: true
-            })
-        ]);
+        console.log('📅 Calcul des stats pour les', days, 'derniers jours depuis:', startDate);
+
+        // Calculs de base (toujours disponibles)
+        const totalUsers = await User.count({ 
+            where: { role: { [Op.ne]: 'admin' } } 
+        });
+        
+        const activeUsers = await User.count({ 
+            where: { 
+                active: true, 
+                role: { [Op.ne]: 'admin' } 
+            } 
+        });
+
+        const totalStructures = await Structure.count();
+
+        const newUsersInPeriod = await User.count({
+            where: {
+                role: { [Op.ne]: 'admin' },
+                createdAt: { [Op.gte]: startDate }
+            }
+        });
+
+        const newStructuresInPeriod = await Structure.count({
+            where: {
+                createdAt: { [Op.gte]: startDate }
+            }
+        });
+
+        // Calculs avec TimeTracking (optionnels)
+        let totalEntries = 0;
+        let activeUsersInPeriod = 0;
+
+        if (TimeTracking) {
+            try {
+                totalEntries = await TimeTracking.count({
+                    where: { date_time: { [Op.gte]: startDate } }
+                });
+                
+                activeUsersInPeriod = await TimeTracking.count({
+                    distinct: true,
+                    col: 'user_id',
+                    where: { date_time: { [Op.gte]: startDate } }
+                });
+            } catch (error) {
+                console.warn('⚠️  Erreur TimeTracking:', error.message);
+            }
+        }
+
+        const statsData = {
+            total_users: totalUsers,
+            active_users: activeUsers,
+            inactive_users: totalUsers - activeUsers,
+            total_structures: totalStructures,
+            new_users: newUsersInPeriod,
+            new_structures: newStructuresInPeriod,
+            total_entries: totalEntries,
+            active_users_period: activeUsersInPeriod,
+            period_days: parseInt(days)
+        };
+
+        console.log('✅ Stats calculées:', statsData);
 
         res.status(200).json({
             success: true,
-            data: {
-                total_users: totalUsers,
-                active_users: activeUsers,
-                inactive_users: totalUsers - activeUsers,
-                total_entries: totalEntries,
-                active_users_period: activeUsersInPeriod,
-                new_users: newUsersInPeriod,
-                new_structures: newStructuresInPeriod,
-                period_days: parseInt(days),
-                by_role: byRole.reduce((acc, item) => {
-                    acc[item.role] = parseInt(item.count);
-                    return acc;
-                }, {}),
-                by_structure: byStructure.map(item => ({
-                    structure_id: item.structure_id,
-                    structure_name: item['structure.name'],
-                    count: parseInt(item.count)
-                }))
-            }
+            data: statsData
         });
+        
     } catch (error) {
-        console.error('Erreur getStats:', error);
+        console.error('❌ Erreur getStats:', error);
         res.status(500).json({ 
             success: false,
             message: 'Erreur lors de la récupération des statistiques',
@@ -505,72 +501,101 @@ exports.getStats = async (req, res) => {
 // Statistiques dashboard admin
 exports.getDashboardStats = async (req, res) => {
     try {
-        if (!User || !Structure || !TimeTracking) {
-            throw new Error('Modèles non disponibles');
+        console.log('📊 getDashboardStats appelé avec query:', req.query);
+        
+        // Vérification des modèles essentiels
+        if (!User || !Structure) {
+            console.error('❌ Modèles User ou Structure manquants');
+            return res.status(500).json({
+                success: false,
+                message: 'Erreur lors du chargement des statistiques dashboard',
+                error: 'Modèles essentiels non disponibles'
+            });
         }
         
-        const { days = 7 } = req.query; // Ajouter le paramètre days
+        const { days = 7 } = req.query;
         const today = new Date();
         const startOfToday = startOfDay(today);
         const endOfToday = endOfDay(today);
         const startDate = subDays(today, parseInt(days));
 
-        const [
-            totalUsers,
-            activeUsers,
-            totalStructures,
-            todayEntries,
-            activeUsersToday,
-            newUsersInPeriod,
-            newStructuresInPeriod
-        ] = await Promise.all([
-            User.count({ where: { role: { [Op.ne]: 'admin' } } }),
-            User.count({ where: { active: true, role: { [Op.ne]: 'admin' } } }),
-            Structure.count({ where: { active: true } }),
-            TimeTracking.count({
-                where: {
-                    date_time: { [Op.between]: [startOfToday, endOfToday] }
-                }
-            }),
-            TimeTracking.count({
-                distinct: true,
-                col: 'user_id',
-                where: {
-                    date_time: { [Op.between]: [startOfToday, endOfToday] }
-                }
-            }),
-            // AJOUTER le calcul des nouveaux utilisateurs dans la période
-            User.count({
-                where: {
-                    role: { [Op.ne]: 'admin' },
-                    createdAt: { [Op.gte]: startDate }
-                }
-            }),
-            // AJOUTER le calcul des nouvelles structures dans la période
-            Structure.count({
-                where: {
-                    createdAt: { [Op.gte]: startDate }
-                }
-            })
-        ]);
+        console.log('📅 Calcul dashboard stats pour', days, 'jours depuis:', startDate);
+
+        // Calculs de base
+        const totalUsers = await User.count({ 
+            where: { role: { [Op.ne]: 'admin' } } 
+        });
+        
+        const activeUsers = await User.count({ 
+            where: { 
+                active: true, 
+                role: { [Op.ne]: 'admin' } 
+            } 
+        });
+
+        const totalStructures = await Structure.count({ 
+            where: { active: true } 
+        });
+
+        const newUsersInPeriod = await User.count({
+            where: {
+                role: { [Op.ne]: 'admin' },
+                createdAt: { [Op.gte]: startDate }
+            }
+        });
+
+        const newStructuresInPeriod = await Structure.count({
+            where: {
+                createdAt: { [Op.gte]: startDate }
+            }
+        });
+
+        // Calculs avec TimeTracking (optionnels)
+        let todayEntries = 0;
+        let activeUsersToday = 0;
+
+        if (TimeTracking) {
+            try {
+                todayEntries = await TimeTracking.count({
+                    where: {
+                        date_time: { [Op.between]: [startOfToday, endOfToday] }
+                    }
+                });
+
+                activeUsersToday = await TimeTracking.count({
+                    distinct: true,
+                    col: 'user_id',
+                    where: {
+                        date_time: { [Op.between]: [startOfToday, endOfToday] }
+                    }
+                });
+            } catch (error) {
+                console.warn('⚠️  Erreur TimeTracking dashboard:', error.message);
+            }
+        }
+
+        const dashboardData = {
+            total_users: totalUsers,
+            active_users: activeUsers,
+            inactive_users: totalUsers - activeUsers,
+            total_structures: totalStructures,
+            new_users_period: newUsersInPeriod,
+            new_structures_period: newStructuresInPeriod,
+            today_entries: todayEntries,
+            active_users_today: activeUsersToday,
+            period_days: parseInt(days),
+            date: today.toISOString().split('T')[0]
+        };
+
+        console.log('✅ Dashboard stats calculées:', dashboardData);
 
         res.status(200).json({
             success: true,
-            data: {
-                total_users: totalUsers,
-                active_users: activeUsers,
-                inactive_users: totalUsers - activeUsers,
-                total_structures: totalStructures,
-                today_entries: todayEntries,
-                active_users_today: activeUsersToday,
-                new_users_period: newUsersInPeriod,
-                new_structures_period: newStructuresInPeriod,
-                period_days: parseInt(days),
-                date: today.toISOString().split('T')[0]
-            }
+            data: dashboardData
         });
+        
     } catch (error) {
-        console.error('Erreur getDashboardStats:', error);
+        console.error('❌ Erreur getDashboardStats:', error);
         res.status(500).json({
             success: false,
             message: 'Erreur lors du chargement des statistiques dashboard',
