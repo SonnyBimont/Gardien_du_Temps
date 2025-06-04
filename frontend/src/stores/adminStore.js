@@ -160,11 +160,7 @@ export const useAdminStore = create((set, get) => ({
   // ===== ACTIONS STRUCTURES =====
   // Fonction pour récupérer les structures
   fetchStructures: async (includeStats = false) => {
-      const state = get();
-  
-  if (state.loading) {
-    return;
-  }
+
     set({ loading: true, error: null });
     
     try {
@@ -182,6 +178,7 @@ export const useAdminStore = create((set, get) => ({
         
         // Mettre à jour les statistiques
         get().updateStructureStats(structures);
+        return { success: true, data: structures };
       } else {
         throw new Error(response.data.message || 'Erreur lors du chargement');
       }
@@ -332,16 +329,12 @@ export const useAdminStore = create((set, get) => ({
 fetchStats: async (dateRange = '7') => {
   const currentState = get();
   
-  if (currentState.loading) {
-    console.log('⏳ Stats déjà en cours de chargement, ignorer');
-    return { success: false, error: 'Chargement en cours' };
-  }
-  
   set({ loading: true, error: null });
   
   try {
     console.log('🔄 fetchStats appelé avec dateRange:', dateRange);
     
+    // PASSER le paramètre days à l'API
     const response = await api.get(`/users/admin/stats?days=${dateRange}`);
     
     console.log('📡 Réponse API stats:', response.data);
@@ -349,7 +342,6 @@ fetchStats: async (dateRange = '7') => {
     if (response.data?.success) {
       const stats = response.data.data || {};
       
-      // Calculer les labels selon la période
       const getPeriodLabel = (days) => {
         switch(days) {
           case '1': return 'aujourd\'hui';
@@ -363,10 +355,11 @@ fetchStats: async (dateRange = '7') => {
       const periodLabel = getPeriodLabel(dateRange);
       
       const newStats = {
-        newUsersThisWeek: stats.newUsers || 0,
-        newStructuresThisWeek: stats.newStructures || 0,
-        connectionsToday: stats.connections || 0,
-        connectionsChange: stats.connectionsChange || `${stats.connections || 0} ${periodLabel}`,
+        // UTILISER les bonnes clés de l'API
+        newUsersThisWeek: stats.new_users || 0,
+        newStructuresThisWeek: stats.new_structures || 0,
+        connectionsToday: stats.total_entries || 0,
+        connectionsChange: `${stats.total_entries || 0} ${periodLabel}`,
         periodLabel: periodLabel,
         lastStatsUpdate: new Date().toISOString()
       };
@@ -386,14 +379,8 @@ fetchStats: async (dateRange = '7') => {
       throw new Error(response.data?.message || 'Réponse invalide du serveur');
     }
   } catch (error) {
-    console.error('❌ Erreur fetch stats détaillée:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      config: error.config
-    });
+    console.error('❌ Erreur fetch stats détaillée:', error);
     
-    // Fallback avec stats par défaut
     const fallbackStats = {
       newUsersThisWeek: 0,
       newStructuresThisWeek: 0,
@@ -410,6 +397,27 @@ fetchStats: async (dateRange = '7') => {
     }));
     
     return { success: false, error: error.message };
+  }
+},
+
+// Et ajoute fetchDashboardStats avec le paramètre days :
+fetchDashboardStats: async (dateRange = '7') => {
+  try {
+    const response = await api.get(`/users/admin/dashboard-stats?days=${dateRange}`);
+    
+    if (response.data.success) {
+      const data = response.data.data;
+      set((state) => ({
+        stats: {
+          ...state.stats,
+          newUsersThisWeek: data.new_users_period || 0,
+          newStructuresThisWeek: data.new_structures_period || 0,
+          connectionsToday: data.today_entries || 0
+        }
+      }));
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement des statistiques dashboard:', error);
   }
 },
 

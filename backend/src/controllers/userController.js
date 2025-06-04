@@ -405,7 +405,6 @@ exports.restoreUser = async (req, res) => {
 // Statistiques générales
 exports.getStats = async (req, res) => {
     try {
-    // Vérifier que les modèles sont disponibles
         if (!User || !Structure || !TimeTracking) {
             throw new Error('Modèles non disponibles');
         }
@@ -418,6 +417,8 @@ exports.getStats = async (req, res) => {
             activeUsers,
             totalEntries,
             activeUsersInPeriod,
+            newUsersInPeriod,
+            newStructuresInPeriod,
             byRole,
             byStructure
         ] = await Promise.all([
@@ -430,6 +431,19 @@ exports.getStats = async (req, res) => {
                 distinct: true,
                 col: 'user_id',
                 where: { date_time: { [Op.gte]: startDate } }
+            }),
+            // CALCUL CORRECT des nouveaux utilisateurs
+            User.count({
+                where: {
+                    role: { [Op.ne]: 'admin' },
+                    createdAt: { [Op.gte]: startDate }
+                }
+            }),
+            // CALCUL CORRECT des nouvelles structures
+            Structure.count({
+                where: {
+                    createdAt: { [Op.gte]: startDate }
+                }
             }),
             User.findAll({
                 attributes: [
@@ -464,6 +478,8 @@ exports.getStats = async (req, res) => {
                 inactive_users: totalUsers - activeUsers,
                 total_entries: totalEntries,
                 active_users_period: activeUsersInPeriod,
+                new_users: newUsersInPeriod,
+                new_structures: newStructuresInPeriod,
                 period_days: parseInt(days),
                 by_role: byRole.reduce((acc, item) => {
                     acc[item.role] = parseInt(item.count);
@@ -489,24 +505,28 @@ exports.getStats = async (req, res) => {
 // Statistiques dashboard admin
 exports.getDashboardStats = async (req, res) => {
     try {
-
         if (!User || !Structure || !TimeTracking) {
             throw new Error('Modèles non disponibles');
         }
+        
+        const { days = 7 } = req.query; // Ajouter le paramètre days
         const today = new Date();
         const startOfToday = startOfDay(today);
         const endOfToday = endOfDay(today);
+        const startDate = subDays(today, parseInt(days));
 
         const [
             totalUsers,
             activeUsers,
             totalStructures,
             todayEntries,
-            activeUsersToday
+            activeUsersToday,
+            newUsersInPeriod,
+            newStructuresInPeriod
         ] = await Promise.all([
             User.count({ where: { role: { [Op.ne]: 'admin' } } }),
             User.count({ where: { active: true, role: { [Op.ne]: 'admin' } } }),
-            Structure.count(),
+            Structure.count({ where: { active: true } }),
             TimeTracking.count({
                 where: {
                     date_time: { [Op.between]: [startOfToday, endOfToday] }
@@ -517,6 +537,19 @@ exports.getDashboardStats = async (req, res) => {
                 col: 'user_id',
                 where: {
                     date_time: { [Op.between]: [startOfToday, endOfToday] }
+                }
+            }),
+            // AJOUTER le calcul des nouveaux utilisateurs dans la période
+            User.count({
+                where: {
+                    role: { [Op.ne]: 'admin' },
+                    createdAt: { [Op.gte]: startDate }
+                }
+            }),
+            // AJOUTER le calcul des nouvelles structures dans la période
+            Structure.count({
+                where: {
+                    createdAt: { [Op.gte]: startDate }
                 }
             })
         ]);
@@ -530,6 +563,9 @@ exports.getDashboardStats = async (req, res) => {
                 total_structures: totalStructures,
                 today_entries: todayEntries,
                 active_users_today: activeUsersToday,
+                new_users_period: newUsersInPeriod,
+                new_structures_period: newStructuresInPeriod,
+                period_days: parseInt(days),
                 date: today.toISOString().split('T')[0]
             }
         });

@@ -1151,3 +1151,21 @@ html, body {
     margin-bottom: 0.5rem;
   }
 }
+/* Breakpoint pour très petits écrans */
+@media (min-width: 380px) {
+  .xs\:flex-row {
+    flex-direction: row;
+  }
+  
+  .xs\:w-1\/2 {
+    width: 50%;
+  }
+  
+  .xs\:inline {
+    display: inline;
+  }
+  
+  .xs\:hidden {
+    display: none;
+  }
+}

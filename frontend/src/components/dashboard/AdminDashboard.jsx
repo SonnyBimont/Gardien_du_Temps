@@ -20,8 +20,15 @@ import Input from '../common/Input';
 
 const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateRange, setDateRange] = useState('7'); // 7 derniers jours
+  const [structureSearchTerm, setStructureSearchTerm] = useState('');
+  const [dateRange, setDateRange] = useState('7');
   const [selectedMetric, setSelectedMetric] = useState('users');
+  const [userRoleFilter, setUserRoleFilter] = useState('');
+  const [structureFilter, setStructureFilter] = useState('');
+  const [structureFilterType, setStructureFilterType] = useState('zone'); // 'zone' ou 'city'
+  const [showAllUsers, setShowAllUsers] = useState(false);
+  const [showAllStructures, setShowAllStructures] = useState(false);
+  
   
   const userModal = useModal();
   const structureModal = useModal();
@@ -100,12 +107,34 @@ const loadData = useCallback(async (includeStats = true) => {
     }))
     .filter(entry => entry.user);
 
-  // Utilisateurs filtés pour la recherche
-  const filteredUsers = (users || []).filter(user =>
-    (user.first_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.last_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+ // Utilisateurs filtrés pour la recherche ET le filtre par rôle
+  const filteredUsers = (users || []).filter(user => {
+    const matchesSearch = (user.first_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.last_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRole = !userRoleFilter || user.role === userRoleFilter;
+    
+    return matchesSearch && matchesRole;
+  });
+
+    // Structures filtrées pour la recherche ET le filtre
+  const filteredStructures = (structures || []).filter(structure => {
+    const matchesSearch = (structure.name || '').toLowerCase().includes(structureSearchTerm.toLowerCase()) ||
+      (structure.city || '').toLowerCase().includes(structureSearchTerm.toLowerCase()) ||
+      (structure.address || '').toLowerCase().includes(structureSearchTerm.toLowerCase());
+    
+    let matchesFilter = true;
+    if (structureFilter) {
+      if (structureFilterType === 'zone') {
+        matchesFilter = structure.school_vacation_zone === structureFilter;
+      } else if (structureFilterType === 'city') {
+        matchesFilter = (structure.city || '').toLowerCase().includes(structureFilter.toLowerCase());
+      }
+    }
+    
+    return matchesSearch && matchesFilter;
+  });
 
   // Gestion du changement de période
 const handleDateRangeChange = useCallback(async (range) => {
@@ -113,13 +142,16 @@ const handleDateRangeChange = useCallback(async (range) => {
   setDateRange(range);
   
   try {
-    await fetchStats?.(range);
+    // Appeler les DEUX fonctions avec le bon paramètre
+    await Promise.all([
+      fetchStats?.(range),
+      fetchDashboardStats?.(range)
+    ]);
     console.log('✅ Stats rechargées pour la période:', range);
   } catch (error) {
     console.error('❌ Erreur lors du rechargement des stats:', error);
   }
-}, [fetchStats]);
-
+}, [fetchStats, fetchDashboardStats]);
 // Fonction pour obtenir l'icône d'activité
   const getActivityIcon = (type) => {
     const icons = {
@@ -168,24 +200,24 @@ const handleDateRangeChange = useCallback(async (range) => {
 
       <Card clickable hoverable className="p-4">
         <div className="flex items-center">
-          <div className="p-3 bg-purple-100 rounded-lg">
-            <BarChart3 className="w-6 h-6 text-purple-600" />
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Voir</p>
-            <p className="text-lg font-semibold text-gray-900">Rapports</p>
-          </div>
-        </div>
-      </Card>
-
-      <Card clickable hoverable className="p-4">
-        <div className="flex items-center">
           <div className="p-3 bg-orange-100 rounded-lg">
             <Settings className="w-6 h-6 text-orange-600" />
           </div>
           <div className="ml-4">
             <p className="text-sm font-medium text-gray-600">Système</p>
             <p className="text-lg font-semibold text-gray-900">Paramètres</p>
+          </div>
+        </div>
+      </Card>
+
+      <Card clickable hoverable className="p-4">
+        <div className="flex items-center">
+          <div className="p-3 bg-purple-100 rounded-lg">
+            <BarChart3 className="w-6 h-6 text-purple-600" />
+          </div>
+          <div className="ml-4">
+            <p className="text-sm font-medium text-gray-600">Voir</p>
+            <p className="text-lg font-semibold text-gray-900">Rapports</p>
           </div>
         </div>
       </Card>
@@ -274,99 +306,227 @@ const renderStatsCards = () => {
   );
 // Rendu de la gestion des utilisateurs
   const renderUsersManagement = () => (
-    <Card 
-      title="Gestion des Utilisateurs"
-      header={
+  <Card 
+    title="Gestion des Utilisateurs"
+    header={
+      <div className="space-y-4">
+        {/* Titre */}
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">
             Utilisateurs ({filteredUsers.length})
           </h3>
-          <div className="flex items-center space-x-2">
+          {/* Bouton voir tout - visible sur toutes les tailles */}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowAllUsers(!showAllUsers)}
+            className="shrink-0"
+          >
+            {showAllUsers ? 'Réduire' : 'Voir tout'}
+          </Button>
+        </div>
+        
+        {/* Contrôles - Responsive */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          {/* Barre de recherche - Largeur complète sur mobile */}
+          <div className="flex-1 min-w-0">
             <Input
-              placeholder="Rechercher..."
+              placeholder="Rechercher utilisateur..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               leftIcon={<Search className="w-4 h-4" />}
-              className="w-64"
+              className="w-full"
             />
-            <Button variant="outline" size="sm">
-              <Filter className="w-4 h-4" />
-            </Button>
+          </div>
+          
+          {/* Filtre par rôle - Largeur adaptée */}
+          <div className="w-full sm:w-auto sm:min-w-[140px]">
+            <select
+              value={userRoleFilter}
+              onChange={(e) => setUserRoleFilter(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Tous les rôles</option>
+              <option value="admin">Admin</option>
+              <option value="director">Directeur</option>
+              <option value="animator">Animateur</option>
+            </select>
           </div>
         </div>
-      }
-    >
-      <div className="space-y-3 max-h-64 overflow-y-auto">
-        {filteredUsers.slice(0, 8).map((user) => (
-          <div key={user.id} className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center mr-3">
-                <Users className="w-5 h-5 text-gray-600" />
-              </div>
-              <div>
-                <p className="font-medium text-gray-900">
-                  {user.first_name} {user.last_name}
-                </p>
-                <p className="text-sm text-gray-500">{user.email}</p>
-              </div>
+      </div>
+    }
+  >
+    <div className="space-y-3 max-h-64 overflow-y-auto">
+      {filteredUsers.slice(0, showAllUsers ? filteredUsers.length : 8).map((user) => (
+        <div key={user.id} className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0">
+          <div className="flex items-center min-w-0 flex-1">
+            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center mr-3 shrink-0">
+              <Users className="w-5 h-5 text-gray-600" />
             </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-gray-900 truncate">
+                {user.first_name} {user.last_name}
+              </p>
+              <p className="text-sm text-gray-500 truncate">{user.email}</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2 shrink-0 ml-2">
+            <span className={`
+              px-2 py-1 text-xs rounded-full font-medium
+              ${user.role === 'admin' ? 'bg-red-100 text-red-800' : ''}
+              ${user.role === 'director' ? 'bg-blue-100 text-blue-800' : ''}
+              ${user.role === 'animator' ? 'bg-green-100 text-green-800' : ''}
+            `}>
+              {user.role === 'admin' && 'Admin'}
+              {user.role === 'director' && 'Directeur'}
+              {user.role === 'animator' && 'Animateur'}
+            </span>
+            <div className={`w-2 h-2 rounded-full ${
+              user.active ? 'bg-green-400' : 'bg-gray-300'
+            }`} />
+          </div>
+        </div>
+      ))}
+    </div>
+      
+    {/* Message si aucun résultat */}
+    {filteredUsers.length === 0 && (
+      <div className="text-center py-8 text-gray-500">
+        <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+        <p>Aucun utilisateur trouvé</p>
+      </div>
+    )}
+  </Card>
+  );
+
+// Rendu de la vue d'ensemble des structures
+const renderStructuresOverview = () => (
+  <Card 
+    title="Gestion des Structures"
+    header={
+      <div className="space-y-4">
+        {/* Titre */}
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Structures ({filteredStructures.length})
+          </h3>
+          {/* Bouton voir tout - visible sur toutes les tailles */}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowAllStructures(!showAllStructures)}
+            className="shrink-0"
+          >
+            {showAllStructures ? 'Réduire' : 'Voir tout'}
+          </Button>
+        </div>
+        
+        {/* Contrôles - Responsive */}
+        <div className="space-y-3">
+          {/* Barre de recherche - Largeur complète */}
+          <div className="w-full">
+            <Input
+              placeholder="Rechercher structure..."
+              value={structureSearchTerm}
+              onChange={(e) => setStructureSearchTerm(e.target.value)}
+              leftIcon={<Search className="w-4 h-4" />}
+              className="w-full"
+            />
+          </div>
+          
+          {/* Filtres - En ligne sur tablet+, empilés sur mobile */}
+          <div className="flex flex-col xs:flex-row gap-2">
+            {/* Type de filtre */}
+            <div className="w-full xs:w-1/2">
+              <select
+                value={structureFilterType}
+                onChange={(e) => {
+                  setStructureFilterType(e.target.value);
+                  setStructureFilter('');
+                }}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="zone">Par Zone</option>
+                <option value="city">Par Ville</option>
+              </select>
+            </div>
+            
+            {/* Valeur du filtre */}
+            <div className="w-full xs:w-1/2">
+              <select
+                value={structureFilter}
+                onChange={(e) => setStructureFilter(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {structureFilterType === 'zone' ? (
+                  <>
+                    <option value="">Toutes les zones</option>
+                    <option value="A">Zone A</option>
+                    <option value="B">Zone B</option>
+                    <option value="C">Zone C</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="">Toutes les villes</option>
+                    {[...new Set((structures || []).map(s => s.city))].map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </>
+                )}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  >
+    <div className="space-y-3 max-h-64 overflow-y-auto">
+      {filteredStructures.slice(0, showAllStructures ? filteredStructures.length : 8).map((structure) => (
+        <div key={structure.id} className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0">
+          <div className="flex items-start min-w-0 flex-1">
+            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center mr-3 shrink-0 mt-0.5">
+              <Building className="w-5 h-5 text-gray-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-gray-900 truncate">
+                {structure.name}
+              </p>
+              <p className="text-sm text-gray-500 truncate">{structure.address}</p>
+              <p className="text-xs text-gray-400 truncate">{structure.city}</p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row items-end sm:items-center space-y-1 sm:space-y-0 sm:space-x-2 shrink-0 ml-2">
+            <span className="px-2 py-1 text-xs rounded-full font-medium bg-blue-100 text-blue-800 whitespace-nowrap">
+              Zone {structure.school_vacation_zone}
+            </span>
             <div className="flex items-center space-x-2">
-              <span className={`
-                px-2 py-1 text-xs rounded-full font-medium
-                ${user.role === 'admin' ? 'bg-red-100 text-red-800' : ''}
-                ${user.role === 'director' ? 'bg-blue-100 text-blue-800' : ''}
-                ${user.role === 'animator' ? 'bg-green-100 text-green-800' : ''}
-              `}>
-                {user.role === 'admin' && 'Admin'}
-                {user.role === 'director' && 'Directeur'}
-                {user.role === 'animator' && 'Animateur'}
-              </span>
+              <div className="flex items-center text-xs text-gray-500">
+                <Users className="w-3 h-3 mr-1" />
+                <span className="hidden xs:inline">
+                  {users.filter(u => u.structure_id === structure.id).length}
+                </span>
+                <span className="xs:hidden">
+                  {users.filter(u => u.structure_id === structure.id).length}
+                </span>
+              </div>
               <div className={`w-2 h-2 rounded-full ${
-                user.active ? 'bg-green-400' : 'bg-gray-300'
+                structure.active ? 'bg-green-400' : 'bg-gray-300'
               }`} />
             </div>
           </div>
-        ))}
-      </div>
-      
-      {filteredUsers.length > 8 && (
-        <div className="mt-4 text-center">
-          <Button variant="outline" size="sm">
-            Voir tous les utilisateurs
-          </Button>
         </div>
-      )}
-    </Card>
-  );
-// Rendu de la vue d'ensemble des structures
-  const renderStructuresOverview = () => (
-    <Card title="Structures" className="h-96">
-      <div className="space-y-3 max-h-80 overflow-y-auto">
-        {structures.length > 0 ? (
-          structures.map((structure) => (
-            <div key={structure.id} className="p-3 bg-gray-50 rounded-lg">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-medium text-gray-900">{structure.name}</p>
-                  <p className="text-sm text-gray-500">{structure.address}</p>
-                  <p className="text-sm text-gray-500">{structure.city}</p>
-                </div>
-              </div>
-              <div className="mt-2 flex items-center text-xs text-gray-500">
-                <Users className="w-3 h-3 mr-1" />
-                {users.filter(u => u.structure_id === structure.id).length} utilisateurs
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            <Building className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>Aucune structure créée</p>
-          </div>
-        )}
+      ))}
+    </div>
+    
+    {/* Message si aucun résultat */}
+    {filteredStructures.length === 0 && (
+      <div className="text-center py-8 text-gray-500">
+        <Building className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+        <p>Aucune structure trouvée</p>
       </div>
-    </Card>
-  );
+    )}
+  </Card>
+);
 
   if (loading) {
     return (
