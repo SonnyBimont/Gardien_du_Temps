@@ -538,3 +538,118 @@ exports.getMonthlyReport = async (req, res) => {
         });
     }
 };
+
+// Récupérer le résumé de l'équipe
+exports.getTeamSummary = async (req, res) => {
+  try {
+    const { days = 30, userId, structureId } = req.query;
+    const userStructureId = req.user.structure_id;
+    
+    // Les directeurs ne peuvent voir que leur structure
+    const targetStructureId = req.user.role === 'admin' ? structureId : userStructureId;
+    
+    if (!targetStructureId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Structure non définie'
+      });
+    }
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days));
+
+    // Récupérer les utilisateurs de la structure
+    const structureUsers = await User.findAll({
+      where: {
+        structure_id: targetStructureId,
+        role: 'animator',
+        active: true
+      },
+      attributes: ['id', 'first_name', 'last_name', 'email', 'weekly_hours', 'annual_hours']
+    });
+
+    // Récupérer les entrées de temps
+    const timeEntries = await Time_Tracking.findAll({
+      where: {
+        user_id: { [Op.in]: structureUsers.map(u => u.id) },
+        date_time: { [Op.gte]: startDate }
+      },
+      order: [['date_time', 'ASC']]
+    });
+
+    // Calculer les heures par utilisateur
+    const userSummaries = structureUsers.map(user => {
+      const userEntries = timeEntries.filter(entry => entry.user_id === user.id);
+      
+      // Grouper par jour
+      const dayGroups = {};
+      userEntries.forEach(entry => {
+        const date = entry.date_time.toISOString().split('T')[0];
+        if (!dayGroups[date]) {
+          dayGroups[date] = [];
+        }
+        dayGroups[date].push(entry);
+      });
+
+      // Calculer les heures travaillées
+      let totalHours = 0;
+      Object.keys(dayGroups).forEach(date => {
+        const dayEntries = dayGroups[date];
+        const arrival = dayEntries.find(e => e.tracking_type === 'arrival');
+        const departure = dayEntries.find(e => e.tracking_type === 'departure');
+        const breakStart = dayEntries.find(e => e.tracking_type === 'break_start');
+        const breakEnd = dayEntries.find(e => e.tracking_type === 'break_end');
+
+        if (arrival && departure) {
+          let dayHours = (new Date(departure.date_time) - new Date(arrival.date_time)) / (1000 * 60 * 60);
+          
+          // Soustraire les pauses
+          if (breakStart && breakEnd) {
+            const breakDuration = (new Date(breakEnd.date_time) - new Date(breakStart.date_time)) / (1000 * 60 * 60);
+            dayHours -= breakDuration;
+          }
+          
+          totalHours += Math.max(0, dayHours);
+        }
+      });
+
+      // Calculer l'objectif pour la période
+      const dailyObjective = (user.weekly_hours || 35) / 7;
+      const periodObjective = dailyObjective * parseInt(days);
+
+      return {
+        user: {
+          id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email,
+          weekly_hours: user.weekly_hours,
+          annual_hours: user.annual_hours
+        },
+        totalHours: Math.round(totalHours * 100) / 100,
+        periodObjective: Math.round(periodObjective * 100) / 100,
+        hoursDifference: Math.round((totalHours - periodObjective) * 100) / 100, // AJOUTER cette ligne
+        daysWorked: Object.keys(dayGroups).length
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        period_days: parseInt(days),
+        structure_id: targetStructureId,
+        users: userSummaries,
+        total_users: userSummaries.length,
+        total_hours: userSummaries.reduce((sum, u) => sum + u.totalHours, 0)
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur getTeamSummary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération du résumé d\'équipe',
+      error: error.message
+    });
+  }
+};

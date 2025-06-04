@@ -18,6 +18,8 @@ export const useTimeStore = create((set, get) => ({
   loading: false,
   error: null,
   lastUpdate: null,
+  teamSummary: [],
+  teamLoading: false,
     // Cache simple et efficace
   _processedCache: null,
   _cacheKey: null,
@@ -237,6 +239,60 @@ export const useTimeStore = create((set, get) => ({
       return { success: false, error: errorMessage };
     }
   },
+
+// Fonction pour récupérer le résumé d'équipe
+fetchTeamSummary: async (days = 30, structureId = null) => {
+  set({ teamLoading: true, error: null });
+  
+  try {
+    const params = new URLSearchParams({ days: days.toString() });
+    if (structureId) params.append('structureId', structureId);
+    
+    const response = await api.get(`/time-tracking/team-summary?${params}`);
+    
+    if (response.data.success) {
+      set({ 
+        teamSummary: response.data.data,
+        teamLoading: false
+      });
+      return { success: true, data: response.data.data };
+    } else {
+      throw new Error(response.data.message || 'Erreur lors du chargement');
+    }
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || error.message;
+    set({ error: errorMessage, teamLoading: false });
+    return { success: false, error: errorMessage };
+  }
+},
+
+// Fonction d'export des données d'équipe
+exportTeamData: async (format = 'csv', filters = {}) => {
+  try {
+    const params = new URLSearchParams(filters);
+    params.append('format', format);
+    
+    const response = await api.get(`/time-tracking/team-export?${params}`, {
+      responseType: 'blob'
+    });
+    
+    // Créer le téléchargement
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `team_summary_${new Date().toISOString().split('T')[0]}.${format}`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || error.message;
+    set({ error: errorMessage });
+    return { success: false, error: errorMessage };
+  }
+},
 
 // Enregistrer une entrée de temps
   recordTimeEntry: async (type, taskId = null, comment = '') => {

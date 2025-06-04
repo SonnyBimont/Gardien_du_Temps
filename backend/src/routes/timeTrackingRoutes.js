@@ -285,7 +285,8 @@ router
     .route('/range')
     .get(protect, timeTrackingController.getTimeEntriesByDateRange);
 
-// Ajouter ces routes à votre timeTrackingRoutes.js existant
+// récupérer les heures d'équipe :
+router.get('/team-summary', protect, authorize('director', 'admin'), timeTrackingController.getTeamSummary);
 
 // Routes simplifiées pour le frontend
 /**
