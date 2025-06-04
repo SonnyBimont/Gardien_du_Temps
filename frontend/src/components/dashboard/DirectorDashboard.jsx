@@ -1056,19 +1056,20 @@ const DirectorDashboard = () => {
       {renderContent()}
       
       {/* Modal pour création d'animateur */}
-      <Modal
-        isOpen={showCreateAnimatorModal}
-        onClose={() => setShowCreateAnimatorModal(false)}
-        size="lg"
-        showCloseButton={false}
-      >
-        <CreateUserForm
-          onSuccess={handleAnimatorCreated}
-          onCancel={() => setShowCreateAnimatorModal(false)}
-          defaultRole="animator"
-          structureId={user?.structure_id}
-        />
-      </Modal>
+<Modal
+  isOpen={showCreateAnimatorModal}
+  onClose={() => setShowCreateAnimatorModal(false)}
+  size="xl"
+  showCloseButton={false}
+>
+  <CreateUserForm
+    onSuccess={handleAnimatorCreated}
+    onCancel={() => setShowCreateAnimatorModal(false)}
+    defaultRole="animator"           // AJOUTER
+    structureId={user?.structure_id} // AJOUTER
+    isDirectorContext={true}         // AJOUTER
+  />
+</Modal>
     </div>
   );
 };

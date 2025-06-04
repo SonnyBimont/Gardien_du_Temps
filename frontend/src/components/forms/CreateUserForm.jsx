@@ -2,15 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { User, Mail, Lock, Building, Shield, AlertCircle, Eye, EyeOff, Calendar, Clock, X } from 'lucide-react';
 import { useAdminStore } from '../../stores/adminStore';
 
-const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
+const CreateUserForm = ({ 
+  onSuccess, 
+  onCancel, 
+  initialData = null,
+  defaultRole = null,     
+  structureId = null,      
+  isDirectorContext = false 
+}) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
     first_name: '',
     last_name: '',
-    role: 'animator',
-    structure_id: '',
+    role: defaultRole || 'animator', 
+    structure_id: structureId || '',
     phone: '',
     contract_type: 'fixed_term', 
     weekly_hours: '35',       
@@ -32,6 +39,17 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
 
   const isEditing = !!initialData;
 
+  // Si contexte directeur, forcer les valeurs
+  useEffect(() => {
+    if (isDirectorContext) {
+      setFormData(prev => ({
+        ...prev,
+        role: 'animator',              
+        structure_id: structureId || '' 
+      }));
+    }
+  }, [isDirectorContext, structureId]);
+
   useEffect(() => {
     if (structures.length === 0) {
       fetchStructures();
@@ -47,7 +65,6 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
     }
   }, [error, clearError]);
 
-  // Initialiser les données du formulaire si en mode édition
   const validateStep = (stepNumber) => {
     const errors = {};
 
@@ -128,13 +145,13 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
-// Fonction pour valider tous les champs du formulaire
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     clearError();
     
-// Valider tous les steps
+    // Valider tous les steps
     for (let i = 1; i <= totalSteps; i++) {
       if (!validateStep(i)) {
         setStep(i);
@@ -159,29 +176,15 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
         delete userData.password;
       }
 
-      // 🔍 LOGS DE DEBUG
-      console.log('=== DONNÉES ENVOYÉES AU BACKEND ===');
-      console.log('userData:', userData);
-      console.log('formData original:', formData);
-      console.log('===================================');
-
       const result = isEditing 
         ? await updateUser(initialData.id, userData)
         : await createUser(userData);
-
-      console.log('=== RÉPONSE DU BACKEND ===');
-      console.log('result:', result);
-      console.log('========================');
 
       if (result.success) {
         onSuccess?.();
       }
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
-      console.error('error:', error);
-      console.error('error.response:', error.response);
-      console.error('error.response.data:', error.response?.data);
-      console.error('================================');
     } finally {
       setIsSubmitting(false);
     }
@@ -204,14 +207,8 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
   };
 
   const nextStep = () => {
-    console.log('Tentative passage étape suivante:', step);
-    console.log('Validation actuelle:', validateStep(step));
-    
     if (validateStep(step)) {
-      console.log('Validation OK, passage à l\'étape suivante');
       setStep(prev => Math.min(prev + 1, totalSteps));
-    } else {
-      console.log('Validation échouée, erreurs:', formErrors);
     }
   };
 
@@ -220,7 +217,6 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
   };
 
   const handleClose = () => {
-    console.log('Fermeture du modal');
     if (onCancel) {
       onCancel();
     }
@@ -282,7 +278,12 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
       <div className="text-center mb-6">
         <User className="w-12 h-12 text-blue-600 mx-auto mb-2" />
         <h3 className="text-lg font-semibold text-gray-900">Informations personnelles</h3>
-        <p className="text-gray-600">Saisissez les informations de base de l'utilisateur</p>
+        <p className="text-gray-600">
+          {isDirectorContext 
+            ? "Saisissez les informations du nouvel animateur"
+            : "Saisissez les informations de base de l'utilisateur"
+          }
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -391,7 +392,12 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
       <div className="text-center mb-6">
         <Shield className="w-12 h-12 text-blue-600 mx-auto mb-2" />
         <h3 className="text-lg font-semibold text-gray-900">Accès et permissions</h3>
-        <p className="text-gray-600">Définissez le rôle et les accès de l'utilisateur</p>
+        <p className="text-gray-600">
+          {isDirectorContext 
+            ? "L'animateur sera rattaché à votre structure"
+            : "Définissez le rôle et les accès de l'utilisateur"
+          }
+        </p>
       </div>
 
       {!isEditing && (
@@ -412,19 +418,14 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
                   formErrors.password ? 'border-red-300' : 'border-gray-300'
                 }`}
               />
-            <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: "absolute",
-                    right: "0.75rem",
-                    top: "50%",
-                   transform: "translateY(-50%)"
-                 }}
-                  className="text-gray-400 hover:text-gray-600 bg-transparent border-0 p-0 m-0 focus:outline-none">
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 p-0 m-0 focus:outline-none"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
             {formErrors.password && (
               <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
@@ -452,13 +453,8 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
                 type="button"
                 tabIndex={-1}
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={{
-                    position: "absolute",
-                    right: "0.75rem",
-                    top: "50%",
-                   transform: "translateY(-50%)"
-                 }}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 p-0 m-0 focus:outline-none"
+              >
                 {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
@@ -473,19 +469,32 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Rôle *
         </label>
-        <select
-          name="role"
-          value={formData.role}
-          onChange={handleChange}
-          required
-          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-            formErrors.role ? 'border-red-300' : 'border-gray-300'
-          }`}
-        >
-          <option value="animator">Animateur</option>
-          <option value="director">Directeur</option>
-          <option value="admin">Administrateur</option>
-        </select>
+        {isDirectorContext ? (
+          // POUR LE DIRECTEUR : Select désactivé avec seulement "Animateur"
+          <select
+            name="role"
+            value="animator"
+            disabled
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed text-gray-500"
+          >
+            <option value="animator">Animateur</option>
+          </select>
+        ) : (
+          // POUR L'ADMIN : Select normal avec tous les rôles
+          <select
+            name="role"
+            value={formData.role}
+            onChange={handleChange}
+            required
+            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+              formErrors.role ? 'border-red-300' : 'border-gray-300'
+            }`}
+          >
+            <option value="animator">Animateur</option>
+            <option value="director">Directeur</option>
+            <option value="admin">Administrateur</option>
+          </select>
+        )}
         {formErrors.role && (
           <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>
         )}
@@ -497,7 +506,10 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
           {getRoleDisplayName(formData.role)}
         </h4>
         <p className="text-sm text-blue-700">
-          {getRoleDescription(formData.role)}
+          {isDirectorContext 
+            ? "Pointage, gestion de ses tâches et projets assignés"
+            : getRoleDescription(formData.role)
+          }
         </p>
       </div>
 
@@ -505,22 +517,38 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Structure *
         </label>
-        <select
-          name="structure_id"
-          value={formData.structure_id}
-          onChange={handleChange}
-          required
-          className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-            formErrors.structure_id ? 'border-red-300' : 'border-gray-300'
-          }`}
-        >
-          <option value="">Choisir une structure</option>
-          {structures.map((structure) => (
-            <option key={structure.id} value={structure.id}>
-              {structure.name} - {structure.city}
-            </option>
-          ))}
-        </select>
+        {isDirectorContext ? (
+          // POUR LE DIRECTEUR : Input désactivé avec le nom de la structure
+          <>
+            <input
+              type="text"
+              disabled
+              value={structures.find(s => s.id == structureId)?.name || 'Votre structure'}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed text-gray-500"
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              L'animateur sera automatiquement rattaché à votre structure
+            </p>
+          </>
+        ) : (
+          // POUR L'ADMIN : Select normal avec toutes les structures
+          <select
+            name="structure_id"
+            value={formData.structure_id}
+            onChange={handleChange}
+            required
+            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+              formErrors.structure_id ? 'border-red-300' : 'border-gray-300'
+            }`}
+          >
+            <option value="">Choisir une structure</option>
+            {structures.map((structure) => (
+              <option key={structure.id} value={structure.id}>
+                {structure.name} - {structure.city}
+              </option>
+            ))}
+          </select>
+        )}
         {formErrors.structure_id && (
           <p className="mt-1 text-sm text-red-600">{formErrors.structure_id}</p>
         )}
@@ -651,7 +679,9 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
 
       {/* Résumé complet */}
       <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mt-6">
-        <h4 className="font-semibold text-gray-900 mb-3">Résumé de l'utilisateur</h4>
+        <h4 className="font-semibold text-gray-900 mb-3">
+          {isDirectorContext ? 'Résumé de l\'animateur' : 'Résumé de l\'utilisateur'}
+        </h4>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Nom complet:</span>
@@ -704,12 +734,17 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
   };
 
   return (
-<div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-  <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
         {/* Header avec bouton X */}
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-gray-900">
-            {isEditing ? 'Modifier l\'utilisateur' : 'Créer un nouvel utilisateur'}
+            {isDirectorContext 
+              ? 'Créer un nouvel animateur'
+              : isEditing 
+                ? 'Modifier l\'utilisateur' 
+                : 'Créer un nouvel utilisateur'
+            }
           </h3>
           <button
             type="button"
@@ -740,52 +775,56 @@ const CreateUserForm = ({ onSuccess, onCancel, initialData = null }) => {
           </div>
 
           {/* Navigation */}
-<div className="flex justify-end space-x-3 pt-4">
-  {step > 1 && (
-    <button
-      type="button"
-      onClick={prevStep}
-      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
-    >
-      Précédent
-    </button>
-  )}
+          <div className="flex justify-end space-x-3 pt-4">
+            {step > 1 && (
+              <button
+                type="button"
+                onClick={prevStep}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Précédent
+              </button>
+            )}
 
-  <button
-    type="button"
-    onClick={handleClose}
-    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
-  >
-    Annuler
-  </button>
-  
-  {step < totalSteps ? (
-    <button
-      type="button"
-      onClick={nextStep}
-      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-    >
-      Suivant
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={isSubmitting || loading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting || loading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      {isEditing ? 'Modification...' : 'Création...'}
-                    </>
-                  ) : (
-                    isEditing ? 'Modifier l\'utilisateur' : 'Créer l\'utilisateur'
-                  )}
-                </button>
-              )}
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            >
+              Annuler
+            </button>
+            
+            {step < totalSteps ? (
+              <button
+                type="button"
+                onClick={nextStep}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Suivant
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={isSubmitting || loading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting || loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {isEditing ? 'Modification...' : 'Création...'}
+                  </>
+                ) : (
+                  isDirectorContext 
+                    ? 'Créer l\'animateur'
+                    : isEditing 
+                      ? 'Modifier l\'utilisateur' 
+                      : 'Créer l\'utilisateur'
+                )}
+              </button>
+            )}
           </div>
         </form>
       </div>
