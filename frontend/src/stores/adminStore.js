@@ -95,34 +95,38 @@ export const useAdminStore = create((set, get) => ({
   },
 
 // Fonction pour mettre à jour un utilisateur
-  updateUser: async (userId, userData) => {
-    set({ error: null });
+  updateUser : async (userId, userData) => {
+  console.log('🔧 adminStore.updateUser appelé avec:', { userId, userData });
+  
+  try {
+    const response = await api.put(`/users/${userId}`, userData);
+    console.log('✅ Réponse API updateUser:', response.data);
     
-    try {
-      const response = await api.put(`/users/${userId}`, userData);
+    if (response.data.success) {
+      // Mettre à jour la liste des utilisateurs
+      set(state => ({
+        users: state.users.map(user => 
+          user.id === userId 
+            ? { ...user, ...response.data.data }
+            : user
+        )
+      }));
       
-      if (response.data.success) {
-        const updatedUser = response.data.data;
-        
-        set((state) => ({
-          users: state.users.map(user => 
-            user.id === userId ? updatedUser : user
-          ),
-          lastUpdate: new Date().toISOString()
-        }));
-        
-        return { success: true, data: updatedUser };
-      } else {
-        throw new Error(response.data.message || 'Erreur lors de la mise à jour');
-      }
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de la mise à jour de l\'utilisateur';
-      
-      set({ error: errorMessage });
-      
-      return { success: false, error: errorMessage };
+      return { success: true, data: response.data.data };
     }
+    
+    return { success: false, error: response.data.message };
+  } catch (error) {
+    console.error('❌ Erreur updateUser:', error);
+    console.error('❌ Réponse d\'erreur:', error.response?.data);
+    
+    return { 
+      success: false, 
+      error: error.response?.data?.message || error.message 
+    };
+  }
   },
+  
 // Fonction pour supprimer un utilisateur
   deleteUser: async (userId) => {
     set({ error: null });

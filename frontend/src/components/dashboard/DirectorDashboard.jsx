@@ -26,6 +26,7 @@ import Button from '../common/Button';
 import Input from '../common/Input';
 import Modal from '../common/Modal';
 import CreateUserForm from '../forms/CreateUserForm';
+import EditUserForm from '../forms/EditUserForm';
 
 const DirectorDashboard = () => {
   const { user } = useAuthStore();
@@ -69,7 +70,9 @@ const DirectorDashboard = () => {
   const [teamDateRange, setTeamDateRange] = useState('30');
   const [actionLoading, setActionLoading] = useState(null);
   const [teamData, setTeamData] = useState([]);
-
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  
   // Modal pour création d'animateur
   const [showCreateAnimatorModal, setShowCreateAnimatorModal] = useState(false);
 
@@ -102,12 +105,25 @@ const DirectorDashboard = () => {
     }
   }, [fetchUsers, fetchStructures, fetchTodayEntries, fetchTimeHistory, fetchMonthlyReport, user?.id]);
 
+const handleEditUser = (user) => {
+  setSelectedUser(user);
+  setShowEditUserModal(true);
+};
+
+// Fonction après modification réussie
+const handleUserUpdated = () => {
+  setShowEditUserModal(false);
+  setSelectedUser(null);
+  loadData();
+};
+
   useEffect(() => {
     if (user?.id) {
       loadData();
     }
   }, [user?.id, loadData]);
 
+  
   // AJOUTER fonction pour charger les données d'équipe
   const loadTeamData = async () => {
     if (!user?.structure_id) return;
@@ -908,42 +924,50 @@ const DirectorDashboard = () => {
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-2 shrink-0 ml-2">
-                  <span className={`px-2 py-1 text-xs rounded-full font-medium bg-green-100 text-green-800 ${
-                    !animator.active ? "opacity-50" : ""
-                  }`}>
-                    Animateur
-                  </span>
+<div className="flex items-center space-x-2 shrink-0 ml-2">
+  {/* AJOUTER le bouton Modifier */}
+  <button
+    onClick={() => handleEditUser(animator)}
+    className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 transition-colors"
+    title="Modifier l'animateur"
+  >
+    ✏️ Modifier
+  </button>
 
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        await toggleUserStatus(animator.id, !animator.active);
-                        // Recharger les données après le toggle
-                        await loadData();
-                      } catch (error) {
-                        console.error('Erreur toggle status:', error);
-                      }
-                    }}
-                    className={`
-                      px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg transform hover:scale-105
-                      ${animator.active 
-                        ? 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200 focus:ring-green-500' 
-                        : 'bg-red-100 text-red-800 border border-red-300 hover:bg-red-200 focus:ring-red-500'
-                      }
-                    `}
-                    title={animator.active ? 'Cliquer pour désactiver' : 'Cliquer pour activer'}
-                  >
-                    {animator.active ? '🟢 Actif' : '🔴 Inactif'}
-                  </button>
+  <span className={`px-2 py-1 text-xs rounded-full font-medium bg-green-100 text-green-800 ${
+    !animator.active ? "opacity-50" : ""
+  }`}>
+    Animateur
+  </span>
 
-                  <div
-                    className={`w-2 h-2 rounded-full ${
-                      animator.active ? "bg-green-400" : "bg-gray-300"
-                    }`}
-                  />
-                </div>
+  <button
+    type="button"
+    onClick={async () => {
+      try {
+        await toggleUserStatus(animator.id, !animator.active);
+        await loadData();
+      } catch (error) {
+        console.error('Erreur toggle status:', error);
+      }
+    }}
+    className={`
+      px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg transform hover:scale-105
+      ${animator.active 
+        ? 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200 focus:ring-green-500' 
+        : 'bg-red-100 text-red-800 border border-red-300 hover:bg-red-200 focus:ring-red-500'
+      }
+    `}
+    title={animator.active ? 'Cliquer pour désactiver' : 'Cliquer pour activer'}
+  >
+    {animator.active ? '🟢 Actif' : '🔴 Inactif'}
+  </button>
+
+  <div
+    className={`w-2 h-2 rounded-full ${
+      animator.active ? "bg-green-400" : "bg-gray-300"
+    }`}
+  />
+</div>
               </div>
             ))
         ) : (
@@ -1052,25 +1076,40 @@ const DirectorDashboard = () => {
   );
 
   return (
-    <div className="space-y-6">
-      {renderContent()}
-      
-      {/* Modal pour création d'animateur */}
-<Modal
-  isOpen={showCreateAnimatorModal}
-  onClose={() => setShowCreateAnimatorModal(false)}
-  size="xl"
-  showCloseButton={false}
->
-  <CreateUserForm
-    onSuccess={handleAnimatorCreated}
-    onCancel={() => setShowCreateAnimatorModal(false)}
-    defaultRole="animator"           // AJOUTER
-    structureId={user?.structure_id} // AJOUTER
-    isDirectorContext={true}         // AJOUTER
-  />
-</Modal>
-    </div>
+  <div className="space-y-6">
+    {renderContent()}
+    
+    {/* Modal pour création d'animateur */}
+    <Modal
+      isOpen={showCreateAnimatorModal}
+      onClose={() => setShowCreateAnimatorModal(false)}
+      size="xl"
+      showCloseButton={false}
+    >
+      <CreateUserForm
+        onSuccess={handleAnimatorCreated}
+        onCancel={() => setShowCreateAnimatorModal(false)}
+        defaultRole="animator"
+        structureId={user?.structure_id}
+        isDirectorContext={true}
+      />
+    </Modal>
+
+    {/* Modal de modification d'animateur - DOIT ÊTRE EN DEHORS DU MODAL DE CRÉATION */}
+    {showEditUserModal && selectedUser && (
+      <EditUserForm
+        user={selectedUser}
+        onClose={() => {
+          setShowEditUserModal(false);
+          setSelectedUser(null);
+        }}
+        onUserUpdated={handleUserUpdated}
+        isDirectorContext={true}
+        fixedRole="animator"
+        fixedStructureId={user?.structure_id}
+      />
+    )}
+  </div>
   );
 };
 

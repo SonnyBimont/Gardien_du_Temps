@@ -193,34 +193,47 @@ const LoginForm = () => {
             
             {/* Champ Mot de passe */}
             <div>
-              <div className="relative">
-                <Input
-                  label="Mot de passe"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={credentials.password}
-                  onChange={handleChange}
-                  onKeyPress={handleKeyPress}
-                  required
-                  placeholder="Votre mot de passe"
-                  error={formErrors.password}
-                  disabled={loading}
-                  autoComplete="current-password"
-                  className={formErrors.password ? 'border-red-300 focus:border-red-500' : ''}
-                />
-                <button
-                  type="button"
-                  onClick={togglePasswordVisibility}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 mt-6"
-                  disabled={loading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
+<div className="relative">
+  <Input
+    label="Mot de passe"
+    name="password"
+    type={showPassword ? 'text' : 'password'}
+    value={credentials.password}
+    onChange={handleChange}
+    onKeyPress={handleKeyPress}
+    required
+    placeholder="Votre mot de passe"
+    error={formErrors.password}
+    disabled={loading}
+    autoComplete="current-password"
+    className={formErrors.password ? 'border-red-300 focus:border-red-500 pr-10' : 'pr-10'}
+  />
+  <button
+    type="button"
+    tabIndex={-1}
+    onClick={togglePasswordVisibility}
+    style={{
+      position: "absolute",
+      top: "50%",
+      right: "0.75rem",
+      transform: "translateY(-8%)",
+      background: "none",
+      border: 0,
+      padding: 0,
+      margin: 0,
+      color: "#9ca3af",
+      cursor: "pointer",
+      height: "2rem",
+      width: "2rem",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }}
+    disabled={loading}
+  >
+    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+  </button>
+</div>
             </div>
             
             {/* Options */}

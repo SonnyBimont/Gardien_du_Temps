@@ -17,6 +17,7 @@ import CreateUserForm from "../forms/CreateUserForm";
 import CreateStructureForm from "../forms/CreateStructureForm";
 import Modal, { useModal } from "../common/Modal";
 import Input from "../common/Input";
+import EditUserForm from '../forms/EditUserForm';
 
 const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,6 +29,8 @@ const AdminDashboard = () => {
   const [structureFilterType, setStructureFilterType] = useState("zone"); // 'zone' ou 'city'
   const [showAllUsers, setShowAllUsers] = useState(false);
   const [showAllStructures, setShowAllStructures] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   const userModal = useModal();
   const structureModal = useModal();
@@ -48,7 +51,6 @@ const AdminDashboard = () => {
   const { entries = [], fetchAllEntries } = useTimeStore();
 
   // Mémoiser la fonction de chargement
-  // Remplace loadData par :
   const loadData = useCallback(
     async (includeStats = true) => {
       console.log("🔄 Chargement des données, includeStats:", includeStats);
@@ -108,6 +110,19 @@ const AdminDashboard = () => {
     loadData(); // Recharger les données
   }, [structureModal, loadData]);
 
+  // Fonction pour ouvrir le modal de modification
+  const handleEditUser = (user) => {
+    setSelectedUser(user);
+    setShowEditUserModal(true);
+  };
+
+  // Fonction après modification réussie
+  const handleUserUpdated = () => {
+    setShowEditUserModal(false);
+    setSelectedUser(null);
+    loadData(false);
+  };
+
   // Calculs des statistiques
   const totalUsers = (users || []).length;
   const activeUsers = (users || []).filter((u) => u.active).length;
@@ -125,18 +140,21 @@ const AdminDashboard = () => {
     .filter((entry) => entry.user);
 
   // Utilisateurs filtrés pour la recherche ET le filtre par rôle
-  const filteredUsers = (users || []).filter((user) => {
-    const matchesSearch =
-      (user.first_name || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (user.last_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.email || "").toLowerCase().includes(searchTerm.toLowerCase());
+const filteredUsers = (users || []).filter((user) => {
+  const matchesSearch =
+    (user.first_name || "")
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase()) ||
+    (user.last_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.email || "").toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesRole = !userRoleFilter || user.role === userRoleFilter;
+  const matchesRole = !userRoleFilter || user.role === userRoleFilter;
+  
+  // AJOUTER : Filtre par structure
+  const matchesStructure = !structureFilter || user.structure_id?.toString() === structureFilter;
 
-    return matchesSearch && matchesRole;
-  });
+  return matchesSearch && matchesRole && matchesStructure;
+});
 
   // Structures filtrées pour la recherche ET le filtre
   const filteredStructures = (structures || []).filter((structure) => {
@@ -357,179 +375,190 @@ const AdminDashboard = () => {
       </div>
     </Card>
   );
-  // Rendu de la gestion des utilisateurs
-  const renderUsersManagement = () => (
-    <Card
-      title="Gestion des Utilisateurs"
-      header={
-        <div className="space-y-4">
-          {/* Titre */}
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Utilisateurs ({filteredUsers.length})
-            </h3>
-            {/* Bouton voir tout - visible sur toutes les tailles */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAllUsers(!showAllUsers)}
-              className="shrink-0"
-            >
-              {showAllUsers ? "Réduire" : "Voir tout"}
-            </Button>
+// Rendu de la gestion des utilisateurs
+const renderUsersManagement = () => (
+  <Card
+    title="Gestion des Utilisateurs"
+    header={
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Utilisateurs ({filteredUsers.length})
+          </h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAllUsers(!showAllUsers)}
+            className="shrink-0"
+          >
+            {showAllUsers ? "Réduire" : "Voir tout"}
+          </Button>
+        </div>
+
+        {/* Filtres utilisateurs */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          {/* Barre de recherche */}
+          <div className="flex-1 min-w-0">
+            <Input
+              placeholder="Rechercher utilisateur..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              leftIcon={<Search className="w-4 h-4" />}
+              className="w-full"
+            />
           </div>
 
-          {/* Contrôles - Responsive */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-            {/* Barre de recherche - Largeur complète sur mobile */}
-            <div className="flex-1 min-w-0">
-              <Input
-                placeholder="Rechercher utilisateur..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                leftIcon={<Search className="w-4 h-4" />}
-                className="w-full"
-              />
-            </div>
+          {/* Filtre par rôle */}
+          <div className="w-full sm:w-auto sm:min-w-[140px]">
+            <select
+              value={userRoleFilter}
+              onChange={(e) => setUserRoleFilter(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Tous les rôles</option>
+              <option value="admin">Admin</option>
+              <option value="director">Directeur</option>
+              <option value="animator">Animateur</option>
+            </select>
+          </div>
 
-            {/* Filtre par rôle - Largeur adaptée */}
-            <div className="w-full sm:w-auto sm:min-w-[140px]">
-              <select
-                value={userRoleFilter}
-                onChange={(e) => setUserRoleFilter(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Tous les rôles</option>
-                <option value="admin">Admin</option>
-                <option value="director">Directeur</option>
-                <option value="animator">Animateur</option>
-              </select>
-            </div>
+          {/* NOUVEAU : Filtre par structure */}
+          <div className="w-full sm:w-auto sm:min-w-[160px]">
+            <select
+              value={structureFilter}
+              onChange={(e) => setStructureFilter(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Toutes les structures</option>
+              {structures.map((structure) => (
+                <option key={structure.id} value={structure.id.toString()}>
+                  {structure.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-      }
-    >
-      <div className="space-y-3 max-h-64 overflow-y-auto">
-        {filteredUsers
-          .slice(0, showAllUsers ? filteredUsers.length : 8)
-          .map((user) => (
-            <div
-              key={user.id}
-              className={`flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0 ${
-                !user.active ? "opacity-60 bg-gray-50" : ""
-              }`}
-            >
-              <div className="flex items-center min-w-0 flex-1">
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shrink-0 ${
-                    user.active ? "bg-gray-200" : "bg-gray-300"
-                  }`}
-                >
-                  <Users
-                    className={`w-5 h-5 ${
-                      user.active ? "text-gray-600" : "text-gray-400"
-                    }`}
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p
-                    className={`font-medium truncate ${
-                      user.active ? "text-gray-900" : "text-gray-500"
-                    }`}
-                  >
-                    {user.first_name} {user.last_name}
-                    {!user.active && (
-                      <span className="ml-2 text-xs text-red-500">
-                        (Inactif)
-                      </span>
-                    )}
-                  </p>
-                  <p
-                    className={`text-sm truncate ${
-                      user.active ? "text-gray-500" : "text-gray-400"
-                    }`}
-                  >
-                    {user.email}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2 shrink-0 ml-2">
-                {/* Badge de rôle */}
-                <span
-                  className={`
-          px-2 py-1 text-xs rounded-full font-medium
-          ${user.role === "admin" ? "bg-red-100 text-red-800" : ""}
-          ${user.role === "director" ? "bg-blue-100 text-blue-800" : ""}
-          ${user.role === "animator" ? "bg-green-100 text-green-800" : ""}
-          ${!user.active ? "opacity-50" : ""}
-        `}
-                >
-                  {user.role === "admin" && "Admin"}
-                  {user.role === "director" && "Directeur"}
-                  {user.role === "animator" && "Animateur"}
-                </span>
-
-                {/* Bouton toggle statut */}
-                {/* biome-ignore lint/a11y/useButtonType: <explanation> */}
-                <button
-                  onClick={async () => {
-                    try {
-                      // Utiliser la fonction du store au lieu d'api directement
-                      const result = await toggleUserStatus(
-                        user.id,
-                        !user.active
-                      );
-
-                      if (result.success) {
-                        console.log(
-                          `✅ Utilisateur ${user.first_name} ${
-                            !user.active ? "activé" : "désactivé"
-                          }`
-                        );
-                        // Pas besoin de recharger manuellement, le store se met à jour automatiquement
-                      } else {
-                        console.error("Erreur toggle:", result.error);
-                      }
-                    } catch (error) {
-                      console.error("Erreur toggle:", error);
-                    }
-                  }}
-  className={`
-    px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg transform hover:scale-105
-    ${user.active 
-      ? 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200 focus:ring-green-500' 
-      : 'bg-red-100 text-red-800 border border-red-300 hover:bg-red-200 focus:ring-red-500'
+      </div>
     }
-  `}
-                  title={
-                    user.active
-                      ? "Désactiver l'utilisateur"
-                      : "Activer l'utilisateur"
-                  }
-                >
-  {user.active ? '🟢 Actif' : '🔴 Inactif'}
-                </button>
-
-                {/* Indicateur visuel statut */}
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    user.active ? "bg-green-400" : "bg-gray-300"
+  >
+    <div className="space-y-3 max-h-64 overflow-y-auto">
+      {filteredUsers
+        .slice(0, showAllUsers ? filteredUsers.length : 8)
+        .map((user) => (
+          <div
+            key={user.id}
+            className={`flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0 ${
+              !user.active ? "opacity-60 bg-gray-50" : ""
+            }`}
+          >
+            <div className="flex items-center min-w-0 flex-1">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shrink-0 ${
+                  user.active ? "bg-gray-200" : "bg-gray-300"
+                }`}
+              >
+                <Users
+                  className={`w-5 h-5 ${
+                    user.active ? "text-gray-600" : "text-gray-400"
                   }`}
                 />
               </div>
+              <div className="min-w-0 flex-1">
+                <p
+                  className={`font-medium truncate ${
+                    user.active ? "text-gray-900" : "text-gray-500"
+                  }`}
+                >
+                  {user.first_name} {user.last_name}
+                  {!user.active && (
+                    <span className="ml-2 text-xs text-red-500">
+                      (Inactif)
+                    </span>
+                  )}
+                </p>
+                <p
+                  className={`text-sm truncate ${
+                    user.active ? "text-gray-500" : "text-gray-400"
+                  }`}
+                >
+                  {user.email}
+                </p>
+                {/* AJOUTER : Affichage de la structure */}
+                {user.structure && (
+                  <p className="text-xs text-gray-400 truncate">
+                    📍 {user.structure.name}
+                  </p>
+                )}
+              </div>
             </div>
-          ))}
-      </div>
+            <div className="flex items-center space-x-2 shrink-0 ml-2">
+              {/* Bouton Modifier */}
+              <button
+                onClick={() => handleEditUser(user)}
+                className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 transition-colors"
+                title="Modifier l'utilisateur"
+              >
+                ✏️ Modifier
+              </button>
 
-      {/* Message si aucun résultat */}
-      {filteredUsers.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-          <p>Aucun utilisateur trouvé</p>
-        </div>
-      )}
-    </Card>
-  );
+              <span
+                className={`
+                  px-2 py-1 text-xs rounded-full font-medium
+                  ${user.role === "admin" ? "bg-red-100 text-red-800" : ""}
+                  ${user.role === "director" ? "bg-blue-100 text-blue-800" : ""}
+                  ${user.role === "animator" ? "bg-green-100 text-green-800" : ""}
+                  ${!user.active ? "opacity-50" : ""}
+                `}
+              >
+                {user.role === "admin" && "Admin"}
+                {user.role === "director" && "Directeur"}
+                {user.role === "animator" && "Animateur"}
+              </span>
+
+              {/* biome-ignore lint/a11y/useButtonType: <explanation> */} 
+              <button
+                onClick={async () => {
+                  try {
+                    await toggleUserStatus(user.id, !user.active);
+                    await loadData(false);
+                  } catch (error) {
+                    console.error('Erreur toggle status:', error);
+                  }
+                }}
+                className={`
+                  px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg transform hover:scale-105
+                  ${user.active 
+                    ? 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200 focus:ring-green-500' 
+                    : 'bg-red-100 text-red-800 border border-red-300 hover:bg-red-200 focus:ring-red-500'
+                  }
+                `}
+                title={
+                  user.active
+                    ? "Désactiver l'utilisateur"
+                    : "Activer l'utilisateur"
+                }
+              >
+                {user.active ? '🟢 Actif' : '🔴 Inactif'}
+              </button>
+
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  user.active ? "bg-green-400" : "bg-gray-300"
+                }`}
+              />
+            </div>
+          </div>
+        ))}
+    </div>
+
+    {filteredUsers.length === 0 && (
+      <div className="text-center py-8 text-gray-500">
+        <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+        <p>Aucun utilisateur trouvé</p>
+      </div>
+    )}
+  </Card>
+);
 
   // Rendu de la vue d'ensemble des structures
   const renderStructuresOverview = () => (
@@ -759,6 +788,18 @@ const AdminDashboard = () => {
           onCancel={structureModal.closeModal}
         />
       </Modal>
+
+      {/* Modal de modification d'utilisateur */}
+      {showEditUserModal && selectedUser && (
+        <EditUserForm
+          user={selectedUser}
+          onClose={() => {
+            setShowEditUserModal(false);
+            setSelectedUser(null);
+          }}
+          onUserUpdated={handleUserUpdated}
+        />
+      )}
     </div>
   );
 };

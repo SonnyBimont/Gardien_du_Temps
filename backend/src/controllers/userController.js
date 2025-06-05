@@ -266,55 +266,115 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const updateData = { ...req.body };
+        const userId = parseInt(id);
+        const updateData = req.body;
+        const currentUser = req.user;
 
-        // Vérifications de permissions
-        if (req.user.role !== 'admin' && req.user.id !== parseInt(id)) {
-            return res.status(403).json({ 
-                success: false,
-                message: 'Vous ne pouvez modifier que votre propre profil' 
-            });
-        }
-
-        if (updateData.role && req.user.role !== 'admin') {
-            return res.status(403).json({ 
-                success: false,
-                message: 'Seuls les administrateurs peuvent modifier les rôles' 
-            });
-        }
-
-        // Hachage du mot de passe si fourni
-        if (updateData.password) {
-            updateData.password = await bcrypt.hash(updateData.password, 10);
-        }
-
-        const [updated] = await User.update(updateData, {
-            where: { id }
-        });
-
-        if (!updated) {
-            return res.status(404).json({ 
-                success: false,
-                message: 'Utilisateur non trouvé' 
-            });
-        }
-
-        const updatedUser = await User.findByPk(id, {
-            attributes: { exclude: ['password'] },
+        // Récupérer l'utilisateur à modifier
+        const userToUpdate = await User.findByPk(userId, {
             include: [{ model: Structure, as: 'structure' }]
         });
 
-        res.status(200).json({
+        if (!userToUpdate) {
+            return res.status(404).json({
+                success: false,
+                message: 'Utilisateur non trouvé'
+            });
+        }
+
+        // LOGIQUE D'AUTORISATION CORRIGÉE
+        let canUpdate = false;
+
+        if (currentUser.role === 'admin') {
+            // Les admins peuvent modifier tous les utilisateurs
+            canUpdate = true;
+        } else if (currentUser.role === 'director') {
+            // Les directeurs peuvent modifier :
+            // 1. Leur propre profil
+            // 2. Les animateurs de leur structure
+            if (currentUser.id === userId) {
+                canUpdate = true; // Modification de son propre profil
+            } else if (
+                userToUpdate.role === 'animator' && 
+                userToUpdate.structure_id === currentUser.structure_id
+            ) {
+                canUpdate = true; // Modification d'un animateur de sa structure
+                
+                // CONTRAINTE : Le directeur ne peut pas changer le rôle d'un animateur
+                if (updateData.role && updateData.role !== 'animator') {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Vous ne pouvez pas modifier le rôle d\'un animateur'
+                    });
+                }
+                
+                // CONTRAINTE : Le directeur ne peut pas changer la structure
+                if (updateData.structure_id && updateData.structure_id !== currentUser.structure_id) {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Vous ne pouvez pas déplacer un animateur vers une autre structure'
+                    });
+                }
+            }
+        } else if (currentUser.role === 'animator') {
+            // Les animateurs peuvent seulement modifier leur propre profil
+            if (currentUser.id === userId) {
+                canUpdate = true;
+                
+                // CONTRAINTE : L'animateur ne peut pas changer son rôle ni sa structure
+                if (updateData.role && updateData.role !== currentUser.role) {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Vous ne pouvez pas modifier votre rôle'
+                    });
+                }
+                
+                if (updateData.structure_id && updateData.structure_id !== currentUser.structure_id) {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Vous ne pouvez pas modifier votre structure'
+                    });
+                }
+            }
+        }
+
+        if (!canUpdate) {
+            return res.status(403).json({
+                success: false,
+                message: 'Vous n\'avez pas les permissions pour modifier cet utilisateur'
+            });
+        }
+
+        // Nettoyer les données de mise à jour
+        const { password, ...dataToUpdate } = updateData;
+        
+        // Si un mot de passe est fourni, le hasher
+        if (password && password.trim() !== '') {
+            const saltRounds = 10;
+            dataToUpdate.password = await bcrypt.hash(password, saltRounds);
+        }
+
+        // Mettre à jour l'utilisateur
+        await userToUpdate.update(dataToUpdate);
+
+        // Récupérer l'utilisateur mis à jour avec ses relations
+        const updatedUser = await User.findByPk(userId, {
+            include: [{ model: Structure, as: 'structure' }],
+            attributes: { exclude: ['password'] }
+        });
+
+        res.json({
             success: true,
             message: 'Utilisateur mis à jour avec succès',
             data: updatedUser
         });
+
     } catch (error) {
-        console.error('Erreur updateUser:', error);
-        res.status(400).json({ 
+        console.error('Erreur lors de la mise à jour de l\'utilisateur:', error);
+        res.status(500).json({
             success: false,
-            message: 'Erreur lors de la mise à jour de l\'utilisateur', 
-            error: error.message 
+            message: 'Erreur lors de la mise à jour de l\'utilisateur',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };

@@ -422,7 +422,24 @@ const CreateUserForm = ({
                 type="button"
                 tabIndex={-1}
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 p-0 m-0 focus:outline-none"
+    style={{
+      position: "absolute",
+      top: "50%",
+      right: "0.75rem",
+      transform: "translateY(-50%)",
+      background: "none",
+      border: 0,
+      padding: 0,
+      margin: 0,
+      color: "#9ca3af",
+      cursor: "pointer",
+      height: "2rem",
+      width: "2rem",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }}
+
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -453,7 +470,23 @@ const CreateUserForm = ({
                 type="button"
                 tabIndex={-1}
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 p-0 m-0 focus:outline-none"
+    style={{
+      position: "absolute",
+      top: "50%",
+      right: "0.75rem",
+      transform: "translateY(-50%)",
+      background: "none",
+      border: 0,
+      padding: 0,
+      margin: 0,
+      color: "#9ca3af",
+      cursor: "pointer",
+      height: "2rem",
+      width: "2rem",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }}
               >
                 {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
