@@ -1,27 +1,29 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAuthStore } from '../../stores/authStore';
+import { useAdminStore } from '../../stores/adminStore';
 import { 
   Users, 
   Building2, 
-  UserPlus, 
-  TrendingUp, 
   Activity, 
+  TrendingUp, 
+  Search, 
+  UserPlus,
   Calendar,
-  Search,
   Eye,
   EyeOff,
+  Filter,
+  Download,
+  RefreshCw,
   MapPin,
-  Clock,
-  Settings,
-  FileText
+  Shield
 } from 'lucide-react';
-import { useAdminStore } from '../../stores/adminStore';
-import { useAuthStore } from '../../stores/authStore';
-import StatsCard from '../common/StatsCard';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import Input from '../common/Input';
+import StatsCard from '../common/StatsCard';
 import CreateUserForm from '../forms/CreateUserForm';
 import CreateStructureForm from '../forms/CreateStructureForm';
+import { calculateDateRange, getPeriodLabel } from '../../utils/timeCalculations';
 
 // ===== CONSTANTES POUR PÉRIODES FIXES =====
 const PERIOD_OPTIONS = [
@@ -50,7 +52,10 @@ const AdminDashboard = () => {
     fetchDashboardStats,
     fetchRecentActivity,
     updateUser,
-    toggleUserStatus
+    toggleUserStatus,
+    createUser,
+    createStructure,
+    updateStructure
   } = useAdminStore();
 
   // ===== ÉTATS LOCAUX =====
@@ -58,17 +63,24 @@ const AdminDashboard = () => {
   // Période sélectionnée
   const [dateRange, setDateRange] = useState('current_week');
   
-  // Filtres et recherche
+  // Filtres et recherche utilisateurs
   const [searchTerm, setSearchTerm] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('');
   const [structureFilter, setStructureFilter] = useState('');
   const [showInactiveUsers, setShowInactiveUsers] = useState(true);
   
+  // Filtres et recherche structures
+  const [structureSearchTerm, setStructureSearchTerm] = useState('');
+  const [cityFilter, setCityFilter] = useState('');
+  const [zoneFilter, setZoneFilter] = useState('');
+  
   // Modals
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [showCreateStructureModal, setShowCreateStructureModal] = useState(false);
+  const [showEditStructureModal, setShowEditStructureModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedStructure, setSelectedStructure] = useState(null);
   
   // Affichage
   const [showAllUsers, setShowAllUsers] = useState(false);
@@ -82,32 +94,55 @@ const AdminDashboard = () => {
 
   // Filtrage des utilisateurs
   const filteredUsers = users.filter(user => {
+    // Recherche par nom/email
     const matchesSearch = !searchTerm || 
       user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
+    // Filtre par rôle
     const matchesRole = !userRoleFilter || user.role === userRoleFilter;
-    
-    const matchesStructure = !structureFilter || 
-      user.structure_id?.toString() === structureFilter;
-    
-    const matchesActive = showInactiveUsers || user.active;
-    
-    return matchesSearch && matchesRole && matchesStructure && matchesActive;
+
+    // Filtre par structure
+    const matchesStructure = !structureFilter || user.structure_id?.toString() === structureFilter;
+
+    // Filtre actif/inactif
+    const matchesStatus = showInactiveUsers || user.active !== false;
+
+    return matchesSearch && matchesRole && matchesStructure && matchesStatus;
   });
+
+  // Filtrage des structures
+  const filteredStructures = structures.filter(structure => {
+    // Recherche par nom
+    const matchesSearch = !structureSearchTerm || 
+      structure.name?.toLowerCase().includes(structureSearchTerm.toLowerCase());
+
+    // Filtre par ville
+    const matchesCity = !cityFilter || structure.city === cityFilter;
+
+    // Filtre par zone
+    const matchesZone = !zoneFilter || structure.school_vacation_zone === zoneFilter;
+
+    return matchesSearch && matchesCity && matchesZone;
+  });
+
+  // Obtenir les villes uniques pour le filtre
+  const uniqueCities = [...new Set(structures.map(s => s.city).filter(Boolean))].sort();
+
+  // Obtenir les zones uniques pour le filtre
+  const uniqueZones = [...new Set(structures.map(s => s.school_vacation_zone).filter(Boolean))].sort();
 
   // ===== FONCTIONS UTILITAIRES =====
   
   // Formatage du temps
   const formatTime = (dateTime) => {
-    if (!dateTime) return '--:--';
     try {
       return new Date(dateTime).toLocaleTimeString('fr-FR', {
         hour: '2-digit',
         minute: '2-digit'
       });
-    } catch {
+    } catch (error) {
       return '--:--';
     }
   };
@@ -128,104 +163,22 @@ const AdminDashboard = () => {
   // Changement de période avec support des périodes fixes
   const handleDateRangeChange = useCallback(
     async (period) => {
-      console.log('📅 Changement de période vers:', period);
+      console.log('🔄 Changement de période vers:', period);
       setDateRange(period);
       
       try {
-        // Calculer les dates selon la période sélectionnée
-        let startDate = null;
-        let endDate = null;
-        let days = null;
+        // Calculer les dates selon la période
+        const dateRangeData = calculateDateRange(period);
+        console.log('📅 Plage de dates calculée:', dateRangeData);
         
-        const today = new Date();
-        
-        switch (period) {
-          case 'current_week':
-            // Semaine en cours (Lundi à Dimanche)
-            const currentDay = today.getDay();
-            const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
-            
-            const monday = new Date(today);
-            monday.setDate(today.getDate() - daysFromMonday);
-            startDate = monday.toISOString().split('T')[0];
-            
-            const sunday = new Date(monday);
-            sunday.setDate(monday.getDate() + 6);
-            endDate = sunday.toISOString().split('T')[0];
-            break;
-            
-          case 'current_month':
-            // Mois en cours (1er au dernier jour)
-            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-            startDate = firstDay.toISOString().split('T')[0];
-            
-            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-            endDate = lastDay.toISOString().split('T')[0];
-            break;
-            
-          case 'current_year':
-            // Année en cours (Janvier à Décembre)
-            const firstDayYear = new Date(today.getFullYear(), 0, 1);
-            startDate = firstDayYear.toISOString().split('T')[0];
-            
-            const lastDayYear = new Date(today.getFullYear(), 11, 31);
-            endDate = lastDayYear.toISOString().split('T')[0];
-            break;
-            
-          case 'previous_week':
-            // Semaine précédente
-            const lastWeek = new Date(today);
-            lastWeek.setDate(today.getDate() - 7);
-            
-            const lastWeekDay = lastWeek.getDay();
-            const daysFromMondayLastWeek = lastWeekDay === 0 ? 6 : lastWeekDay - 1;
-            
-            const mondayLastWeek = new Date(lastWeek);
-            mondayLastWeek.setDate(lastWeek.getDate() - daysFromMondayLastWeek);
-            startDate = mondayLastWeek.toISOString().split('T')[0];
-            
-            const sundayLastWeek = new Date(mondayLastWeek);
-            sundayLastWeek.setDate(mondayLastWeek.getDate() + 6);
-            endDate = sundayLastWeek.toISOString().split('T')[0];
-            break;
-            
-          case 'previous_month':
-            // Mois précédent
-            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-            const firstDayLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
-            startDate = firstDayLastMonth.toISOString().split('T')[0];
-            
-            const lastDayLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
-            endDate = lastDayLastMonth.toISOString().split('T')[0];
-            break;
-            
-          case 'last_7_days':
-            // 7 derniers jours (période glissante)
-            days = 7;
-            break;
-            
-          case 'last_30_days':
-            // 30 derniers jours (période glissante)
-            days = 30;
-            break;
-            
-          default:
-            // Par défaut: semaine en cours
-            days = 7;
-            break;
-        }
-        
-        console.log('🗓️ Période calculée:', { period, startDate, endDate, days });
-        
-        // Appeler les fonctions avec les nouvelles périodes
+        // Charger les données avec les nouvelles dates
         await Promise.all([
-          fetchStats(days, startDate, endDate),
-          fetchDashboardStats(days, startDate, endDate),
-          fetchRecentActivity(10, days || 1, startDate, endDate)
+          fetchStats(null, dateRangeData.start, dateRangeData.end),
+          fetchDashboardStats(null, dateRangeData.start, dateRangeData.end),
+          fetchRecentActivity(10, null, dateRangeData.start, dateRangeData.end)
         ]);
         
-        console.log('✅ Statistiques mises à jour pour la période:', period);
-        
+        console.log('✅ Données rechargées pour la période:', period);
       } catch (error) {
         console.error('❌ Erreur lors du changement de période:', error);
       }
@@ -235,6 +188,7 @@ const AdminDashboard = () => {
 
   // Gestion des utilisateurs
   const handleEditUser = (user) => {
+    console.log('🔧 Modification utilisateur:', user);
     setSelectedUser(user);
     setShowEditUserModal(true);
   };
@@ -243,37 +197,58 @@ const AdminDashboard = () => {
     setShowEditUserModal(false);
     setSelectedUser(null);
     await fetchUsers();
+    console.log('✅ Utilisateur mis à jour avec succès');
   };
 
   const handleUserCreated = async () => {
     setShowCreateUserModal(false);
     await fetchUsers();
+    console.log('✅ Utilisateur créé avec succès');
+  };
+
+  // Gestion des structures
+  const handleEditStructure = (structure) => {
+    console.log('🔧 Modification structure:', structure);
+    setSelectedStructure(structure);
+    setShowEditStructureModal(true);
   };
 
   const handleStructureCreated = async () => {
     setShowCreateStructureModal(false);
     await fetchStructures();
+    console.log('✅ Structure créée avec succès');
+  };
+
+  const handleStructureUpdated = async () => {
+    setShowEditStructureModal(false);
+    setSelectedStructure(null);
+    await fetchStructures();
+    console.log('✅ Structure mise à jour avec succès');
   };
 
   // ===== EFFETS =====
   
   // Chargement initial
   useEffect(() => {
-    const loadData = async () => {
+    const loadInitialData = async () => {
       try {
+        console.log('🔄 Chargement initial des données admin...');
+        
         await Promise.all([
           fetchUsers(),
           fetchStructures(),
           fetchStats(),
           fetchDashboardStats(),
-          fetchRecentActivity(10, 1)
+          fetchRecentActivity()
         ]);
+        
+        console.log('✅ Données admin chargées avec succès');
       } catch (error) {
-        console.error('Erreur lors du chargement initial:', error);
+        console.error('❌ Erreur lors du chargement initial:', error);
       }
     };
 
-    loadData();
+    loadInitialData();
   }, [fetchUsers, fetchStructures, fetchStats, fetchDashboardStats, fetchRecentActivity]);
 
   // ===== COMPOSANTS DE RENDU =====
@@ -311,14 +286,12 @@ const AdminDashboard = () => {
 
   // Cartes de statistiques avec nouvelles périodes
   const renderStatsCards = () => {
-    // Obtenir le libellé de la période sélectionnée
-    const selectedPeriod = PERIOD_OPTIONS.find(p => p.value === dateRange);
-    const periodLabel = selectedPeriod?.label || 'cette période';
+    const currentPeriodLabel = getPeriodLabel(dateRange);
     
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <StatsCard
-          title="Utilisateurs Totaux"
+          title="Total Utilisateurs"
           value={totalUsers}
           change={`${activeUsers} actifs`}
           trend="positive"
@@ -328,25 +301,25 @@ const AdminDashboard = () => {
         <StatsCard
           title="Structures"
           value={totalStructures}
-          change="centres actifs"
+          change="actives"
           trend="neutral"
           icon={<Building2 className="w-6 h-6" />}
         />
 
         <StatsCard
-          title={`Nouveaux Utilisateurs`}
-          value={stats.newUsersThisWeek || stats.new_users_period || 0}
-          change={periodLabel}
+          title="Nouveaux utilisateurs"
+          value={stats?.newUsersThisWeek || 0}
+          change={currentPeriodLabel}
           trend="positive"
           icon={<UserPlus className="w-6 h-6" />}
         />
 
         <StatsCard
-          title={`Nouvelles Structures`}
-          value={stats.newStructuresThisWeek || stats.new_structures_period || 0}
-          change={periodLabel}
-          trend="positive"
-          icon={<TrendingUp className="w-6 h-6" />}
+          title="Pointages"
+          value={stats?.total_entries || 0}
+          change={currentPeriodLabel}
+          trend="neutral"
+          icon={<Activity className="w-6 h-6" />}
         />
       </div>
     );
@@ -549,12 +522,10 @@ const AdminDashboard = () => {
                 <button
                   onClick={async () => {
                     try {
-                      const result = await toggleUserStatus(user.id, !user.active);
-                      if (result.success) {
-                        await fetchUsers();
-                      }
+                      await toggleUserStatus(user.id, !user.active);
+                      console.log(`✅ Statut utilisateur ${user.id} modifié`);
                     } catch (error) {
-                      console.error('Erreur toggle user:', error);
+                      console.error('❌ Erreur toggle user status:', error);
                     }
                   }}
                   className={`
@@ -592,7 +563,7 @@ const AdminDashboard = () => {
     </Card>
   );
 
-  // Gestion des structures
+  // Gestion des structures avec filtres ville et zone
   const renderStructuresManagement = () => (
     <Card
       title="Gestion des Structures"
@@ -600,7 +571,7 @@ const AdminDashboard = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">
-              Structures ({totalStructures})
+              Structures ({filteredStructures.length})
             </h3>
             <Button
               variant="outline"
@@ -621,13 +592,53 @@ const AdminDashboard = () => {
               <Building2 className="w-4 h-4 mr-2" />
               Nouvelle structure
             </Button>
+
+            <div className="flex-1 min-w-0">
+              <Input
+                placeholder="Rechercher structure..."
+                value={structureSearchTerm}
+                onChange={(e) => setStructureSearchTerm(e.target.value)}
+                leftIcon={<Search className="w-4 h-4" />}
+                className="w-full"
+              />
+            </div>
+
+            <div className="w-full sm:w-auto sm:min-w-[140px]">
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Toutes les villes</option>
+                {uniqueCities.map((city) => (
+                  <option key={city} value={city}>
+                    {city}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="w-full sm:w-auto sm:min-w-[120px]">
+              <select
+                value={zoneFilter}
+                onChange={(e) => setZoneFilter(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Toutes les zones</option>
+                {uniqueZones.map((zone) => (
+                  <option key={zone} value={zone}>
+                    Zone {zone}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       }
     >
       <div className="space-y-3 max-h-64 overflow-y-auto">
-        {structures
-          .slice(0, showAllStructures ? structures.length : 6)
+        {filteredStructures
+          .slice(0, showAllStructures ? filteredStructures.length : 6)
           .map((structure) => (
             <div
               key={structure.id}
@@ -641,7 +652,8 @@ const AdminDashboard = () => {
                   <p className="font-medium text-gray-900 truncate">
                     {structure.name}
                   </p>
-                  <p className="text-sm text-gray-500 truncate">
+                  <p className="text-sm text-gray-500 truncate flex items-center">
+                    <MapPin className="w-3 h-3 mr-1" />
                     {structure.city}
                   </p>
                   <p className="text-xs text-gray-400 truncate">
@@ -651,9 +663,9 @@ const AdminDashboard = () => {
               </div>
               <div className="flex items-center space-x-2 shrink-0 ml-2">
                 <button
-                  disabled
-                  className="px-2 py-1 text-xs font-medium text-gray-400 bg-gray-100 border border-gray-200 rounded cursor-not-allowed"
-                  title="Édition bientôt disponible"
+                  onClick={() => handleEditStructure(structure)}
+                  className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 transition-colors"
+                  title="Modifier la structure"
                 >
                   ✏️ Modifier
                 </button>
@@ -668,7 +680,7 @@ const AdminDashboard = () => {
           ))}
       </div>
 
-      {structures.length === 0 && (
+      {filteredStructures.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           <Building2 className="w-12 h-12 mx-auto mb-4 text-gray-300" />
           <p>Aucune structure trouvée</p>
@@ -677,25 +689,23 @@ const AdminDashboard = () => {
     </Card>
   );
 
-  // Rendu principal complet
+  // Rendu principal
   const renderContent = () => {
     return (
       <div className="space-y-6">
         {renderHeader()}
         {renderStatsCards()}
         
-        {/* Grille principale */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {renderUsersManagement()}
           {renderStructuresManagement()}
         </div>
         
-        {/* Activité récente en pleine largeur */}
         <div className="grid grid-cols-1 gap-6">
           {renderActivityFeed()}
         </div>
 
-        {/* Modals */}
+        {/* Modal création utilisateur */}
         {showCreateUserModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -707,6 +717,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* Modal création structure */}
         {showCreateStructureModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -726,6 +737,19 @@ const AdminDashboard = () => {
                 initialData={selectedUser}
                 onSuccess={handleUserUpdated}
                 onCancel={() => setShowEditUserModal(false)}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Modal d'édition structure */}
+        {showEditStructureModal && selectedStructure && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <CreateStructureForm
+                initialData={selectedStructure}
+                onSuccess={handleStructureUpdated}
+                onCancel={() => setShowEditStructureModal(false)}
               />
             </div>
           </div>

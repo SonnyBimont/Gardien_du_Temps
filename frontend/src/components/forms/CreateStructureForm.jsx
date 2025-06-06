@@ -11,6 +11,9 @@ const CreateStructureForm = ({ onSuccess, onCancel, initialData = null }) => {
     school_vacation_zone: 'A',
     phone: '',
     email: '',
+    manager_name: '',
+    manager_email: '',
+    capacity: '',
     active: true,
     ...initialData
   });
