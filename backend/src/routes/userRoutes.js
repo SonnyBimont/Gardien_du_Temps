@@ -3,6 +3,7 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const { protect, authorize } = require('../middlewares/auth');
 
+
 /**
  * @swagger
  * tags:
@@ -138,6 +139,19 @@ const { protect, authorize } = require('../middlewares/auth');
  *           type: boolean
  *           default: true
  */
+
+// Routes pour tous les utilisateurs connectés
+router.get('/profile', (req, res) => {
+    req.params.id = req.user.id;
+    userController.getUserById(req, res);
+});
+
+router.put('/profile', (req, res) => {
+    req.params.id = req.user.id;
+    userController.updateUser(req, res);
+});
+
+// ===== ROUTES UTILISATEURS =====
 
 /**
  * @swagger
@@ -383,8 +397,20 @@ router
  */
 router
     .route('/:id')
-    .get(protect, userController.getUserById)
+    .get(protect, authorize('admin', 'director'), userController.getUserById)
     .put(protect, authorize('admin', 'director'), userController.updateUser)
-    .delete(protect, authorize('admin'), userController.deleteUser);
+    .delete(protect, authorize('admin', 'director'), userController.deleteUser);
+
+
+router.post('/:id/restore', protect, authorize('admin','director'), userController.restoreUser);  
+
+router.patch('/:id/toggle-status', protect, authorize('admin','director'), userController.toggleUserStatus);  
+
+// ===== ROUTES STATISTIQUES ADMIN ===== // ===== SYSTÈME ET AUDIT =====
+router.get('/admin/stats', protect, authorize('admin'), userController.getStats);
+router.get('/admin/dashboard-stats', protect, authorize('admin'), userController.getDashboardStats);
+router.get('/admin/recent-activity', protect, authorize('admin'), userController.getRecentActivity);
+router.get('/admin/system/health',protect, authorize('admin'), userController.getSystemHealth);
+router.get('/admin/system/audit-logs',protect, authorize('admin'), userController.getAuditLogs);
 
 module.exports = router;

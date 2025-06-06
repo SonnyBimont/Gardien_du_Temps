@@ -81,7 +81,12 @@ exports.logout = async (req, res) => {
 exports.getMe = async (req, res) => {
     try {
         const user = await User.findByPk(req.user.id, {
-            attributes: { exclude: ['password'] }
+            attributes: { exclude: ['password'] },
+            include: [{
+                model: require('../models').Structure,
+                as: 'structure',
+                attributes: ['id', 'name', 'city']
+            }]
         });
 
         res.status(200).json({

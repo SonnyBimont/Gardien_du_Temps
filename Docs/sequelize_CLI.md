@@ -160,3 +160,116 @@ Exemple :
 Dans un projet bien structuré, ces fichiers collaborent : `.sequelizerc` pointe vers `sequelize-cli-config.js` qui utilise `config.js`, tandis que `database.js` utilise aussi `config.js` pour créer l'instance Sequelize utilisée par l'application.
 
 ---
+
+Explication des opérateurs Sequelize (Op)
+Dans Sequelize, Op est un objet qui contient des opérateurs SQL pour construire des requêtes complexes. C'est un élément essentiel quand vous devez faire des recherches avancées dans votre base de données.
+
+Pourquoi importer Op ?
+L'instruction const { Op } = require('sequelize'); importe spécifiquement l'objet Op du module Sequelize, qui vous donne accès à tous les opérateurs de comparaison et logiques.
+
+Exemples d'opérateurs couramment utilisés
+
+1. Comparaisons
+```js   
+// Rechercher tous les utilisateurs de plus de 18 ans
+const adultes = await User.findAll({
+  where: {
+    age: { [Op.gt]: 18 } // greater than (>)
+  }
+});
+
+// Rechercher les utilisateurs entre 18 et 30 ans
+const jeunes = await User.findAll({
+  where: {
+    age: { [Op.between]: [18, 30] }
+  }
+});
+```
+
+2. Recherches textuelles
+```js
+// Rechercher les utilisateurs dont le nom contient "Dupont" (insensible à la casse)
+const recherche = await User.findAll({
+  where: {
+    last_name: { [Op.iLike]: '%Dupont%' } // iLike = insensible à la casse
+  }
+});
+```
+
+3. Opérateurs logiques
+```js
+// Utilisateurs actifs OU administrateurs
+const utilisateurs = await User.findAll({
+  where: {
+    [Op.or]: [
+      { active: true },
+      { role: 'admin' }
+    ]
+  }
+});
+```
+4. Opérateurs de date
+```js
+// Événements entre deux dates
+const evenements = await Event.findAll({
+  where: {
+    date: {
+      [Op.between]: [new Date('2025-01-01'), new Date('2025-12-31')]
+    }
+  }
+});
+```
+Pourquoi c'est important
+Sans importer Op, votre code générera une erreur quand vous essaierez d'utiliser ces opérateurs, car JavaScript ne saura pas à quoi correspond Op.between ou Op.iLike.
+
+C'est particulièrement important dans les contrôleurs comme timeTrackingController.js, plannedScheduleController.js et activityLogController.js que j'ai créés pour vous, car ils utilisent des opérateurs comme [Op.between] pour les plages de dates et [Op.iLike] pour les recherches textuelles.
+
+En résumé
+Chaque fois que vous utilisez une syntaxe comme { [Op.quelqueChose]: valeur } dans votre code, vous devez vous assurer que l'objet Op est importé au début du fichier avec :
+
+```js
+const { Op } = require('sequelize');
+```
+
+----------------------------------------------
+
+Commandes pour réinitialiser ta base de données
+
+📍 Depuis le dossier backend :
+# Se placer dans le dossier backend
+cd backend
+
+# Option 1 : Réinitialisation complète (recommandée)
+npm run db:reset
+
+# Option 2 : Si la commande précédente n'existe pas, faire manuellement :
+npm run db:drop      # Supprimer toutes les tables
+npm run db:migrate   # Recréer les tables
+npm run db:seed      # Insérer les données de test
+
+# Option 3 : Commandes Sequelize directes
+npx sequelize-cli db:drop
+npx sequelize-cli db:create
+npx sequelize-cli db:migrate
+npx sequelize-cli db:seed:all
+
+⚠️ Alternative si problème :
+# Supprimer le fichier SQLite directement
+rm database/gardien_du_temps.db
+
+# Puis recréer
+npm run db:create
+npm run db:migrate
+npm run db:seed
+
+🔍 Vérifier après réinitialisation :
+# Lister les tables créées
+npm run db:status
+# ou
+npx sequelize-cli db:migrate:status
+
+📋 Ordre recommandé :
+Arrêter le serveur backend (Ctrl+C)
+Réinitialiser la DB avec les commandes ci-dessus
+Redémarrer le serveur (npm run dev)
+Tester le dashboard frontend

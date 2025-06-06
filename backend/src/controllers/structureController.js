@@ -40,14 +40,65 @@ exports.getStructureById = async (req, res) => {
 // Créer une nouvelle structure
 exports.createStructure = async (req, res) => {
     try {
-        const structure = await Structure.create(req.body);
+        const {
+            name,
+            address,
+            city,
+            postal_code,
+            school_vacation_zone
+        } = req.body;
+
+        // Validation des champs obligatoires 
+        if (!name || !address || !city || !postal_code || !school_vacation_zone) {
+            return res.status(400).json({
+                success: false,
+                message: 'Les champs nom, adresse, ville, code postal et zone de vacances scolaires sont obligatoires'
+            });
+        }
+
+        // Validation de la zone de vacances
+        if (!['A', 'B', 'C'].includes(school_vacation_zone)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La zone de vacances scolaires doit être A, B ou C'
+            });
+        }
+
+        const structure = await Structure.create({
+            name,
+            address,
+            city,
+            postal_code,
+            school_vacation_zone,
+            active: true 
+        });
 
         res.status(201).json({
             success: true,
-            data: structure
+            data: structure,
+            message: 'Structure créée avec succès'
         });
+
     } catch (error) {
-        res.status(400).json({ message: 'Erreur lors de la création de la structure', error: error.message });
+        console.error('Erreur createStructure:', error);
+        
+        // Gestion des erreurs de validation Sequelize
+        if (error.name === 'SequelizeValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Données invalides',
+                errors: error.errors.map(err => ({
+                    field: err.path,
+                    message: err.message
+                }))
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la création de la structure',
+            error: error.message
+        });
     }
 };
 
