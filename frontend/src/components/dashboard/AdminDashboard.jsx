@@ -327,13 +327,6 @@ const filteredUsers = (users || []).filter((user) => {
           icon={<Activity className="w-6 h-6" />}
         />
 
-        <StatsCard
-          title="Connexions"
-          value={stats.connectionsToday || 0}
-          change={stats.connectionsChange || "Aucune donnée"}
-          trend="positive"
-          icon={<Clock className="w-6 h-6" />}
-        />
       </div>
     );
   };
