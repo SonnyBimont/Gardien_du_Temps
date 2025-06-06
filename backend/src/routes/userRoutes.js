@@ -408,8 +408,11 @@ router.patch('/:id/toggle-status', protect, authorize('admin','director'), userC
 
 // ===== ROUTES STATISTIQUES ADMIN ===== // ===== SYSTÈME ET AUDIT =====
 router.get('/admin/stats', protect, authorize('admin'), userController.getStats);
+router.get('/admin/stats-fixed', protect, authorize('admin'), userController.getStatsWithFixedPeriods);
 router.get('/admin/dashboard-stats', protect, authorize('admin'), userController.getDashboardStats);
+router.get('/admin/dashboard-stats-fixed', protect, authorize('admin'), userController.getDashboardStatsWithFixedPeriods);
 router.get('/admin/recent-activity', protect, authorize('admin'), userController.getRecentActivity);
+router.get('/admin/recent-activity-period', protect, authorize('admin'), userController.getRecentActivityWithPeriod);
 router.get('/admin/system/health',protect, authorize('admin'), userController.getSystemHealth);
 router.get('/admin/system/audit-logs',protect, authorize('admin'), userController.getAuditLogs);
 
