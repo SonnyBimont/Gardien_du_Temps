@@ -642,7 +642,14 @@ export const useAdminStore = create((set, get) => ({
     if (structureData.manager_email && !structureData.manager_email.includes('@')) {
       return 'Email du responsable invalide';
     }
-    
+
+    if (structureData.phone && structureData.phone.length < 10) {
+    return 'Le téléphone doit contenir au moins 10 caractères';
+    }
+
+    if (structureData.capacity && (isNaN(structureData.capacity) || structureData.capacity < 1)) {
+    return 'La capacité doit être un nombre positif';
+    }
     return null;
   },
   

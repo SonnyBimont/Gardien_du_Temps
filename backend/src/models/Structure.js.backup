@@ -26,9 +26,12 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.ENUM('A', 'B', 'C'),
             allowNull: false
         },
-        phone: {
+         phone: {
             type: DataTypes.STRING(20),
-            allowNull: true
+            allowNull: true,
+            validate: {
+                len: [10, 20]
+            }
         },
         email: {
             type: DataTypes.STRING(255),
@@ -39,7 +42,10 @@ module.exports = (sequelize, DataTypes) => {
         },
         manager_name: {
             type: DataTypes.STRING(255),
-            allowNull: true
+            allowNull: true,
+            validate: {
+                len: [2, 255]
+            }
         },
         manager_email: {
             type: DataTypes.STRING(255),
@@ -52,7 +58,8 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.INTEGER,
             allowNull: true,
             validate: {
-                min: 1
+                min: 1,
+                max: 9999
             }
         },
         active: {
@@ -66,17 +73,17 @@ module.exports = (sequelize, DataTypes) => {
     });
 
     Structure.associate = (models) => {
+        // Structure has many Users
         Structure.hasMany(models.User, {
             foreignKey: 'structure_id',
             as: 'users'
         });
 
-        if (models.Project) {
-            Structure.hasMany(models.Project, {
-                foreignKey: 'structure_id',
-                as: 'projects'
-            });
-        }
+        // Structure has many Projects
+        Structure.hasMany(models.Project, {
+            foreignKey: 'structure_id',
+            as: 'projects'
+        });
     };
 
     return Structure;
