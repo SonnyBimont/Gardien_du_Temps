@@ -321,6 +321,37 @@ const DirectorDashboard = () => {
     }
   }, [loadData, activeView]);
 
+const calculatePeriodObjectiveForTeam = (period, weeklyHours, annualHours = null) => {
+  const weekly = weeklyHours || 35; // Par défaut 35h/semaine
+  
+  switch (period) {
+    case 'current_week':
+    case 'previous_week':
+      return weekly; //35h
+      
+    case 'current_month':
+    case 'previous_month':
+      return Math.round((weekly * 4.33) * 100) / 100; // 4.33 semaines par mois en moyenne = 151.55h
+      
+    case 'current_quarter':
+    case 'previous_quarter':
+      return Math.round((weekly * 13) * 100) / 100; // 13 semaines par trimestre = 455h
+      
+    case 'current_year':
+    case 'previous_year':
+      return Math.round((annualHours || (weekly * 52)) * 100) / 100; // 52 semaines par an = 1820h
+      
+    case 'last_30_days':
+      return Math.round((weekly / 7 * 30) * 100) / 100; // Calcul proportionnel
+      
+    case 'last_90_days':
+      return Math.round((weekly / 7 * 90) * 100) / 100; // Calcul proportionnel
+      
+    default:
+      return Math.round((weekly * 4.33) * 100) / 100; // Par défaut mensuel
+  }
+};
+  
 const loadTeamData = async () => {
   if (!user?.structure_id) return;
   
@@ -380,28 +411,10 @@ const loadTeamData = async () => {
           console.log(`⚠️ Pas de données pour ${animator.first_name}, calcul par défaut`);
           
           const weeklyHours = animator.weekly_hours || 35;
+          const annualHours = animator.annual_hours;
           
           // Calculer l'objectif basé sur la période sélectionnée
-          let periodObjective = 0;
-          const days = parseInt(teamDateRange.replace(/\D/g, '')) || 30;
-          
-          switch (teamDateRange) {
-            case 'current_week':
-            case 'previous_week':
-              periodObjective = weeklyHours;
-              break;
-            case 'current_month':
-            case 'previous_month':
-              periodObjective = weeklyHours * 4.33; // Moyenne mensuelle
-              break;
-            case 'last_30_days':
-              periodObjective = (weeklyHours / 7) * 22; // 22 jours ouvrables par mois en moyenne
-              break;
-            default:
-              periodObjective = (weeklyHours / 7) * Math.min(days, 22);
-          }
-          
-          periodObjective = Math.round(periodObjective * 100) / 100;
+          const periodObjective = calculatePeriodObjectiveForTeam(teamDateRange, weeklyHours, annualHours);;
           
           return {
             id: animator.id,
@@ -409,7 +422,7 @@ const loadTeamData = async () => {
             last_name: animator.last_name,
             email: animator.email,
             weekly_hours: weeklyHours,
-            annual_hours: animator.annual_hours,
+            annual_hours: annualHours,
             active: animator.active,
             
             totalHours: 0,
@@ -434,7 +447,9 @@ const loadTeamData = async () => {
     // ✅ FALLBACK: Afficher tous les animateurs avec des valeurs par défaut
     const fallbackData = myStructureAnimators.map(animator => {
       const weeklyHours = animator.weekly_hours || 35;
-      let periodObjective = weeklyHours * 4.33; // Par défaut mensuel
+      const annualHours = animator.annual_hours;
+
+      const periodObjective = calculatePeriodObjectiveForTeam(teamDateRange, weeklyHours, annualHours); // Par défaut mensuel
       
       return {
         id: animator.id,
@@ -442,12 +457,12 @@ const loadTeamData = async () => {
         last_name: animator.last_name,
         email: animator.email,
         weekly_hours: weeklyHours,
-        annual_hours: animator.annual_hours,
+        annual_hours: annualHours,
         active: animator.active,
         
         totalHours: 0,
-        periodObjective: Math.round(periodObjective * 100) / 100,
-        hoursDifference: -Math.round(periodObjective * 100) / 100,
+        periodObjective: periodObjective,
+        hoursDifference: -periodObjective,
         daysWorked: 0,
         performance: 0
       };
@@ -973,113 +988,100 @@ const canClockOut = status.arrival && !status.departure;
 
   // Données d'équipe
   const renderTeamData = () => (
-    <Card title="Données d'équipe">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Animateur</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Heures travaillées</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Objectif</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Performance</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {teamData.length > 0 ? (
-              teamData.map((member) => (
-                <tr key={member.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className={`w-3 h-3 rounded-full mr-3 ${member.active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {member.first_name} {member.last_name}
-                        </div>
-                        <div className="text-sm text-gray-500">{member.email}</div>
+  <Card title="Données d'équipe">
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Animateur</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Heures travaillées</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Objectif</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Différence</th>
+            {/* ✅ SUPPRIMÉ: Colonne Statut */}
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {teamData.length > 0 ? (
+            teamData.map((member) => (
+              <tr key={member.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <div className={`w-3 h-3 rounded-full mr-3 ${member.active ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {member.first_name} {member.last_name}
                       </div>
+                      <div className="text-sm text-gray-500">{member.email}</div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {member.totalHours || '0'}h
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {member.weekly_hours || '35'}h/semaine
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            (member.performance || 0) >= 90 ? 'bg-green-500' : 
-                            (member.performance || 0) >= 75 ? 'bg-blue-500' : 
-                            (member.performance || 0) >= 50 ? 'bg-yellow-500' : 'bg-red-500'
-                          }`}
-                          style={{ width: `${Math.min(member.performance || 0, 100)}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-xs text-gray-600">
-                        {Math.round(member.performance || 0)}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                      member.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {member.totalHours || '0'}h
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {/* ✅ CORRIGÉ: Afficher l'objectif cohérent avec la période */}
+                  {member.periodObjective || '0'}h
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  {/* ✅ NOUVEAU: Afficher la différence en heures au lieu du pourcentage */}
+                  <span className={`${
+                    (member.hoursDifference || 0) >= 0 
+                      ? 'text-green-600' 
+                      : 'text-red-600'
+                  }`}>
+                    {(member.hoursDifference || 0) >= 0 ? '+' : ''}{member.hoursDifference || '0'}h
+                  </span>
+                </td>
+                {/* ✅ SUPPRIMÉ: Colonne Statut */}
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleAnimatorSelection(member.id)}
+                    >
+                      Détails
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditUser(member)}
+                    >
+                      Modifier
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        try {
+                          await toggleUserStatus(member.id, !member.active);
+                          console.log(`✅ Statut animateur ${member.id} modifié`);
+                          await loadTeamData();
+                        } catch (error) {
+                          console.error('❌ Erreur toggle status:', error);
+                        }
+                      }}
+                      variant={member.active ? "success" : "danger"}
+                      size="sm"
+                      className="min-w-[80px]"
+                    >
                       {member.active ? 'Actif' : 'Inactif'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAnimatorSelection(member.id)}
-                      >
-      Détails
-    </Button>
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => handleEditUser(member)}
-    >
-      Modifier
-    </Button>
-    <Button
-      onClick={async () => {
-        try {
-          await toggleUserStatus(member.id, !member.active);
-          console.log(`✅ Statut animateur ${member.id} modifié`);
-          // Recharger les données d'équipe
-          await loadTeamData();
-        } catch (error) {
-          console.error('❌ Erreur toggle status:', error);
-        }
-      }}
-      variant={member.active ? "success" : "danger"}
-      size="sm"
-      className="min-w-[80px]"
-    >
-      {member.active ? 'Actif' : 'Inactif'}
-    </Button>
-  </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="6" className="px-6 py-8 text-center text-gray-500 text-sm">
-                  Aucune donnée d'équipe disponible
+                    </Button>
+                  </div>
                 </td>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </Card>
-  );
+            ))
+          ) : (
+            <tr>
+              <td colSpan="5" className="px-6 py-8 text-center text-gray-500 text-sm">
+                Aucune donnée d'équipe disponible
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </Card>
+);
 
   // Gestion des horaires personnels du directeur
   const renderScheduleManagement = () => (
@@ -1324,16 +1326,20 @@ const renderDirectorTimeTracking = () => (
   );
 
   // Sélection d'animateur avec statistiques
-  const handleAnimatorSelection = async (animatorId) => {
+const handleAnimatorSelection = async (animatorId) => {
+  if (animatorId !== 'all') {
+    // Toujours charger les stats et ouvrir la modal, même si c'est le même animateur
     setSelectedAnimator(animatorId);
-    if (animatorId !== 'all' && animatorId !== selectedAnimator) {
-      await loadAnimatorDetailedStats(animatorId, selectedPeriodForStats);
-      setShowAnimatorStatsModal(true);
-    } else if (animatorId === 'all') {
-      setSelectedAnimatorStats(null);
-      setShowAnimatorStatsModal(false);
-    }
-  };
+    await loadAnimatorDetailedStats(animatorId, selectedPeriodForStats);
+    setShowAnimatorStatsModal(true);
+  } else {
+    setSelectedAnimator('all');
+    setSelectedAnimatorStats(null);
+    setShowAnimatorStatsModal(false);
+    document.body.style.overflow = 'unset';
+    document.body.classList.remove('modal-open');
+  }
+};
 
   // Charger les statistiques détaillées d'un animateur
   const loadAnimatorDetailedStats = async (animatorId, period = 'current_month') => {
@@ -1419,7 +1425,8 @@ const renderDirectorTimeTracking = () => (
     });
 
     const weeklyObjective = animator.weekly_hours || 35;
-    const periodObjective = calculatePeriodObjective(period, weeklyObjective, animator.annual_hours);
+    const annualObjective = animator.annual_hours;
+    const periodObjective = calculatePeriodObjective(period, weeklyObjective, annualObjective);
 
     const averageHoursPerDay = completeDays > 0 ? totalHours / completeDays : 0;
     const completionRate = periodObjective > 0 ? (totalHours / periodObjective) * 100 : 0;
@@ -1482,12 +1489,19 @@ const renderDirectorTimeTracking = () => (
     const { animator, period, hours, performance, patterns, workingDays } = selectedAnimatorStats;
 
     return (
-      <Modal
-        isOpen={showAnimatorStatsModal}
-        onClose={() => setShowAnimatorStatsModal(false)}
-        size="6xl"
-        title={`Statistiques détaillées - ${animator.first_name} ${animator.last_name}`}
-      >
+    <Modal
+      isOpen={showAnimatorStatsModal}
+      onClose={() => {
+        setShowAnimatorStatsModal(false);
+        document.body.style.overflow = 'unset';
+        document.body.classList.remove('modal-open');
+      }}
+      size="6xl"
+      title={`Statistiques détaillées - ${animator.first_name} ${animator.last_name}`}
+      showCloseButton={true}
+      closeOnOverlay={true}
+      closeOnEscape={true}
+    >
         <div className="space-y-6 max-h-[80vh] overflow-y-auto">
           {/* En-tête avec contrôles de période */}
           <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">

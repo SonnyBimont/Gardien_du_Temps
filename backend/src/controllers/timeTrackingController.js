@@ -614,8 +614,25 @@ exports.getTeamSummary = async (req, res) => {
       });
 
       // Calculer l'objectif pour la période
-      const dailyObjective = (user.weekly_hours || 35) / 7;
-      const periodObjective = dailyObjective * parseInt(days);
+      const weeklyHours = user.weekly_hours || 35;
+      const annualHours = user.annual_hours;
+  
+  let periodObjective;
+  
+  // Calculer selon le nombre de jours de la période
+  if (parseInt(days) <= 7) {
+    // Période hebdomadaire
+    periodObjective = weeklyHours;
+  } else if (parseInt(days) <= 31) {
+    // Période mensuelle (jusqu'à 31 jours)
+    periodObjective = weeklyHours * 4.33;
+  } else if (parseInt(days) <= 92) {
+    // Période trimestrielle (jusqu'à 92 jours)
+    periodObjective = weeklyHours * 13;
+  } else {
+    // Période annuelle (plus de 92 jours) - ✅ UTILISER annual_hours
+    periodObjective = annualHours || (weeklyHours * 52);
+  }
 
       return {
         user: {

@@ -142,6 +142,33 @@ export const calculateDateRange = (period) => {
   }
 };
 
+export const calculatePeriodObjectiveStandard = (period, weeklyHours, annualHours = null) => {
+  const weekly = weeklyHours || 35;
+  
+  switch (period) {
+    case 'current_week':
+    case 'previous_week':
+      return weekly;
+      
+    case 'current_month':
+    case 'previous_month':
+    case 'last_30_days':
+      return weekly * 4.33; // 4.33 semaines par mois
+      
+    case 'current_quarter':
+    case 'previous_quarter':
+    case 'last_90_days':
+      return weekly * 13; // 13 semaines par trimestre
+      
+    case 'current_year':
+    case 'previous_year':
+      // ✅ PRIORITÉ à annual_hours si défini
+      return annualHours || (weekly * 52);
+      
+    default:
+      return weekly * 4.33; // Par défaut mensuel
+  }
+};
 
 // Fonction pour obtenir le label d'affichage selon la période
 export const getPeriodLabel = (period, dateRange = null) => {
