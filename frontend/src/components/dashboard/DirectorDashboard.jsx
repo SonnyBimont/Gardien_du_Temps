@@ -1782,19 +1782,45 @@ const handleAnimatorSelection = async (animatorId) => {
         />
       </Modal>
 
-      {showEditUserModal && selectedUser && (
-        <EditUserForm
-          user={selectedUser}
-          onClose={() => {
-            setShowEditUserModal(false);
-            setSelectedUser(null);
-          }}
-          onUserUpdated={handleUserUpdated}
-          isDirectorContext={true}
-          fixedRole="animator"
-          fixedStructureId={user?.structure_id}
-        />
-      )}
+{showEditUserModal && selectedUser && (
+  <Modal
+    isOpen={showEditUserModal}
+    onClose={() => {
+      setShowEditUserModal(false);
+      setSelectedUser(null);
+      // ✅ CORRECTION: Force la restauration du body
+      document.body.style.overflow = 'unset';
+      document.body.classList.remove('modal-open');
+    }}
+    size="xl"
+    title={`Modifier ${selectedUser.first_name} ${selectedUser.last_name}`}
+    showCloseButton={true}
+    closeOnOverlay={true}
+    closeOnEscape={true}
+  >
+    <EditUserForm
+      user={selectedUser}
+      onClose={() => {
+        setShowEditUserModal(false);
+        setSelectedUser(null);
+        // ✅ CORRECTION: Aussi ici pour la fermeture depuis le formulaire
+        document.body.style.overflow = 'unset';
+        document.body.classList.remove('modal-open');
+      }}
+      onUserUpdated={() => {
+        setShowEditUserModal(false);
+        setSelectedUser(null);
+        // ✅ CORRECTION: Et ici après mise à jour réussie
+        document.body.style.overflow = 'unset';
+        document.body.classList.remove('modal-open');
+        loadData();
+      }}
+      isDirectorContext={true}
+      fixedRole="animator"
+      fixedStructureId={user?.structure_id}
+    />
+  </Modal>
+)}
 
       {/* Modal des statistiques détaillées */}
       {renderAnimatorStatsModal()}

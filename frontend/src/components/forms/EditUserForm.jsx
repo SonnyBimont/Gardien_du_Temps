@@ -40,19 +40,14 @@ const EditUserForm = ({
         first_name: user.first_name || '',
         last_name: user.last_name || '',
         email: user.email || '',
-        password: '', // Toujours vide pour sécurité
-        role: user.role || '',
-        structure_id: user.structure_id?.toString() || '',
-        phone: user.phone || '',
-        contract_type: user.contract_type || '',
-        weekly_hours: user.weekly_hours?.toString() || '',
-        annual_hours: user.annual_hours?.toString() || '',
-        contract_start_date: user.contract_start_date ? user.contract_start_date.split('T')[0] : '',
-        contract_end_date: user.contract_end_date ? user.contract_end_date.split('T')[0] : '',
-        active: user.active ?? true
+        role: fixedRole || user.role || '',
+        structure_id: fixedStructureId || user.structure_id || '',
+        weekly_hours: user.weekly_hours || '',
+        annual_hours: user.annual_hours || '',
+        active: user.active !== undefined ? user.active : true
       });
     }
-  }, [user]);
+  }, [user, fixedRole, fixedStructureId]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
