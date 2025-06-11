@@ -15,7 +15,12 @@ import {
   MapPin,
   Download,
   Plus,
-  Filter
+  Filter,
+  CheckCircle,
+  AlertCircle,
+  Target,
+  Timer,
+  BarChart3
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useAdminStore } from '../../stores/adminStore';
@@ -28,7 +33,23 @@ import Modal from '../common/Modal';
 import CreateUserForm from '../forms/CreateUserForm';
 import EditUserForm from '../forms/EditUserForm';
 
+// ===== CONSTANTES =====
+const PERIOD_OPTIONS = [
+  { value: 'current_week', label: 'Semaine en cours', description: 'Du lundi au dimanche' },
+  { value: 'current_month', label: 'Mois en cours', description: 'Du 1er au dernier jour' },
+  { value: 'current_quarter', label: 'Trimestre en cours', description: 'Trimestre actuel' },
+  { value: 'current_year', label: 'Année en cours', description: 'De janvier à décembre' },
+  { value: 'previous_week', label: 'Semaine précédente', description: 'La semaine passée' },
+  { value: 'previous_month', label: 'Mois précédent', description: 'Le mois passé' },
+  { value: 'previous_quarter', label: 'Trimestre précédent', description: 'Le trimestre passé' },
+  { value: 'previous_year', label: 'Année précédente', description: 'L\'année passée' },
+  { value: 'last_30_days', label: '30 derniers jours', description: 'Période glissante' },
+  { value: 'last_90_days', label: '90 derniers jours', description: 'Période glissante' },
+  { value: 'custom', label: 'Période personnalisée', description: 'Choisir les dates' }
+];
+
 const DirectorDashboard = () => {
+  // ===== HOOKS ET STORES =====
   const { user } = useAuthStore();
   const { 
     users = [], 
@@ -57,7 +78,7 @@ const DirectorDashboard = () => {
     fetchTeamSummary
   } = useTimeStore();
 
-  // États pour les vues
+  // ===== ÉTATS LOCAUX =====
   const [activeView, setActiveView] = useState('dashboard');
   const [dateRange, setDateRange] = useState('7');
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,26 +88,32 @@ const DirectorDashboard = () => {
   
   // États pour la gestion d'équipe
   const [selectedAnimator, setSelectedAnimator] = useState('all');
-  const [teamDateRange, setTeamDateRange] = useState('30');
+  const [teamDateRange, setTeamDateRange] = useState('current_month');
   const [actionLoading, setActionLoading] = useState(null);
   const [teamData, setTeamData] = useState([]);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  
-  // Modal pour création d'animateur
   const [showCreateAnimatorModal, setShowCreateAnimatorModal] = useState(false);
+
+  // États pour les statistiques avancées
+  const [selectedAnimatorStats, setSelectedAnimatorStats] = useState(null);
+  const [animatorStatsLoading, setAnimatorStatsLoading] = useState(false);
+  const [selectedPeriodForStats, setSelectedPeriodForStats] = useState('current_month');
+  const [showAnimatorStatsModal, setShowAnimatorStatsModal] = useState(false);
+  const [comparisonData, setComparisonData] = useState(null);
+  const [showComparison, setShowComparison] = useState(false);
+  const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
 
   // État pour l'heure actuelle
   const [currentTime, setCurrentTime] = useState(
     new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   );
 
-  // Mise à jour de l'heure chaque minute
+  // ===== EFFETS =====
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
     }, 60000);
-
     return () => clearInterval(timer);
   }, []);
 
@@ -105,39 +132,11 @@ const DirectorDashboard = () => {
     }
   }, [fetchUsers, fetchStructures, fetchTodayEntries, fetchTimeHistory, fetchMonthlyReport, user?.id]);
 
-const handleEditUser = (user) => {
-  setSelectedUser(user);
-  setShowEditUserModal(true);
-};
-
-// Fonction après modification réussie
-const handleUserUpdated = () => {
-  setShowEditUserModal(false);
-  setSelectedUser(null);
-  loadData();
-};
-
   useEffect(() => {
     if (user?.id) {
       loadData();
     }
   }, [user?.id, loadData]);
-
-  
-  // AJOUTER fonction pour charger les données d'équipe
-  const loadTeamData = async () => {
-    if (!user?.structure_id) return;
-    
-    try {
-      const result = await fetchTeamSummary(teamDateRange, user.structure_id);
-      if (result.success) {
-        setTeamData(result.data.users || []);
-      }
-    } catch (error) {
-      console.error('Erreur chargement équipe:', error);
-      setTeamData([]);
-    }
-  };
 
   // Charger les données d'équipe au changement de période
   useEffect(() => {
@@ -146,7 +145,174 @@ const handleUserUpdated = () => {
     }
   }, [teamDateRange, activeView, user?.structure_id]);
 
-  // Fonction pour rafraîchir après création d'animateur
+  // ===== FONCTIONS UTILITAIRES =====
+  const calculatePeriodDates = (period, customStart = null, customEnd = null) => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentQuarter = Math.floor(currentMonth / 3);
+
+    switch (period) {
+      case 'current_week':
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - now.getDay() + 1);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        return {
+          start: monday.toISOString().split('T')[0],
+          end: sunday.toISOString().split('T')[0],
+          label: 'Semaine en cours'
+        };
+
+      case 'current_month':
+        return {
+          start: new Date(currentYear, currentMonth, 1).toISOString().split('T')[0],
+          end: new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0],
+          label: 'Mois en cours'
+        };
+
+      case 'current_quarter':
+        const quarterStart = new Date(currentYear, currentQuarter * 3, 1);
+        const quarterEnd = new Date(currentYear, (currentQuarter + 1) * 3, 0);
+        return {
+          start: quarterStart.toISOString().split('T')[0],
+          end: quarterEnd.toISOString().split('T')[0],
+          label: 'Trimestre en cours'
+        };
+
+      case 'current_year':
+        return {
+          start: new Date(currentYear, 0, 1).toISOString().split('T')[0],
+          end: new Date(currentYear, 11, 31).toISOString().split('T')[0],
+          label: 'Année en cours'
+        };
+
+      case 'previous_week':
+        const prevWeekMonday = new Date(now);
+        prevWeekMonday.setDate(now.getDate() - now.getDay() - 6);
+        const prevWeekSunday = new Date(prevWeekMonday);
+        prevWeekSunday.setDate(prevWeekMonday.getDate() + 6);
+        return {
+          start: prevWeekMonday.toISOString().split('T')[0],
+          end: prevWeekSunday.toISOString().split('T')[0],
+          label: 'Semaine précédente'
+        };
+
+      case 'previous_month':
+        const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+        return {
+          start: new Date(prevYear, prevMonth, 1).toISOString().split('T')[0],
+          end: new Date(prevYear, prevMonth + 1, 0).toISOString().split('T')[0],
+          label: 'Mois précédent'
+        };
+
+      case 'last_30_days':
+        const thirty = new Date(now);
+        thirty.setDate(now.getDate() - 30);
+        return {
+          start: thirty.toISOString().split('T')[0],
+          end: now.toISOString().split('T')[0],
+          label: '30 derniers jours'
+        };
+
+      case 'custom':
+        return {
+          start: customStart,
+          end: customEnd,
+          label: 'Période personnalisée'
+        };
+
+      default:
+        return calculatePeriodDates('current_month');
+    }
+  };
+
+  const calculatePeriodObjective = (period, weeklyHours, annualHours) => {
+    switch (period) {
+      case 'current_week':
+      case 'previous_week':
+        return weeklyHours;
+      case 'current_month':
+      case 'previous_month':
+        return weeklyHours * 4.33;
+      case 'current_quarter':
+      case 'previous_quarter':
+        return weeklyHours * 13;
+      case 'current_year':
+      case 'previous_year':
+        return annualHours || (weeklyHours * 52);
+      case 'last_30_days':
+        return weeklyHours * 4.33;
+      case 'last_90_days':
+        return weeklyHours * 13;
+      default:
+        return weeklyHours * 4.33;
+    }
+  };
+
+  const formatTime = (dateTime) => {
+    return new Date(dateTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDecimalToTime = (decimal) => {
+    const hours = Math.floor(decimal);
+    const minutes = Math.round((decimal - hours) * 60);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  };
+
+  const calculateVariance = (numbers) => {
+    if (numbers.length === 0) return 0;
+    const mean = numbers.reduce((sum, num) => sum + num, 0) / numbers.length;
+    const squaredDiffs = numbers.map(num => Math.pow(num - mean, 2));
+    return squaredDiffs.reduce((sum, diff) => sum + diff, 0) / numbers.length;
+  };
+
+  const getPerformanceStatus = (completionRate) => {
+    if (completionRate >= 100) return { label: 'Objectif atteint', color: 'green', icon: CheckCircle };
+    if (completionRate >= 90) return { label: 'Très bien', color: 'blue', icon: CheckCircle };
+    if (completionRate >= 75) return { label: 'Satisfaisant', color: 'yellow', icon: AlertCircle };
+    if (completionRate >= 60) return { label: 'À améliorer', color: 'orange', icon: AlertCircle };
+    return { label: 'Insuffisant', color: 'red', icon: AlertCircle };
+  };
+
+  const getMostProductiveDay = (workingDays) => {
+    const completeDays = workingDays.filter(day => day.isComplete);
+    if (completeDays.length === 0) return 'Aucun';
+    
+    const maxDay = completeDays.reduce((max, day) => 
+      day.hoursWorked > max.hoursWorked ? day : max
+    );
+    
+    return `${maxDay.dayName} (${maxDay.hoursWorked}h)`;
+  };
+
+  const getConsistencyRating = (score) => {
+    if (score >= 90) return { label: 'Très régulier', color: 'green' };
+    if (score >= 75) return { label: 'Régulier', color: 'blue' };
+    if (score >= 60) return { label: 'Moyennement régulier', color: 'yellow' };
+    return { label: 'Irrégulier', color: 'red' };
+  };
+
+  const getWorkDayStatus = (arrival, departure, breakStart, breakEnd) => {
+    if (!arrival) return 'absent';
+    if (arrival && !departure) return 'en_cours';
+    if (arrival && departure) return 'complet';
+    return 'incomplet';
+  };
+
+  // ===== GESTIONNAIRES D'ÉVÉNEMENTS =====
+  const handleEditUser = (user) => {
+    setSelectedUser(user);
+    setShowEditUserModal(true);
+  };
+
+  const handleUserUpdated = () => {
+    setShowEditUserModal(false);
+    setSelectedUser(null);
+    loadData();
+  };
+
   const handleAnimatorCreated = useCallback(async () => {
     setShowCreateAnimatorModal(false);
     await loadData();
@@ -155,7 +321,196 @@ const handleUserUpdated = () => {
     }
   }, [loadData, activeView]);
 
-  // Guard clause
+const loadTeamData = async () => {
+  if (!user?.structure_id) return;
+  
+  try {
+    console.log('🔄 Chargement données équipe pour structure:', user.structure_id);
+    
+    const result = await fetchTeamSummary(teamDateRange, user.structure_id);
+    console.log('📊 Réponse API team-summary:', result);
+    
+    if (result.success && result.data) {
+      const apiData = result.data;
+      console.log('📋 Données API reçues:', apiData);
+      
+      // ✅ CORRECTION: Récupérer les données utilisateurs depuis la bonne structure
+      const usersFromAPI = apiData.users || [];
+      console.log('👥 Utilisateurs depuis API:', usersFromAPI);
+      
+      // Créer un map des données de travail par user ID
+      const workDataMap = new Map();
+      usersFromAPI.forEach(userData => {
+        workDataMap.set(userData.user.id, userData);
+      });
+      
+      console.log('🗺️ Map des données de travail:', workDataMap);
+      
+      // ✅ FUSIONNER avec tous les animateurs de la structure
+      const allAnimatorsData = myStructureAnimators.map(animator => {
+        const workData = workDataMap.get(animator.id);
+        
+        if (workData) {
+          // ✅ Animateur avec données de pointage - utiliser la structure API correcte
+          console.log(`✅ Données trouvées pour ${animator.first_name}:`, workData);
+          
+          return {
+            // Données utilisateur (depuis myStructureAnimators pour avoir tous les champs)
+            id: animator.id,
+            first_name: animator.first_name,
+            last_name: animator.last_name,
+            email: animator.email,
+            weekly_hours: animator.weekly_hours || 35,
+            annual_hours: animator.annual_hours,
+            active: animator.active,
+            
+            // Données de travail (depuis l'API)
+            totalHours: Math.round((workData.totalHours || 0) * 100) / 100,
+            periodObjective: Math.round((workData.periodObjective || 0) * 100) / 100,
+            hoursDifference: Math.round((workData.hoursDifference || 0) * 100) / 100,
+            daysWorked: workData.daysWorked || 0,
+            
+            // Calcul du pourcentage de performance
+            performance: workData.periodObjective > 0 
+              ? Math.round((workData.totalHours / workData.periodObjective) * 100) 
+              : 0
+          };
+        } else {
+          // ✅ Animateur sans données de pointage - calculer l'objectif par défaut
+          console.log(`⚠️ Pas de données pour ${animator.first_name}, calcul par défaut`);
+          
+          const weeklyHours = animator.weekly_hours || 35;
+          
+          // Calculer l'objectif basé sur la période sélectionnée
+          let periodObjective = 0;
+          const days = parseInt(teamDateRange.replace(/\D/g, '')) || 30;
+          
+          switch (teamDateRange) {
+            case 'current_week':
+            case 'previous_week':
+              periodObjective = weeklyHours;
+              break;
+            case 'current_month':
+            case 'previous_month':
+              periodObjective = weeklyHours * 4.33; // Moyenne mensuelle
+              break;
+            case 'last_30_days':
+              periodObjective = (weeklyHours / 7) * 22; // 22 jours ouvrables par mois en moyenne
+              break;
+            default:
+              periodObjective = (weeklyHours / 7) * Math.min(days, 22);
+          }
+          
+          periodObjective = Math.round(periodObjective * 100) / 100;
+          
+          return {
+            id: animator.id,
+            first_name: animator.first_name,
+            last_name: animator.last_name,
+            email: animator.email,
+            weekly_hours: weeklyHours,
+            annual_hours: animator.annual_hours,
+            active: animator.active,
+            
+            totalHours: 0,
+            periodObjective: periodObjective,
+            hoursDifference: -periodObjective, // Tout l'objectif reste à faire
+            daysWorked: 0,
+            performance: 0
+          };
+        }
+      });
+      
+      console.log('📋 Tableau final avec tous les animateurs:', allAnimatorsData);
+      setTeamData(allAnimatorsData);
+      
+    } else {
+      console.warn('⚠️ API team-summary: pas de données ou échec');
+      throw new Error('Pas de données reçues de l\'API');
+    }
+  } catch (error) {
+    console.error('❌ Erreur chargement équipe:', error);
+    
+    // ✅ FALLBACK: Afficher tous les animateurs avec des valeurs par défaut
+    const fallbackData = myStructureAnimators.map(animator => {
+      const weeklyHours = animator.weekly_hours || 35;
+      let periodObjective = weeklyHours * 4.33; // Par défaut mensuel
+      
+      return {
+        id: animator.id,
+        first_name: animator.first_name,
+        last_name: animator.last_name,
+        email: animator.email,
+        weekly_hours: weeklyHours,
+        annual_hours: animator.annual_hours,
+        active: animator.active,
+        
+        totalHours: 0,
+        periodObjective: Math.round(periodObjective * 100) / 100,
+        hoursDifference: -Math.round(periodObjective * 100) / 100,
+        daysWorked: 0,
+        performance: 0
+      };
+    });
+    
+    console.log('🔄 Fallback avec données par défaut:', fallbackData);
+    setTeamData(fallbackData);
+  }
+};
+
+  const handleClockAction = async (action) => {
+    if (actionLoading) return;
+    setActionLoading(action);
+    
+    try {
+      let result;
+      switch (action) {
+        case 'arrival':
+          result = await clockIn();
+          break;
+        case 'departure':
+          result = await clockOut();
+          break;
+        case 'break_start':
+          result = await startBreak();
+          break;
+        case 'break_end':
+          result = await endBreak();
+          break;
+        default:
+          throw new Error('Action non reconnue');
+      }
+
+      await fetchTodayEntries();
+      if (user?.id) {
+        await fetchTimeHistory(30, user.id);
+        await fetchMonthlyReport(null, null, user.id);
+      }
+      
+    } catch (error) {
+      console.error(`❌ Erreur lors du pointage ${action}:`, error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const exportTeamData = async () => {
+    try {
+      if (useTimeStore.getState().exportTeamData) {
+        await useTimeStore.getState().exportTeamData('csv', {
+          days: teamDateRange,
+          structureId: user.structure_id,
+          userId: selectedAnimator !== 'all' ? selectedAnimator : null
+        });
+      } else {
+        console.log('Export des données d\'équipe...');
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'export:', error);
+    }
+  };
+
+  // ===== CALCULS ET DONNÉES =====
   if (adminLoading || timeLoading || !user?.structure_id) {
     return (
       <div className="flex items-center justify-center min-h-64">
@@ -167,14 +522,11 @@ const handleUserUpdated = () => {
     );
   }
 
-  
-  // Calculs
   const myStructureAnimators = users.filter(u => 
     u && u.role === 'animator' && u.structure_id === user.structure_id
   );
   const myStructure = structures.find(s => s && s.id === user.structure_id);
   
-  // Calcul du statut aujourd'hui pour le directeur - LOGIQUE CORRIGÉE
   const myTodayEntries = todayEntries.filter(entry => entry?.user_id === user?.id);
   
   const getTodayStatusLocal = () => {
@@ -209,7 +561,6 @@ const handleUserUpdated = () => {
 
   const status = getTodayStatusLocal();
 
-  // Filtrage des animateurs
   const filteredAnimators = myStructureAnimators.filter(animator => {
     const matchesSearch = 
       (animator.first_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -221,7 +572,6 @@ const handleUserUpdated = () => {
   const totalAnimators = myStructureAnimators.length;
   const activeAnimators = myStructureAnimators.filter(a => a?.active).length;
 
-  // Activité récente
   const recentActivity = todayEntries
     .filter(entry => {
       const entryUser = myStructureAnimators.find(u => u?.id === entry?.user_id);
@@ -230,55 +580,7 @@ const handleUserUpdated = () => {
     .slice(0, recentActivityLimit)
     .sort((a, b) => new Date(b.date_time) - new Date(a.date_time));
 
-  // Actions de pointage pour le directeur - LOGIQUE CORRIGÉE
-  const handleClockAction = async (action) => {
-    if (actionLoading) return;
-    setActionLoading(action);
-    
-    try {
-      console.log(`🔄 Action de pointage: ${action}`);
-      
-      let result;
-      switch (action) {
-        case 'arrival':
-          result = await clockIn();
-          break;
-        case 'departure':
-          result = await clockOut();
-          break;
-        case 'break_start':
-          result = await startBreak();
-          break;
-        case 'break_end':
-          result = await endBreak();
-          break;
-        default:
-          throw new Error('Action non reconnue');
-      }
-
-      console.log(`✅ Résultat action ${action}:`, result);
-
-      // Recharger les données après l'action
-      await fetchTodayEntries();
-      if (user?.id) {
-        await fetchTimeHistory(30, user.id);
-        await fetchMonthlyReport(null, null, user.id);
-      }
-      
-    } catch (error) {
-      console.error(`❌ Erreur lors du pointage ${action}:`, error);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   // Formatage du temps
-  const formatHoursMinutes = (totalMinutes) => {
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = Math.round(totalMinutes % 60);
-    return `${hours}h${minutes.toString().padStart(2, '0')}`;
-  };
-
   const getWorkedTime = () => {
     if (status.arrival && status.departure) {
       const start = new Date(status.arrival.date_time);
@@ -310,43 +612,12 @@ const handleUserUpdated = () => {
     return '--h--';
   };
 
-  const canClockIn = !status.arrival && !status.departure;
-  const canStartBreak = status.arrival && !status.breakStart && !status.departure;
-  const canEndBreak = status.breakStart && !status.breakEnd && !status.departure;
-  const canClockOut = status.arrival && !status.departure;
+const canClockIn = !status.arrival && !status.departure;
+const canStartBreak = status.arrival && !status.breakStart && !status.departure;
+const canEndBreak = status.breakStart && !status.breakEnd && !status.departure;
+const canClockOut = status.arrival && !status.departure;
 
-  // Export des données d'équipe
-  const exportTeamData = async () => {
-    try {
-      // Utiliser la fonction du store si disponible
-      if (useTimeStore.getState().exportTeamData) {
-        await useTimeStore.getState().exportTeamData('csv', {
-          days: teamDateRange,
-          structureId: user.structure_id,
-          userId: selectedAnimator !== 'all' ? selectedAnimator : null
-        });
-      } else {
-        // Fallback simple
-        console.log('Export des données d\'équipe...');
-      }
-    } catch (error) {
-      console.error('Erreur lors de l\'export:', error);
-    }
-  };
-
-  // Rendu en fonction de la vue active
-  const renderContent = () => {
-    switch (activeView) {
-      case 'schedule':
-        return renderScheduleManagement();
-      case 'team':
-        return renderTeamManagement();
-      default:
-        return renderDashboard();
-    }
-  };
-
-  // Header du directeur
+  // ===== COMPOSANTS DE RENDU =====
   const renderHeader = () => (
     <div className="flex items-center justify-between mb-6">
       <div>
@@ -429,7 +700,6 @@ const handleUserUpdated = () => {
     </div>
   );
 
-  // Rendu des statistiques
   const renderStatsCards = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
       <StatsCard
@@ -464,238 +734,160 @@ const handleUserUpdated = () => {
     </>
   );
 
-  // Gestion des horaires du directeur
-  const renderScheduleManagement = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Mes Horaires</h2>
-          <p className="text-gray-600 mt-1">Gestion de mes pointages et planning</p>
-        </div>
-        <Button variant="outline" onClick={() => setActiveView('dashboard')}>
-          Retour au tableau de bord
-        </Button>
-      </div>
-
-      {/* Interface de pointage pour le directeur */}
-      {renderDirectorTimeTracking()}
-      
-      {/* Historique des pointages */}
-      {renderDirectorHistory()}
-    </div>
-  );
-
-  // Interface de pointage pour le directeur - CORRIGÉE
-  const renderDirectorTimeTracking = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Panel de pointage central et plus large */}
-      <Card title="Pointage du jour" className="lg:col-span-2">
-        <div className="space-y-6 p-6">
-          {/* Affichage de l'heure actuelle */}
-          <div className="text-center bg-gray-50 rounded-lg p-4">
-            <div className="text-3xl font-bold text-gray-900 mb-2">
-              {currentTime}
-            </div>
-            <div className="text-sm text-gray-500">
-              {new Date().toLocaleDateString('fr-FR', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </div>
-          </div>
-
-          {/* Boutons de pointage CORRIGÉS */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <button
-              onClick={() => handleClockAction('arrival')}
-              disabled={!canClockIn || actionLoading === 'arrival'}
-              className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                canClockIn && actionLoading !== 'arrival'
-                  ? 'border-green-300 bg-green-50 hover:bg-green-100 text-green-700 cursor-pointer'
-                  : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              <div className="flex flex-col items-center">
-                <PlayCircle className="w-8 h-8 mb-2" />
-                <span className="text-sm font-medium">
-                  {actionLoading === 'arrival' ? 'En cours...' : 'Arrivée'}
-                </span>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleClockAction(canStartBreak ? 'break_start' : 'break_end')}
-              disabled={(!canStartBreak && !canEndBreak) || (actionLoading === 'break_start' || actionLoading === 'break_end')}
-              className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                (canStartBreak || canEndBreak) && !actionLoading
-                  ? 'border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 cursor-pointer'
-                  : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              <div className="flex flex-col items-center">
-                <PauseCircle className="w-8 h-8 mb-2" />
-                <span className="text-sm font-medium">
-                  {actionLoading === 'break_start' || actionLoading === 'break_end' 
-                    ? 'En cours...' 
-                    : canStartBreak 
-                      ? 'Pause' 
-                      : canEndBreak 
-                        ? 'Reprise'
-                        : 'Pause'
-                  }
-                </span>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleClockAction('departure')}
-              disabled={!canClockOut || actionLoading === 'departure'}
-              className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                canClockOut && actionLoading !== 'departure'
-                  ? 'border-red-300 bg-red-50 hover:bg-red-100 text-red-700 cursor-pointer'
-                  : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              <div className="flex flex-col items-center">
-                <StopCircle className="w-8 h-8 mb-2" />
-                <span className="text-sm font-medium">
-                  {actionLoading === 'departure' ? 'En cours...' : 'Départ'}
-                </span>
-              </div>
-            </button>
-          </div>
-
-          {/* Résumé du jour */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Pointages du jour</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center">
-                <PlayCircle className="w-4 h-4 mr-2 text-green-600" />
-                <div>
-                  <span className="text-sm text-gray-500">Arrivée</span>
-                  <p className="font-medium">
-                    {status.arrival 
-                      ? new Date(status.arrival.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-                      : '--:--'
-                    }
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <StopCircle className="w-4 h-4 mr-2 text-red-600" />
-                <div>
-                  <span className="text-sm text-gray-500">Départ</span>
-                  <p className="font-medium">
-                    {status.departure 
-                      ? new Date(status.departure.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-                      : '--:--'
-                    }
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <PauseCircle className="w-4 h-4 mr-2 text-orange-500" />
-                <div>
-                  <span className="text-sm text-gray-500">Pause début</span>
-                  <p className="font-medium">
-                    {status.breakStart 
-                      ? new Date(status.breakStart.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-                      : '--:--'
-                    }
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <PauseCircle className="w-4 h-4 mr-2 text-blue-500" />
-                <div>
-                  <span className="text-sm text-gray-500">Pause fin</span>
-                  <p className="font-medium">
-                    {status.breakEnd 
-                      ? new Date(status.breakEnd.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-                      : '--:--'
-                    }
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t pt-3 mt-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">Temps travaillé :</span>
-                <span className="text-lg font-bold text-gray-900">{getWorkedTime()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Statistiques personnelles */}
+  // Je continue dans le prochain message pour éviter la troncature...  // ===== FONCTIONS DE RENDU SUITE =====
+  
+  // Liste des animateurs
+  const renderAnimatorsList = () => (
+    <Card title="Mes Animateurs" className="h-full">
       <div className="space-y-4">
-        <StatsCard
-          title="Aujourd'hui"
-          value={getWorkedTime() === '--h--' ? '0h00' : getWorkedTime()}
-          trend="neutral"
-          icon={<Clock className="w-5 h-5" />}
-        />
-        <StatsCard
-          title="Cette semaine"
-          value={getWeeklyWorkedTime()}
-          trend="neutral"
-          icon={<Calendar className="w-5 h-5" />}
-        />
-        <StatsCard
-          title="Ce mois-ci"
-          value={getMonthlyWorkedTime()}
-          trend="neutral"
-          icon={<Activity className="w-5 h-5" />}
-        />
+        {/* Barre de recherche */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Rechercher un animateur..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Liste des animateurs */}
+        <div className="space-y-2 max-h-80 overflow-y-auto">
+          {filteredAnimators.length > 0 ? (
+            filteredAnimators.slice(0, showAllAnimators ? filteredAnimators.length : 5).map((animator) => (
+              <div 
+                key={animator.id} 
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                onClick={() => handleAnimatorSelection(animator.id)}
+              >
+                <div className="flex items-center">
+                  <div className={`w-3 h-3 rounded-full mr-3 ${animator.active ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {animator.first_name} {animator.last_name}
+                    </p>
+                    <p className="text-sm text-gray-500">{animator.email}</p>
+                  </div>
+                </div>
+<div className="flex items-center space-x-2">
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={(e) => {
+      e.stopPropagation();
+      handleEditUser(animator);
+    }}
+  >
+    Modifier
+  </Button>
+  <Button
+    onClick={async (e) => {
+      e.stopPropagation();
+      try {
+        await toggleUserStatus(animator.id, !animator.active);
+        console.log(`✅ Statut animateur ${animator.id} modifié`);
+        // Recharger les données
+        await loadData();
+      } catch (error) {
+        console.error('❌ Erreur toggle status:', error);
+      }
+    }}
+    variant={animator.active ? "success" : "danger"}
+    size="sm"
+    className="min-w-[70px]"
+  >
+    {animator.active ? 'Actif' : 'Inactif'}
+  </Button>
+</div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>Aucun animateur trouvé</p>
+            </div>
+          )}
+        </div>
+
+        {/* Bouton voir plus */}
+        {filteredAnimators.length > 5 && (
+          <Button
+            variant="outline"
+            onClick={() => setShowAllAnimators(!showAllAnimators)}
+            className="w-full"
+          >
+            {showAllAnimators ? 'Voir moins' : `Voir tous (${filteredAnimators.length})`}
+          </Button>
+        )}
       </div>
-    </div>
+    </Card>
   );
 
-  // Historique des pointages du directeur
-  const renderDirectorHistory = () => (
-    <Card title="Mon Historique (30 derniers jours)" className="mt-6">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Arrivée</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pause</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reprise</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Départ</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {processedHistory.length > 0 ? (
-              processedHistory.map((day) => (
-                <tr key={day.date}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{day.formattedDate}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{day.arrival || '--:--'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{day.breakStart || '--:--'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{day.breakEnd || '--:--'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{day.departure || '--:--'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{day.formattedWorkingHours}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="6" className="px-6 py-8 text-center text-gray-500 text-sm">
-                  Aucun pointage sur les 30 derniers jours
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+  // Activité récente
+  const renderRecentActivity = () => (
+    <Card title="Activité Récente" className="h-full">
+      <div className="space-y-3 max-h-80 overflow-y-auto">
+        {recentActivity.length > 0 ? (
+          recentActivity.slice(0, showAllActivity ? recentActivity.length : 10).map((entry, index) => {
+            const entryUser = myStructureAnimators.find(u => u?.id === entry?.user_id);
+            const actionIcon = {
+              'arrival': <PlayCircle className="w-4 h-4 text-green-600" />,
+              'departure': <StopCircle className="w-4 h-4 text-red-600" />,
+              'break_start': <PauseCircle className="w-4 h-4 text-orange-500" />,
+              'break_end': <PauseCircle className="w-4 h-4 text-blue-500" />
+            };
+
+            const actionLabel = {
+              'arrival': 'Arrivée',
+              'departure': 'Départ',
+              'break_start': 'Début pause',
+              'break_end': 'Fin pause'
+            };
+
+            return (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center">
+                  {actionIcon[entry.tracking_type]}
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-900">
+                      {entryUser ? `${entryUser.first_name} ${entryUser.last_name}` : 'Utilisateur inconnu'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {actionLabel[entry.tracking_type]}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">
+                    {new Date(entry.date_time).toLocaleTimeString('fr-FR', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {new Date(entry.date_time).toLocaleDateString('fr-FR')}
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <p>Aucune activité récente</p>
+          </div>
+        )}
       </div>
+
+      {recentActivity.length > 10 && (
+        <Button
+          variant="outline"
+          onClick={() => setShowAllActivity(!showAllActivity)}
+          className="w-full mt-4"
+        >
+          {showAllActivity ? 'Voir moins' : `Voir toutes (${recentActivity.length})`}
+        </Button>
+      )}
     </Card>
   );
 
@@ -708,22 +900,25 @@ const handleUserUpdated = () => {
           <p className="text-gray-600 mt-1">Suivi des horaires de vos animateurs</p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button variant="outline" onClick={() => exportTeamData()}>
+          <Button variant="outline" onClick={exportTeamData}>
             <Download className="w-4 h-4 mr-2" />
             Exporter
           </Button>
           <Button variant="outline" onClick={() => setActiveView('dashboard')}>
-            Retour
+            Retour au tableau de bord
           </Button>
         </div>
       </div>
 
+      {/* Filtres d'équipe */}
       {renderTeamFilters()}
-      {renderTeamTable()}
+
+      {/* Données d'équipe */}
+      {renderTeamData()}
     </div>
   );
 
-  // Filtres pour la gestion d'équipe
+  // Filtres d'équipe
   const renderTeamFilters = () => (
     <Card className="p-4">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -736,9 +931,11 @@ const handleUserUpdated = () => {
             onChange={(e) => setTeamDateRange(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
           >
-            <option value="7">7 derniers jours</option>
-            <option value="30">30 derniers jours</option>
-            <option value="90">3 derniers mois</option>
+            {PERIOD_OPTIONS.filter(p => p.value !== 'custom').map((option) => (
+              <option key={option.value} value={option.value} title={option.description}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -748,7 +945,7 @@ const handleUserUpdated = () => {
           </label>
           <select
             value={selectedAnimator}
-            onChange={(e) => setSelectedAnimator(e.target.value)}
+            onChange={(e) => handleAnimatorSelection(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">Tous les animateurs</option>
@@ -774,342 +971,820 @@ const handleUserUpdated = () => {
     </Card>
   );
 
-  // Tableau de l'équipe
-  const renderTeamTable = () => {
-    const filteredTeamData = selectedAnimator === 'all' 
-      ? teamData 
-      : teamData.filter(item => item.user.id === parseInt(selectedAnimator));
-
-    return (
-      <Card title="Résumé des heures d'équipe">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Animateur</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Heures travaillées</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Objectif</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Différence</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredTeamData.length > 0 ? (
-                filteredTeamData.map(item => {
-                  const { user, totalHours, periodObjective, hoursDifference } = item;
-                  
-                  return (
-                    <tr key={user.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center mr-3">
-                            <span className="text-white text-xs font-medium">
-                              {user.first_name?.charAt(0)}{user.last_name?.charAt(0)}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {user.first_name} {user.last_name}
-                            </div>
-                            <div className="text-sm text-gray-500">{user.email}</div>
-                          </div>
+  // Données d'équipe
+  const renderTeamData = () => (
+    <Card title="Données d'équipe">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Animateur</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Heures travaillées</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Objectif</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Performance</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {teamData.length > 0 ? (
+              teamData.map((member) => (
+                <tr key={member.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className={`w-3 h-3 rounded-full mr-3 ${member.active ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {member.first_name} {member.last_name}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatHoursMinutes(totalHours * 60)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatHoursMinutes(periodObjective * 60)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`text-sm font-medium ${
-                          hoursDifference >= 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {hoursDifference >= 0 ? '+' : ''}{formatHoursMinutes(Math.abs(hoursDifference) * 60)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs rounded-full font-medium bg-green-100 text-green-800">
-                          Actif
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="5" className="px-6 py-8 text-center text-gray-500 text-sm">
-                    {selectedAnimator === 'all' 
-                      ? 'Aucune donnée disponible pour cette période'
-                      : 'Aucune donnée pour cet animateur'
-                    }
+                        <div className="text-sm text-gray-500">{member.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {member.totalHours || '0'}h
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {member.weekly_hours || '35'}h/semaine
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                        <div 
+                          className={`h-2 rounded-full ${
+                            (member.performance || 0) >= 90 ? 'bg-green-500' : 
+                            (member.performance || 0) >= 75 ? 'bg-blue-500' : 
+                            (member.performance || 0) >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: `${Math.min(member.performance || 0, 100)}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-xs text-gray-600">
+                        {Math.round(member.performance || 0)}%
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                      member.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {member.active ? 'Actif' : 'Inactif'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAnimatorSelection(member.id)}
+                      >
+      Détails
+    </Button>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => handleEditUser(member)}
+    >
+      Modifier
+    </Button>
+    <Button
+      onClick={async () => {
+        try {
+          await toggleUserStatus(member.id, !member.active);
+          console.log(`✅ Statut animateur ${member.id} modifié`);
+          // Recharger les données d'équipe
+          await loadTeamData();
+        } catch (error) {
+          console.error('❌ Erreur toggle status:', error);
+        }
+      }}
+      variant={member.active ? "success" : "danger"}
+      size="sm"
+      className="min-w-[80px]"
+    >
+      {member.active ? 'Actif' : 'Inactif'}
+    </Button>
+  </div>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="px-6 py-8 text-center text-gray-500 text-sm">
+                  Aucune donnée d'équipe disponible
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+
+  // Gestion des horaires personnels du directeur
+  const renderScheduleManagement = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Mes Horaires</h2>
+          <p className="text-gray-600 mt-1">Gestion de votre temps de travail</p>
         </div>
-      </Card>
-    );
-  };
+        <div className="flex items-center space-x-3">
+          <Button variant="outline" onClick={() => setActiveView('dashboard')}>
+            Retour au tableau de bord
+          </Button>
+        </div>
+      </div>
 
-  // Liste des animateurs (version simplifiée pour le dashboard)
-  const renderAnimatorsList = () => (
-    <Card
-      title="Gestion de Mon Équipe d'Animateurs"
-      header={
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Animateurs ({filteredAnimators.length})
-            </h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAllAnimators(!showAllAnimators)}
-              className="shrink-0"
-            >
-              {showAllAnimators ? "Réduire" : "Voir tout"}
-            </Button>
+      {/* Panel de pointage */}
+      {renderDirectorTimeTracking()}
+
+      {/* Historique */}
+      {renderDirectorHistory()}
+    </div>
+  );
+
+  // Pointage du directeur
+const renderDirectorTimeTracking = () => (
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    {/* Panel de pointage central et plus large */}
+    <Card title="Pointage du jour" className="lg:col-span-2">
+      <div className="space-y-6 p-6">
+        {/* Affichage de l'heure actuelle */}
+        <div className="text-center bg-gray-50 rounded-lg p-4">
+          <div className="text-3xl font-bold text-gray-900 mb-2">
+            {currentTime}
           </div>
-
-          <div className="w-full">
-            <Input
-              placeholder="Rechercher un animateur..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              leftIcon={<Search className="w-4 h-4" />}
-              className="w-full"
-            />
+          <div className="text-sm text-gray-500">
+            {new Date().toLocaleDateString('fr-FR', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}
           </div>
         </div>
-      }
-      className="mb-6"
-    >
-      <div className="space-y-3 max-h-64 overflow-y-auto">
-        {filteredAnimators
-          .slice(0, showAllAnimators ? filteredAnimators.length : 8)
-          .length > 0 ? (
-          filteredAnimators
-            .slice(0, showAllAnimators ? filteredAnimators.length : 8)
-            .map((animator) => (
-              <div 
-                key={animator.id} 
-                className={`flex items-center justify-between p-3 rounded-lg border border-gray-100 ${
-                  !animator.active ? "opacity-60 bg-gray-50" : "bg-white hover:bg-gray-50"
-                }`}
-              >
-                <div className="flex items-center min-w-0 flex-1">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shrink-0 ${
-                    animator.active ? "bg-blue-600" : "bg-gray-400"
-                  }`}>
-                    <span className="text-white text-sm font-medium">
-                      {animator.first_name?.charAt(0)}{animator.last_name?.charAt(0)}
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className={`font-medium truncate ${
-                      animator.active ? "text-gray-900" : "text-gray-500"
-                    }`}>
-                      {animator.first_name} {animator.last_name}
-                      {!animator.active && (
-                        <span className="ml-2 text-xs text-red-500">(Inactif)</span>
-                      )}
-                    </p>
-                    <p className={`text-sm truncate ${
-                      animator.active ? "text-gray-500" : "text-gray-400"
-                    }`}>
-                      {animator.email}
-                    </p>
-                  </div>
-                </div>
-                
-<div className="flex items-center space-x-2 shrink-0 ml-2">
-  {/* AJOUTER le bouton Modifier */}
-  <button
-    onClick={() => handleEditUser(animator)}
-    className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 transition-colors"
-    title="Modifier l'animateur"
-  >
-    ✏️ Modifier
-  </button>
 
-  <span className={`px-2 py-1 text-xs rounded-full font-medium bg-green-100 text-green-800 ${
-    !animator.active ? "opacity-50" : ""
-  }`}>
-    Animateur
-  </span>
+        {/* Boutons de pointage - MÊME LOGIQUE QUE ANIMATEUR */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <button
+            onClick={() => handleClockAction('arrival')}
+            disabled={!canClockIn || actionLoading === 'arrival'}
+            className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+              canClockIn && actionLoading !== 'arrival'
+                ? 'border-green-300 bg-green-50 hover:bg-green-100 text-green-700 cursor-pointer'
+                : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <div className="flex flex-col items-center">
+              <PlayCircle className="w-8 h-8 mb-2" />
+              <span className="text-sm font-medium">
+                {actionLoading === 'arrival' ? 'En cours...' : 'Arrivée'}
+              </span>
+            </div>
+          </button>
 
-  <button
-    type="button"
-    onClick={async () => {
-      try {
-        await toggleUserStatus(animator.id, !animator.active);
-        await loadData();
-      } catch (error) {
-        console.error('Erreur toggle status:', error);
-      }
-    }}
-    className={`
-      px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 hover:shadow-lg transform hover:scale-105
-      ${animator.active 
-        ? 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200 focus:ring-green-500' 
-        : 'bg-red-100 text-red-800 border border-red-300 hover:bg-red-200 focus:ring-red-500'
-      }
-    `}
-    title={animator.active ? 'Cliquer pour désactiver' : 'Cliquer pour activer'}
-  >
-    {animator.active ? '🟢 Actif' : '🔴 Inactif'}
-  </button>
+          <button
+            onClick={() => handleClockAction(canStartBreak ? 'break_start' : 'break_end')}
+            disabled={(!canStartBreak && !canEndBreak) || (actionLoading === 'break_start' || actionLoading === 'break_end')}
+            className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+              (canStartBreak || canEndBreak) && !actionLoading
+                ? 'border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 cursor-pointer'
+                : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <div className="flex flex-col items-center">
+              <PauseCircle className="w-8 h-8 mb-2" />
+              <span className="text-sm font-medium">
+                {actionLoading === 'break_start' || actionLoading === 'break_end' 
+                  ? 'En cours...' 
+                  : canStartBreak 
+                    ? 'Pause' 
+                    : canEndBreak 
+                      ? 'Reprise'
+                      : 'Pause'
+                }
+              </span>
+            </div>
+          </button>
 
-  <div
-    className={`w-2 h-2 rounded-full ${
-      animator.active ? "bg-green-400" : "bg-gray-300"
-    }`}
-  />
-</div>
+          <button
+            onClick={() => handleClockAction('departure')}
+            disabled={!canClockOut || actionLoading === 'departure'}
+            className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+              canClockOut && actionLoading !== 'departure'
+                ? 'border-red-300 bg-red-50 hover:bg-red-100 text-red-700 cursor-pointer'
+                : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <div className="flex flex-col items-center">
+              <StopCircle className="w-8 h-8 mb-2" />
+              <span className="text-sm font-medium">
+                {actionLoading === 'departure' ? 'En cours...' : 'Départ'}
+              </span>
+            </div>
+          </button>
+        </div>
+
+        {/* Résumé du jour - MÊME DESIGN QUE ANIMATEUR */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">Pointages du jour</h3>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center">
+              <PlayCircle className="w-4 h-4 mr-2 text-green-600" />
+              <div>
+                <span className="text-sm text-gray-500">Arrivée</span>
+                <p className="font-medium">
+                  {status.arrival 
+                    ? new Date(status.arrival.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                    : '--:--'
+                  }
+                </p>
               </div>
-            ))
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>
-              {searchTerm ? 'Aucun animateur trouvé' : 'Aucun animateur dans votre structure'}
+            </div>
+
+            <div className="flex items-center">
+              <StopCircle className="w-4 h-4 mr-2 text-red-600" />
+              <div>
+                <span className="text-sm text-gray-500">Départ</span>
+                <p className="font-medium">
+                  {status.departure 
+                    ? new Date(status.departure.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                    : '--:--'
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center">
+              <PauseCircle className="w-4 h-4 mr-2 text-orange-500" />
+              <div>
+                <span className="text-sm text-gray-500">Pause début</span>
+                <p className="font-medium">
+                  {status.breakStart 
+                    ? new Date(status.breakStart.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                    : '--:--'
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center">
+              <PauseCircle className="w-4 h-4 mr-2 text-blue-500" />
+              <div>
+                <span className="text-sm text-gray-500">Pause fin</span>
+                <p className="font-medium">
+                  {status.breakEnd 
+                    ? new Date(status.breakEnd.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                    : '--:--'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t pt-3 mt-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-700">Temps travaillé :</span>
+              <span className="text-lg font-bold text-gray-900">{getWorkedTime()}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Aide contextuelle */}
+        {!status.arrival && (
+          <div className="p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700">
+              💡 Commencez votre journée en cliquant sur "Arrivée"
             </p>
           </div>
         )}
       </div>
     </Card>
-  );
 
-  // Activité récente
-  const renderRecentActivity = () => (
-    <Card
-      title="Activité Récente de l'Équipe"
-      header={
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Activité Récente ({recentActivity.length})
-          </h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowAllActivity(!showAllActivity)}
-            className="shrink-0"
-          >
-            {showAllActivity ? "Réduire" : "Voir tout"}
-          </Button>
-        </div>
-      }
-      className="mb-6"
-    >
+    {/* Panel statistiques quotidiennes */}
+    <div className="space-y-4">
+      <StatsCard
+        title="Aujourd'hui"
+        value={getWorkedTime() === '--h--' ? '0h00' : getWorkedTime()}
+        trend="neutral"
+        icon={<Clock className="w-5 h-5" />}
+      />
+      <StatsCard
+        title="Cette semaine"
+        value={getWeeklyWorkedTime()}
+        trend="neutral"
+        icon={<Calendar className="w-5 h-5" />}
+      />
+      <StatsCard
+        title="Ce mois-ci"
+        value={getMonthlyWorkedTime()}
+        trend="neutral"
+        icon={<Activity className="w-5 h-5" />}
+      />
+    </div>
+  </div>
+);
+
+  // Historique des pointages du directeur
+  const renderDirectorHistory = () => (
+    <Card title="Historique récent">
       <div className="space-y-3 max-h-64 overflow-y-auto">
-        {recentActivity
-          .slice(0, showAllActivity ? recentActivity.length : 10)
-          .length > 0 ? (
-          recentActivity
-            .slice(0, showAllActivity ? recentActivity.length : 10)
-            .map((activity, index) => {
-              const user = myStructureAnimators.find(u => u.id === activity.user_id);
-              if (!user) return null;
-
-              const getActivityColor = (type) => {
-                switch (type) {
-                  case 'arrival': return 'text-green-600 bg-green-100';
-                  case 'departure': return 'text-red-600 bg-red-100';
-                  case 'break_start': return 'text-orange-600 bg-orange-100';
-                  case 'break_end': return 'text-blue-600 bg-blue-100';
-                  default: return 'text-gray-600 bg-gray-100';
-                }
-              };
-
-              const getActivityText = (type) => {
-                switch (type) {
-                  case 'arrival': return 'Arrivée';
-                  case 'departure': return 'Départ';
-                  case 'break_start': return 'Début pause';
-                  case 'break_end': return 'Fin pause';
-                  default: return 'Action';
-                }
-              };
-
-              const getActivityIcon = (type) => {
-                switch (type) {
-                  case 'arrival': return <PlayCircle className="w-4 h-4" />;
-                  case 'departure': return <StopCircle className="w-4 h-4" />;
-                  case 'break_start': return <PauseCircle className="w-4 h-4" />;
-                  case 'break_end': return <PlayCircle className="w-4 h-4" />;
-                  default: return <Activity className="w-4 h-4" />;
-                }
-              };
-
-              return (
-                <div key={`${activity.id}-${index}`} className="flex items-center p-3 bg-gray-50 rounded-lg">
-                  <div className={`p-2 rounded-full mr-3 ${getActivityColor(activity.tracking_type)}`}>
-                    {getActivityIcon(activity.tracking_type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {user.first_name} {user.last_name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {getActivityText(activity.tracking_type)}
-                    </p>
-                  </div>
-                  <span className="text-xs text-gray-400 ml-2">
-                    {new Date(activity.date_time).toLocaleTimeString('fr-FR', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </span>
-                </div>
-              );
-            })
-        ) : (
+        {processedHistory.slice(0, 10).map((day, index) => (
+          <div key={index} className={`flex justify-between items-center p-3 rounded-lg ${
+            day.workingHours > 0 ? 'bg-green-50' : 'bg-gray-50'
+          }`}>
+            <div>
+              <p className="font-medium text-gray-900">{day.dayName}</p>
+              <p className="text-sm text-gray-500">{day.formattedDate}</p>
+            </div>
+            <div className="text-right">
+              <p className={`font-semibold ${
+                day.workingHours >= 7 ? 'text-green-600' : 
+                day.workingHours > 0 ? 'text-orange-600' : 'text-gray-400'
+              }`}>
+                {day.formattedWorkingHours}
+              </p>
+              <p className="text-xs text-gray-400">
+                {day.arrival ? `${day.arrival} - ${day.departure || 'En cours'}` : 'Absent'}
+              </p>
+            </div>
+          </div>
+        ))}
+        
+        {processedHistory.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>Aucune activité récente</p>
+            <p>Aucun historique disponible</p>
           </div>
         )}
       </div>
     </Card>
   );
 
-  return (
-  <div className="space-y-6">
-    {renderContent()}
-    
-    {/* Modal pour création d'animateur */}
-    <Modal
-      isOpen={showCreateAnimatorModal}
-      onClose={() => setShowCreateAnimatorModal(false)}
-      size="xl"
-      showCloseButton={false}
-    >
-      <CreateUserForm
-        onSuccess={handleAnimatorCreated}
-        onCancel={() => setShowCreateAnimatorModal(false)}
-        defaultRole="animator"
-        structureId={user?.structure_id}
-        isDirectorContext={true}
-      />
-    </Modal>
+  // Sélection d'animateur avec statistiques
+  const handleAnimatorSelection = async (animatorId) => {
+    setSelectedAnimator(animatorId);
+    if (animatorId !== 'all' && animatorId !== selectedAnimator) {
+      await loadAnimatorDetailedStats(animatorId, selectedPeriodForStats);
+      setShowAnimatorStatsModal(true);
+    } else if (animatorId === 'all') {
+      setSelectedAnimatorStats(null);
+      setShowAnimatorStatsModal(false);
+    }
+  };
 
-    {/* Modal de modification d'animateur - DOIT ÊTRE EN DEHORS DU MODAL DE CRÉATION */}
-    {showEditUserModal && selectedUser && (
-      <EditUserForm
-        user={selectedUser}
-        onClose={() => {
-          setShowEditUserModal(false);
-          setSelectedUser(null);
-        }}
-        onUserUpdated={handleUserUpdated}
-        isDirectorContext={true}
-        fixedRole="animator"
-        fixedStructureId={user?.structure_id}
-      />
-    )}
-  </div>
+  // Charger les statistiques détaillées d'un animateur
+  const loadAnimatorDetailedStats = async (animatorId, period = 'current_month') => {
+    if (!animatorId) return;
+    
+    setAnimatorStatsLoading(true);
+    try {
+      const animator = myStructureAnimators.find(a => a.id === parseInt(animatorId));
+      if (!animator) return;
+
+      const dateRange = calculatePeriodDates(period);
+      
+      const result = await fetchTimeHistory(null, animatorId, dateRange.start, dateRange.end);
+      if (result.success) {
+        const entries = result.data || [];
+        const stats = calculateComprehensiveStats(entries, animator, period, dateRange);
+        setSelectedAnimatorStats(stats);
+      }
+    } catch (error) {
+      console.error('Erreur chargement stats animateur:', error);
+    } finally {
+      setAnimatorStatsLoading(false);
+    }
+  };
+
+  // Calculer les statistiques complètes
+  const calculateComprehensiveStats = (entries, animator, period, dateRange) => {
+    const dailyData = {};
+    entries.forEach(entry => {
+      const date = entry.date_time.split('T')[0];
+      if (!dailyData[date]) {
+        dailyData[date] = [];
+      }
+      dailyData[date].push(entry);
+    });
+
+    const workingDays = [];
+    let totalHours = 0;
+    let totalBreakTime = 0;
+    let completeDays = 0;
+
+    Object.keys(dailyData).forEach(date => {
+      const dayEntries = dailyData[date];
+      const arrival = dayEntries.find(e => e.tracking_type === 'arrival');
+      const departure = dayEntries.find(e => e.tracking_type === 'departure');
+      const breakStart = dayEntries.find(e => e.tracking_type === 'break_start');
+      const breakEnd = dayEntries.find(e => e.tracking_type === 'break_end');
+
+      let dayHours = 0;
+      let breakHours = 0;
+
+      if (arrival && departure) {
+        const start = new Date(arrival.date_time);
+        const end = new Date(departure.date_time);
+        dayHours = (end - start) / (1000 * 60 * 60);
+
+        if (breakStart && breakEnd) {
+          const bStart = new Date(breakStart.date_time);
+          const bEnd = new Date(breakEnd.date_time);
+          breakHours = (bEnd - bStart) / (1000 * 60 * 60);
+          dayHours -= breakHours;
+        }
+
+        if (dayHours > 0) {
+          completeDays++;
+          totalHours += dayHours;
+          totalBreakTime += breakHours;
+        }
+      }
+
+      workingDays.push({
+        date,
+        dayName: new Date(date).toLocaleDateString('fr-FR', { weekday: 'long' }),
+        arrival: arrival ? formatTime(arrival.date_time) : null,
+        departure: departure ? formatTime(departure.date_time) : null,
+        breakStart: breakStart ? formatTime(breakStart.date_time) : null,
+        breakEnd: breakEnd ? formatTime(breakEnd.date_time) : null,
+        hoursWorked: Math.round(dayHours * 100) / 100,
+        breakTime: Math.round(breakHours * 100) / 100,
+        isComplete: !!(arrival && departure),
+        status: getWorkDayStatus(arrival, departure, breakStart, breakEnd)
+      });
+    });
+
+    const weeklyObjective = animator.weekly_hours || 35;
+    const periodObjective = calculatePeriodObjective(period, weeklyObjective, animator.annual_hours);
+
+    const averageHoursPerDay = completeDays > 0 ? totalHours / completeDays : 0;
+    const completionRate = periodObjective > 0 ? (totalHours / periodObjective) * 100 : 0;
+    const hoursRemaining = Math.max(0, periodObjective - totalHours);
+    const variance = totalHours - periodObjective;
+
+    const arrivalTimes = workingDays
+      .filter(day => day.arrival)
+      .map(day => {
+        const [hours, minutes] = day.arrival.split(':').map(Number);
+        return hours + minutes / 60;
+      });
+
+    const averageArrival = arrivalTimes.length > 0 
+      ? arrivalTimes.reduce((sum, time) => sum + time, 0) / arrivalTimes.length 
+      : 0;
+
+    const arrivalVariance = calculateVariance(arrivalTimes);
+    const punctualityScore = Math.max(0, 100 - arrivalVariance * 20);
+
+    return {
+      animator,
+      period: {
+        type: period,
+        label: dateRange.label,
+        start: dateRange.start,
+        end: dateRange.end,
+        totalDays: Object.keys(dailyData).length
+      },
+      hours: {
+        total: Math.round(totalHours * 100) / 100,
+        objective: periodObjective,
+        remaining: hoursRemaining,
+        variance: Math.round(variance * 100) / 100,
+        averagePerDay: Math.round(averageHoursPerDay * 100) / 100,
+        totalBreakTime: Math.round(totalBreakTime * 100) / 100
+      },
+      performance: {
+        completionRate: Math.round(completionRate * 100) / 100,
+        completeDays,
+        status: getPerformanceStatus(completionRate),
+        isOnTrack: completionRate >= 90,
+        needsAttention: completionRate < 75
+      },
+      patterns: {
+        averageArrival: formatDecimalToTime(averageArrival),
+        punctualityScore: Math.round(punctualityScore),
+        mostProductiveDay: getMostProductiveDay(workingDays),
+        consistency: getConsistencyRating(punctualityScore)
+      },
+      workingDays: workingDays.sort((a, b) => new Date(b.date) - new Date(a.date)),
+      lastUpdate: new Date().toISOString()
+    };
+  };
+
+  // Modal des statistiques détaillées d'un animateur
+  const renderAnimatorStatsModal = () => {
+    if (!showAnimatorStatsModal || !selectedAnimatorStats) return null;
+
+    const { animator, period, hours, performance, patterns, workingDays } = selectedAnimatorStats;
+
+    return (
+      <Modal
+        isOpen={showAnimatorStatsModal}
+        onClose={() => setShowAnimatorStatsModal(false)}
+        size="6xl"
+        title={`Statistiques détaillées - ${animator.first_name} ${animator.last_name}`}
+      >
+        <div className="space-y-6 max-h-[80vh] overflow-y-auto">
+          {/* En-tête avec contrôles de période */}
+          <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">{period.label}</h3>
+              <p className="text-sm text-gray-600">
+                Du {new Date(period.start).toLocaleDateString('fr-FR')} au {new Date(period.end).toLocaleDateString('fr-FR')}
+              </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <select
+                value={selectedPeriodForStats}
+                onChange={(e) => {
+                  setSelectedPeriodForStats(e.target.value);
+                  loadAnimatorDetailedStats(animator.id, e.target.value);
+                }}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+              >
+                {PERIOD_OPTIONS.filter(p => p.value !== 'custom').map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Cartes de métriques principales */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatsCard
+              title="Heures travaillées"
+              value={`${hours.total}h`}
+              change={`Objectif: ${hours.objective}h`}
+              trend={performance.isOnTrack ? 'positive' : performance.needsAttention ? 'negative' : 'neutral'}
+              icon={<Clock className="w-5 h-5" />}
+              className={performance.isOnTrack ? 'border-l-4 border-green-500' : 
+                        performance.needsAttention ? 'border-l-4 border-red-500' : 'border-l-4 border-yellow-500'}
+            />
+
+            <StatsCard
+              title="Progression"
+              value={`${performance.completionRate}%`}
+              change={`${hours.remaining > 0 ? `${hours.remaining}h restantes` : 'Objectif atteint'}`}
+              trend={performance.completionRate >= 90 ? 'positive' : 
+                     performance.completionRate >= 75 ? 'neutral' : 'negative'}
+              icon={<Target className="w-5 h-5" />}
+            />
+
+            <StatsCard
+              title="Moyenne quotidienne"
+              value={`${hours.averagePerDay}h`}
+              change={`${performance.completeDays} jours complets`}
+              trend="neutral"
+              icon={<Timer className="w-5 h-5" />}
+            />
+
+            <StatsCard
+              title="Ponctualité"
+              value={patterns.consistency.label}
+              change={`Arrivée moyenne: ${patterns.averageArrival}`}
+              trend={patterns.punctualityScore >= 75 ? 'positive' : 'neutral'}
+              icon={<CheckCircle className="w-5 h-5" />}
+            />
+          </div>
+
+          {/* Graphique de progression */}
+          <Card title="Progression vers l'objectif">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">Avancement</span>
+                <span className="text-sm text-gray-500">{performance.completionRate}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-4">
+                <div 
+                  className={`h-4 rounded-full transition-all duration-300 ${
+                    performance.completionRate >= 100 ? 'bg-green-500' : 
+                    performance.completionRate >= 75 ? 'bg-blue-500' : 
+                    performance.completionRate >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${Math.min(performance.completionRate, 100)}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600 mt-2">
+                <span>{hours.total}h travaillées</span>
+                <span>{hours.objective}h objectif</span>
+              </div>
+              
+              {/* Analyse de performance */}
+              <div className="mt-4 p-3 rounded-lg bg-gray-50">
+                <div className="flex items-center">
+                  {React.createElement(performance.status.icon, { 
+                    className: `w-5 h-5 mr-2 text-${performance.status.color}-600` 
+                  })}
+                  <span className={`font-medium text-${performance.status.color}-700`}>
+                    {performance.status.label}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mt-1">
+                  {hours.variance >= 0 
+                    ? `Dépassement de ${Math.abs(hours.variance)}h par rapport à l'objectif`
+                    : `Retard de ${Math.abs(hours.variance)}h par rapport à l'objectif`
+                  }
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Historique détaillé */}
+          <Card title="Détail par jour de travail">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Arrivée</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Départ</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pause</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Heures</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Performance</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {workingDays.slice(0, 15).map((day) => {
+                    const dailyObjective = hours.objective / period.totalDays;
+                    const dayPerformance = dailyObjective > 0 ? (day.hoursWorked / dailyObjective) * 100 : 0;
+                    
+                    return (
+                      <tr key={day.date} className={day.hoursWorked === 0 ? 'bg-red-50' : ''}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div>
+                            <div className="font-medium">{day.dayName}</div>
+                            <div className="text-xs text-gray-500">{new Date(day.date).toLocaleDateString('fr-FR')}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{day.arrival || '--:--'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{day.departure || '--:--'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {day.breakStart && day.breakEnd 
+                            ? `${day.breakTime}h` 
+                            : day.breakStart 
+                            ? 'En cours'
+                            : '--'
+                          }
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <span className={day.hoursWorked >= dailyObjective ? 'text-green-600' : 
+                                         day.hoursWorked > 0 ? 'text-orange-600' : 'text-red-600'}>
+                            {day.hoursWorked}h
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                              <div 
+                                className={`h-2 rounded-full ${
+                                  dayPerformance >= 100 ? 'bg-green-500' : 
+                                  dayPerformance >= 75 ? 'bg-blue-500' : 
+                                  dayPerformance >= 25 ? 'bg-yellow-500' : 'bg-red-500'
+                                }`}
+                                style={{ width: `${Math.min(dayPerformance, 100)}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-gray-600">
+                              {Math.round(dayPerformance)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                            day.status === 'complet' ? 'bg-green-100 text-green-800' :
+                            day.status === 'en_cours' ? 'bg-blue-100 text-blue-800' :
+                            day.status === 'incomplet' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {day.status === 'complet' ? 'Complet' :
+                             day.status === 'en_cours' ? 'En cours' :
+                             day.status === 'incomplet' ? 'Incomplet' : 'Absent'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Analyses et recommandations */}
+          <Card title="Analyses et Recommandations">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+              <div>
+                <h4 className="text-lg font-semibold mb-3 text-gray-900">Analyse des patterns</h4>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Jour le plus productif :</span>
+                    <span className="text-sm font-medium text-gray-900">{patterns.mostProductiveDay}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Régularité des horaires :</span>
+                    <span className={`text-sm font-medium text-${patterns.consistency.color}-600`}>
+                      {patterns.consistency.label}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Score de ponctualité :</span>
+                    <span className="text-sm font-medium text-gray-900">{patterns.punctualityScore}/100</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold mb-3 text-gray-900">Recommandations</h4>
+                <div className="space-y-2 text-sm text-gray-600">
+                  {performance.needsAttention && (
+                    <div className="flex items-start text-red-600">
+                      <AlertCircle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Performance insuffisante - Entretien recommandé</span>
+                    </div>
+                  )}
+                  {hours.variance < -10 && (
+                    <div className="flex items-start text-orange-600">
+                      <AlertCircle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Retard significatif sur les objectifs</span>
+                    </div>
+                  )}
+                  {patterns.punctualityScore < 70 && (
+                    <div className="flex items-start text-yellow-600">
+                      <Timer className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Améliorer la régularité des horaires</span>
+                    </div>
+                  )}
+                  {performance.isOnTrack && (
+                    <div className="flex items-start text-green-600">
+                      <CheckCircle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Performance excellente - Continuer ainsi</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </Modal>
+    );
+  };
+
+  // Rendu du contenu principal selon la vue active
+  const renderContent = () => {
+    switch (activeView) {
+      case 'team':
+        return renderTeamManagement();
+      case 'schedule':
+        return renderScheduleManagement();
+      default:
+        return renderDashboard();
+    }
+  };
+
+  // ===== RENDU PRINCIPAL =====
+  return (
+    <div className="space-y-6">
+      {renderContent()}
+      
+      {/* Modals */}
+      <Modal
+        isOpen={showCreateAnimatorModal}
+        onClose={() => setShowCreateAnimatorModal(false)}
+        size="xl"
+        showCloseButton={false}
+      >
+        <CreateUserForm
+          onSuccess={handleAnimatorCreated}
+          onCancel={() => setShowCreateAnimatorModal(false)}
+          defaultRole="animator"
+          structureId={user?.structure_id}
+          isDirectorContext={true}
+        />
+      </Modal>
+
+      {showEditUserModal && selectedUser && (
+        <EditUserForm
+          user={selectedUser}
+          onClose={() => {
+            setShowEditUserModal(false);
+            setSelectedUser(null);
+          }}
+          onUserUpdated={handleUserUpdated}
+          isDirectorContext={true}
+          fixedRole="animator"
+          fixedStructureId={user?.structure_id}
+        />
+      )}
+
+      {/* Modal des statistiques détaillées */}
+      {renderAnimatorStatsModal()}
+    </div>
   );
 };
 
