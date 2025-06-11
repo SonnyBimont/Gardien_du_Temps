@@ -44,6 +44,9 @@ const EditUserForm = ({
         structure_id: fixedStructureId || user.structure_id || '',
         weekly_hours: user.weekly_hours || '',
         annual_hours: user.annual_hours || '',
+        contract_type: user.contract_type || '',
+        contract_start_date: user.contract_start_date ? user.contract_start_date.split('T')[0] : '',
+      contract_end_date: user.contract_end_date ? user.contract_end_date.split('T')[0] : '',
         active: user.active !== undefined ? user.active : true
       });
     }
@@ -106,6 +109,15 @@ const EditUserForm = ({
     if (!formData.annual_hours || formData.annual_hours <= 0) {
       errors.annual_hours = 'Les heures annuelles sont obligatoires';
     }
+
+  if (formData.contract_start_date && formData.contract_end_date) {
+    const startDate = new Date(formData.contract_start_date);
+    const endDate = new Date(formData.contract_end_date);
+    
+    if (endDate <= startDate) {
+      errors.contract_end_date = 'La date de fin doit être postérieure à la date de début';
+    }
+  }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
