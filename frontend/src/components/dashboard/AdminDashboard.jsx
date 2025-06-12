@@ -17,6 +17,7 @@ import {
   MapPin,
   Shield
 } from 'lucide-react';
+import Modal from '../common/Modal';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import Input from '../common/Input';
@@ -717,43 +718,87 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Modal création structure */}
-        {showCreateStructureModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <CreateStructureForm
-                onSuccess={handleStructureCreated}
-                onCancel={() => setShowCreateStructureModal(false)}
-              />
-            </div>
-          </div>
-        )}
+{/* Modal création utilisateur */}
+<Modal
+  isOpen={showCreateUserModal}
+  onClose={() => setShowCreateUserModal(false)}
+  size="xl"
+  title="Créer un nouvel utilisateur"
+  showCloseButton={true}
+  closeOnOverlay={true}
+  closeOnEscape={true}
+>
+  <CreateUserForm
+    onSuccess={handleUserCreated}
+    onCancel={() => setShowCreateUserModal(false)}
+  />
+</Modal>
 
-        {/* Modal d'édition utilisateur */}
-        {showEditUserModal && selectedUser && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <CreateUserForm
-                initialData={selectedUser}
-                onSuccess={handleUserUpdated}
-                onCancel={() => setShowEditUserModal(false)}
-              />
-            </div>
-          </div>
-        )}
+{/* Modal création structure */}
+<Modal
+  isOpen={showCreateStructureModal}
+  onClose={() => setShowCreateStructureModal(false)}
+  size="xl"
+  title="Créer une nouvelle structure"
+  showCloseButton={true}
+  closeOnOverlay={true}
+  closeOnEscape={true}
+>
+  <CreateStructureForm
+    onSuccess={handleStructureCreated}
+    onCancel={() => setShowCreateStructureModal(false)}
+  />
+</Modal>
 
-        {/* Modal d'édition structure */}
-        {showEditStructureModal && selectedStructure && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <CreateStructureForm
-                initialData={selectedStructure}
-                onSuccess={handleStructureUpdated}
-                onCancel={() => setShowEditStructureModal(false)}
-              />
-            </div>
-          </div>
-        )}
+{/* Modal d'édition utilisateur */}
+<Modal
+  isOpen={showEditUserModal && selectedUser}
+  onClose={() => {
+    setShowEditUserModal(false);
+    setSelectedUser(null);
+  }}
+  size="xl"
+  title={`Modifier ${selectedUser?.first_name || ''} ${selectedUser?.last_name || ''}`}
+  showCloseButton={true}
+  closeOnOverlay={true}
+  closeOnEscape={true}
+>
+  {selectedUser && (
+    <CreateUserForm
+      initialData={selectedUser}
+      onSuccess={handleUserUpdated}
+      onCancel={() => {
+        setShowEditUserModal(false);
+        setSelectedUser(null);
+      }}
+    />
+  )}
+</Modal>
+
+{/* Modal d'édition structure */}
+<Modal
+  isOpen={showEditStructureModal && selectedStructure}
+  onClose={() => {
+    setShowEditStructureModal(false);
+    setSelectedStructure(null);
+  }}
+  size="xl"
+  title={`Modifier ${selectedStructure?.name || ''}`}
+  showCloseButton={true}
+  closeOnOverlay={true}
+  closeOnEscape={true}
+>
+  {selectedStructure && (
+    <CreateStructureForm
+      initialData={selectedStructure}
+      onSuccess={handleStructureUpdated}
+      onCancel={() => {
+        setShowEditStructureModal(false);
+        setSelectedStructure(null);
+      }}
+    />
+  )}
+</Modal>
       </div>
     );
   };

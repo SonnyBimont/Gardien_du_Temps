@@ -22,6 +22,7 @@ import {
   Timer,
   BarChart3
 } from 'lucide-react';
+import { calculateTotalHours, formatTime, calculatePeriodDates, getPerformanceStatus, getMostProductiveDay, getConsistencyRating, calculateVariance, getWorkDayStatus } from '../../utils/timeCalculations';
 import { useAuthStore } from '../../stores/authStore';
 import { useAdminStore } from '../../stores/adminStore';
 import { useTimeStore } from '../../stores/timeStore';
@@ -32,6 +33,7 @@ import Input from '../common/Input';
 import Modal from '../common/Modal';
 import CreateUserForm from '../forms/CreateUserForm';
 import EditUserForm from '../forms/EditUserForm';
+
 
 // ===== CONSTANTES =====
 const PERIOD_OPTIONS = [
@@ -228,28 +230,28 @@ const DirectorDashboard = () => {
     }
   };
 
-  const calculatePeriodObjective = (period, weeklyHours, annualHours) => {
-    switch (period) {
-      case 'current_week':
-      case 'previous_week':
-        return weeklyHours;
-      case 'current_month':
-      case 'previous_month':
-        return weeklyHours * 4.33;
-      case 'current_quarter':
-      case 'previous_quarter':
-        return weeklyHours * 13;
-      case 'current_year':
-      case 'previous_year':
-        return annualHours || (weeklyHours * 52);
-      case 'last_30_days':
-        return weeklyHours * 4.33;
-      case 'last_90_days':
-        return weeklyHours * 13;
-      default:
-        return weeklyHours * 4.33;
-    }
-  };
+const calculatePeriodObjective = (period, weeklyHours, annualHours) => {
+  switch (period) {
+    case 'current_week':
+    case 'previous_week':
+      return weeklyHours || 35;
+    case 'current_month':
+    case 'previous_month':
+      return (weeklyHours || 35) * 4.33;
+    case 'current_quarter':
+    case 'previous_quarter':
+      return (weeklyHours || 35) * 13;
+    case 'current_year':
+    case 'previous_year':
+      return annualHours || ((weeklyHours || 35) * 52);
+    case 'last_30_days':
+      return (weeklyHours || 35) * 4.33;
+    case 'last_90_days':
+      return (weeklyHours || 35) * 13;
+    default:
+      return (weeklyHours || 35) * 4.33;
+  }
+};
 
   const formatTime = (dateTime) => {
     return new Date(dateTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -321,37 +323,7 @@ const DirectorDashboard = () => {
     }
   }, [loadData, activeView]);
 
-const calculatePeriodObjectiveForTeam = (period, weeklyHours, annualHours = null) => {
-  const weekly = weeklyHours || 35; // Par défaut 35h/semaine
-  
-  switch (period) {
-    case 'current_week':
-    case 'previous_week':
-      return weekly; //35h
-      
-    case 'current_month':
-    case 'previous_month':
-      return Math.round((weekly * 4.33) * 100) / 100; // 4.33 semaines par mois en moyenne = 151.55h
-      
-    case 'current_quarter':
-    case 'previous_quarter':
-      return Math.round((weekly * 13) * 100) / 100; // 13 semaines par trimestre = 455h
-      
-    case 'current_year':
-    case 'previous_year':
-      return Math.round((annualHours || (weekly * 52)) * 100) / 100; // 52 semaines par an = 1820h
-      
-    case 'last_30_days':
-      return Math.round((weekly / 7 * 30) * 100) / 100; // Calcul proportionnel
-      
-    case 'last_90_days':
-      return Math.round((weekly / 7 * 90) * 100) / 100; // Calcul proportionnel
-      
-    default:
-      return Math.round((weekly * 4.33) * 100) / 100; // Par défaut mensuel
-  }
-};
-  
+ 
 const loadTeamData = async () => {
   if (!user?.structure_id) return;
   
@@ -414,7 +386,7 @@ const loadTeamData = async () => {
           const annualHours = animator.annual_hours;
           
           // Calculer l'objectif basé sur la période sélectionnée
-          const periodObjective = calculatePeriodObjectiveForTeam(teamDateRange, weeklyHours, annualHours);;
+          const periodObjective = calculatePeriodObjective(teamDateRange, weeklyHours, annualHours);
           
           return {
             id: animator.id,
@@ -449,7 +421,7 @@ const loadTeamData = async () => {
       const weeklyHours = animator.weekly_hours || 35;
       const annualHours = animator.annual_hours;
 
-      const periodObjective = calculatePeriodObjectiveForTeam(teamDateRange, weeklyHours, annualHours); // Par défaut mensuel
+      const periodObjective = calculatePeriodObjective(teamDateRange, weeklyHours, annualHours); // Par défaut mensuel
       
       return {
         id: animator.id,
@@ -1365,123 +1337,157 @@ const handleAnimatorSelection = async (animatorId) => {
     }
   };
 
-  // Calculer les statistiques complètes
-  const calculateComprehensiveStats = (entries, animator, period, dateRange) => {
-    const dailyData = {};
-    entries.forEach(entry => {
-      const date = entry.date_time.split('T')[0];
-      if (!dailyData[date]) {
-        dailyData[date] = [];
-      }
-      dailyData[date].push(entry);
+const calculateComprehensiveStats = (entries, animator, period, dateRange) => {
+  console.log('🔄 Calcul des stats complètes...');
+  console.log('📊 Entrées reçues:', entries.length);
+  console.log('📋 Première entrée:', entries[0]);
+  
+  if (!entries || entries.length === 0) {
+    console.log('⚠️ Aucune entrée, retour stats vides');
+    return createEmptyStats(animator, period, dateRange);
+  }
+
+  // ✅ UTILISER calculateTotalHours qui existe déjà
+  const processedDays = calculateTotalHours(entries);
+  console.log('📈 Jours traités:', processedDays.length);
+  console.log('📊 Premier jour traité:', processedDays[0]);
+  
+  if (processedDays.length === 0) {
+    console.log('⚠️ Aucun jour traité');
+    return createEmptyStats(animator, period, dateRange);
+  }
+
+  // Calculs basiques
+  const weeklyObjective = animator.weekly_hours || 35;
+  const annualObjective = animator.annual_hours;
+  
+  let periodObjective;
+  switch (period) {
+    case 'current_week':
+    case 'previous_week':
+      periodObjective = weeklyObjective;
+      break;
+    case 'current_month':
+    case 'previous_month':
+    case 'last_30_days':
+      periodObjective = weeklyObjective * 4.33;
+      break;
+    case 'current_year':
+    case 'previous_year':
+      periodObjective = annualObjective || (weeklyObjective * 52);
+      break;
+    default:
+      periodObjective = weeklyObjective * 4.33;
+  }
+  
+  const totalHours = processedDays.reduce((sum, day) => sum + (day.workingHours || 0), 0);
+  const completeDays = processedDays.filter(day => day.isComplete).length;
+  const averagePerDay = completeDays > 0 ? totalHours / completeDays : 0;
+  const completionRate = periodObjective > 0 ? (totalHours / periodObjective) * 100 : 0;
+  
+  // ✅ SIMPLE : Utiliser directement processedDays
+  const workingDays = processedDays;
+  
+  console.log('✅ Working days créés:', workingDays.length);
+  console.log('📊 Premier working day:', workingDays[0]);
+  
+  // Calculs de patterns (version simple)
+  const arrivalTimes = workingDays
+    .filter(day => day.arrival)
+    .map(day => {
+      const [hours, minutes] = day.arrival.split(':').map(Number);
+      return hours + minutes / 60;
     });
+  
+  const averageArrival = arrivalTimes.length > 0 
+    ? arrivalTimes.reduce((sum, time) => sum + time, 0) / arrivalTimes.length 
+    : 0;
 
-    const workingDays = [];
-    let totalHours = 0;
-    let totalBreakTime = 0;
-    let completeDays = 0;
-
-    Object.keys(dailyData).forEach(date => {
-      const dayEntries = dailyData[date];
-      const arrival = dayEntries.find(e => e.tracking_type === 'arrival');
-      const departure = dayEntries.find(e => e.tracking_type === 'departure');
-      const breakStart = dayEntries.find(e => e.tracking_type === 'break_start');
-      const breakEnd = dayEntries.find(e => e.tracking_type === 'break_end');
-
-      let dayHours = 0;
-      let breakHours = 0;
-
-      if (arrival && departure) {
-        const start = new Date(arrival.date_time);
-        const end = new Date(departure.date_time);
-        dayHours = (end - start) / (1000 * 60 * 60);
-
-        if (breakStart && breakEnd) {
-          const bStart = new Date(breakStart.date_time);
-          const bEnd = new Date(breakEnd.date_time);
-          breakHours = (bEnd - bStart) / (1000 * 60 * 60);
-          dayHours -= breakHours;
-        }
-
-        if (dayHours > 0) {
-          completeDays++;
-          totalHours += dayHours;
-          totalBreakTime += breakHours;
-        }
-      }
-
-      workingDays.push({
-        date,
-        dayName: new Date(date).toLocaleDateString('fr-FR', { weekday: 'long' }),
-        arrival: arrival ? formatTime(arrival.date_time) : null,
-        departure: departure ? formatTime(departure.date_time) : null,
-        breakStart: breakStart ? formatTime(breakStart.date_time) : null,
-        breakEnd: breakEnd ? formatTime(breakEnd.date_time) : null,
-        hoursWorked: Math.round(dayHours * 100) / 100,
-        breakTime: Math.round(breakHours * 100) / 100,
-        isComplete: !!(arrival && departure),
-        status: getWorkDayStatus(arrival, departure, breakStart, breakEnd)
-      });
-    });
-
-    const weeklyObjective = animator.weekly_hours || 35;
-    const annualObjective = animator.annual_hours;
-    const periodObjective = calculatePeriodObjective(period, weeklyObjective, annualObjective);
-
-    const averageHoursPerDay = completeDays > 0 ? totalHours / completeDays : 0;
-    const completionRate = periodObjective > 0 ? (totalHours / periodObjective) * 100 : 0;
-    const hoursRemaining = Math.max(0, periodObjective - totalHours);
-    const variance = totalHours - periodObjective;
-
-    const arrivalTimes = workingDays
-      .filter(day => day.arrival)
-      .map(day => {
-        const [hours, minutes] = day.arrival.split(':').map(Number);
-        return hours + minutes / 60;
-      });
-
-    const averageArrival = arrivalTimes.length > 0 
-      ? arrivalTimes.reduce((sum, time) => sum + time, 0) / arrivalTimes.length 
-      : 0;
-
-    const arrivalVariance = calculateVariance(arrivalTimes);
-    const punctualityScore = Math.max(0, 100 - arrivalVariance * 20);
-
-    return {
-      animator,
-      period: {
-        type: period,
-        label: dateRange.label,
-        start: dateRange.start,
-        end: dateRange.end,
-        totalDays: Object.keys(dailyData).length
-      },
-      hours: {
-        total: Math.round(totalHours * 100) / 100,
-        objective: periodObjective,
-        remaining: hoursRemaining,
-        variance: Math.round(variance * 100) / 100,
-        averagePerDay: Math.round(averageHoursPerDay * 100) / 100,
-        totalBreakTime: Math.round(totalBreakTime * 100) / 100
-      },
-      performance: {
-        completionRate: Math.round(completionRate * 100) / 100,
-        completeDays,
-        status: getPerformanceStatus(completionRate),
-        isOnTrack: completionRate >= 90,
-        needsAttention: completionRate < 75
-      },
-      patterns: {
-        averageArrival: formatDecimalToTime(averageArrival),
-        punctualityScore: Math.round(punctualityScore),
-        mostProductiveDay: getMostProductiveDay(workingDays),
-        consistency: getConsistencyRating(punctualityScore)
-      },
-      workingDays: workingDays.sort((a, b) => new Date(b.date) - new Date(a.date)),
-      lastUpdate: new Date().toISOString()
-    };
+  const formatDecimalToTime = (decimal) => {
+    if (!decimal || decimal === 0) return '--:--';
+    const hours = Math.floor(decimal);
+    const minutes = Math.round((decimal - hours) * 60);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
+  const result = {
+    animator,
+    period: {
+      type: period,
+      label: dateRange.label,
+      start: dateRange.start,
+      end: dateRange.end,
+      totalDays: workingDays.length
+    },
+    hours: {
+      total: Math.round(totalHours * 100) / 100,
+      objective: periodObjective,
+      remaining: Math.max(0, periodObjective - totalHours),
+      variance: Math.round((totalHours - periodObjective) * 100) / 100,
+      averagePerDay: Math.round(averagePerDay * 100) / 100,
+      totalBreakTime: processedDays.reduce((sum, day) => sum + (day.breakHours || 0), 0)
+    },
+    performance: {
+      completionRate: Math.round(completionRate),
+      completeDays,
+      status: { label: completionRate >= 90 ? 'Bon' : 'À améliorer', color: completionRate >= 90 ? 'green' : 'orange', icon: AlertCircle },
+      isOnTrack: completionRate >= 90,
+      needsAttention: completionRate < 75
+    },
+    patterns: {
+      averageArrival: formatDecimalToTime(averageArrival),
+      punctualityScore: Math.round(Math.max(0, 100 - (arrivalTimes.length > 1 ? 10 : 0))),
+      mostProductiveDay: workingDays.length > 0 ? (workingDays.reduce((best, day) => day.workingHours > best.workingHours ? day : best, workingDays[0]).dayName || 'Inconnu') : 'Aucun',
+      consistency: { label: 'Régulier', color: 'blue' }
+    },
+    workingDays: workingDays, // ✅ IMPORTANT: Les données pour le tableau
+    lastUpdate: new Date().toISOString()
+  };
+  
+  console.log('✅ Stats complètes calculées:', result);
+  console.log('📊 Working days dans result:', result.workingDays.length);
+  return result;
+};
+
+const createEmptyStats = (animator, period, dateRange) => {
+  const weeklyObjective = animator?.weekly_hours || 35;
+  const annualObjective = animator?.annual_hours;
+  const periodObjective = calculatePeriodObjective(period, weeklyObjective, annualObjective);
+  
+  return {
+    animator: animator || { first_name: 'Inconnu', last_name: '', weekly_hours: 35 },
+    period: {
+      type: period,
+      label: dateRange.label,
+      start: dateRange.start,
+      end: dateRange.end,
+      totalDays: 0
+    },
+    hours: {
+      total: 0,
+      objective: periodObjective,
+      remaining: periodObjective,
+      variance: -periodObjective,
+      averagePerDay: 0,
+      totalBreakTime: 0
+    },
+    performance: {
+      completionRate: 0,
+      completeDays: 0,
+      status: { label: 'Aucune donnée', color: 'gray', icon: AlertCircle },
+      isOnTrack: false,
+      needsAttention: true
+    },
+    patterns: {
+      averageArrival: '--:--',
+      punctualityScore: 0,
+      mostProductiveDay: 'Aucun',
+      consistency: { label: 'Aucune donnée', color: 'gray' }
+    },
+    workingDays: [],
+    lastUpdate: new Date().toISOString()
+  };
+};
   // Modal des statistiques détaillées d'un animateur
   const renderAnimatorStatsModal = () => {
     if (!showAnimatorStatsModal || !selectedAnimatorStats) return null;
@@ -1502,7 +1508,14 @@ const handleAnimatorSelection = async (animatorId) => {
       closeOnOverlay={true}
       closeOnEscape={true}
     >
-        <div className="space-y-6 max-h-[80vh] overflow-y-auto">
+      <div 
+        className="space-y-6" 
+        style={{ 
+          maxHeight: '75vh', 
+          overflowY: 'auto',
+          paddingRight: '4px' 
+        }}
+      >
           {/* En-tête avec contrôles de période */}
           <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
             <div>
@@ -1610,85 +1623,67 @@ const handleAnimatorSelection = async (animatorId) => {
           </Card>
 
           {/* Historique détaillé */}
-          <Card title="Détail par jour de travail">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Arrivée</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Départ</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pause</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Heures</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Performance</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {workingDays.slice(0, 15).map((day) => {
-                    const dailyObjective = hours.objective / period.totalDays;
-                    const dayPerformance = dailyObjective > 0 ? (day.hoursWorked / dailyObjective) * 100 : 0;
-                    
-                    return (
-                      <tr key={day.date} className={day.hoursWorked === 0 ? 'bg-red-50' : ''}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div>
-                            <div className="font-medium">{day.dayName}</div>
-                            <div className="text-xs text-gray-500">{new Date(day.date).toLocaleDateString('fr-FR')}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{day.arrival || '--:--'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{day.departure || '--:--'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {day.breakStart && day.breakEnd 
-                            ? `${day.breakTime}h` 
-                            : day.breakStart 
-                            ? 'En cours'
-                            : '--'
-                          }
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <span className={day.hoursWorked >= dailyObjective ? 'text-green-600' : 
-                                         day.hoursWorked > 0 ? 'text-orange-600' : 'text-red-600'}>
-                            {day.hoursWorked}h
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                              <div 
-                                className={`h-2 rounded-full ${
-                                  dayPerformance >= 100 ? 'bg-green-500' : 
-                                  dayPerformance >= 75 ? 'bg-blue-500' : 
-                                  dayPerformance >= 25 ? 'bg-yellow-500' : 'bg-red-500'
-                                }`}
-                                style={{ width: `${Math.min(dayPerformance, 100)}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-xs text-gray-600">
-                              {Math.round(dayPerformance)}%
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                            day.status === 'complet' ? 'bg-green-100 text-green-800' :
-                            day.status === 'en_cours' ? 'bg-blue-100 text-blue-800' :
-                            day.status === 'incomplet' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {day.status === 'complet' ? 'Complet' :
-                             day.status === 'en_cours' ? 'En cours' :
-                             day.status === 'incomplet' ? 'Incomplet' : 'Absent'}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+<Card title="Historique (période sélectionnée)" className="overflow-hidden">
+  <div className="overflow-x-auto">
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">Date</th>
+          <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-20">Arrivée</th>
+          <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-20">Pause</th>
+          <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-20">Reprise</th>
+          <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-20">Départ</th>
+          <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-16">Total</th>
+        </tr>
+      </thead>
+      <tbody className="bg-white divide-y divide-gray-200">
+        {workingDays && workingDays.length > 0 ? (
+          workingDays.slice(0, 15).map((day, index) => (
+            <tr key={`${day.date}-${index}`}>
+              <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900 w-32">
+                {day.formattedDate}
+              </td>
+              <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900 w-20">
+                {day.arrival || '--:--'}
+              </td>
+              <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900 w-20">
+                {day.breakStart || '--:--'}
+              </td>
+              <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900 w-20">
+                {day.breakEnd || '--:--'}
+              </td>
+              <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900 w-20">
+                {day.departure || '--:--'}
+              </td>
+              <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-900 w-16">
+                {day.formattedWorkingHours}
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="6" className="px-6 py-8 text-center text-gray-500 text-sm">
+              {animatorStatsLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                  Chargement des données...
+                </div>
+              ) : (
+                <div>
+                  <AlertCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  <p>Aucun pointage trouvé pour cette période</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    L'animateur n'a pas encore effectué de pointages ou les données ne sont pas disponibles
+                  </p>
+                </div>
+              )}
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</Card>
 
           {/* Analyses et recommandations */}
           <Card title="Analyses et Recommandations">
@@ -1788,37 +1783,37 @@ const handleAnimatorSelection = async (animatorId) => {
     onClose={() => {
       setShowEditUserModal(false);
       setSelectedUser(null);
-      // ✅ CORRECTION: Force la restauration du body
       document.body.style.overflow = 'unset';
       document.body.classList.remove('modal-open');
     }}
-    size="xl"
+    size="4xl" // ✅ Même taille que les stats
     title={`Modifier ${selectedUser.first_name} ${selectedUser.last_name}`}
     showCloseButton={true}
     closeOnOverlay={true}
     closeOnEscape={true}
   >
-    <EditUserForm
-      user={selectedUser}
-      onClose={() => {
-        setShowEditUserModal(false);
-        setSelectedUser(null);
-        // ✅ CORRECTION: Aussi ici pour la fermeture depuis le formulaire
-        document.body.style.overflow = 'unset';
-        document.body.classList.remove('modal-open');
+    <div 
+      className="space-y-6" 
+      style={{ 
+        maxHeight: '75vh', 
+        overflowY: 'auto',
+        paddingRight: '4px' 
       }}
-      onUserUpdated={() => {
-        setShowEditUserModal(false);
-        setSelectedUser(null);
-        // ✅ CORRECTION: Et ici après mise à jour réussie
-        document.body.style.overflow = 'unset';
-        document.body.classList.remove('modal-open');
-        loadData();
-      }}
-      isDirectorContext={true}
-      fixedRole="animator"
-      fixedStructureId={user?.structure_id}
-    />
+    >
+      <EditUserForm
+        user={selectedUser}
+        onClose={() => {
+          setShowEditUserModal(false);
+          setSelectedUser(null);
+          document.body.style.overflow = 'unset';
+          document.body.classList.remove('modal-open');
+        }}
+        onUserUpdated={handleUserUpdated}
+        isDirectorContext={true}
+        fixedRole="animator"
+        fixedStructureId={user?.structure_id}
+      />
+    </div>
   </Modal>
 )}
 
