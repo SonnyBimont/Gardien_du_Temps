@@ -1,9 +1,8 @@
-// backend/src/migrations/YYYYMMDDHHMMSS-create-hour-planning.js
 'use strict';
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Hour_Planning', {
+    await queryInterface.createTable('hour_planning', {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -61,17 +60,17 @@ module.exports = {
     });
 
     // Index pour les performances
-    await queryInterface.addIndex('Hour_Planning', ['user_id', 'plan_date'], {
+    await queryInterface.addIndex('hour_planning', ['user_id', 'plan_date'], {
       unique: true,
       name: 'unique_user_date'
     });
 
-    await queryInterface.addIndex('Hour_Planning', ['user_id']);
-    await queryInterface.addIndex('Hour_Planning', ['plan_date']);
-    await queryInterface.addIndex('Hour_Planning', ['project_id']);
+    await queryInterface.addIndex('hour_planning', ['user_id']);
+    await queryInterface.addIndex('hour_planning', ['plan_date']);
+    await queryInterface.addIndex('hour_planning', ['project_id']);
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('Hour_Planning');
+    await queryInterface.dropTable('hour_planning');
   }
 };

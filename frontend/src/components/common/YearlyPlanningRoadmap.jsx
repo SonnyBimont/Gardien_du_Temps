@@ -39,7 +39,6 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
     // Date du premier lundi affiché
     const gridStart = new Date(year, month, 1 - startDay);
 
-    // ✅ CORRECTION : Calculer la date d'aujourd'hui correctement
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
@@ -47,7 +46,6 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
       const date = new Date(gridStart);
       date.setDate(gridStart.getDate() + i);
       
-      // ✅ CORRECTION : Format cohérent pour la comparaison
       const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const planning = yearlyPlanning.planning?.find(p => p.plan_date === dateStr);
       
@@ -56,7 +54,7 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
         dateStr,
         day: date.getDate(),
         isCurrentMonth: date.getMonth() === month,
-        isToday: dateStr === todayStr, // ✅ CORRECTION : Comparaison correcte
+        isToday: dateStr === todayStr, 
         planning
       };
     });
@@ -72,10 +70,19 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
   };
 
   const handleSavePlanning = async (planningData) => {
-    const result = await upsertPlanning({
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    const localDateStr = `${year}-${month}-${day}`;
+    
+    const dataWithDate = {
       ...planningData,
-      plan_date: selectedDate.toISOString().split('T')[0]
-    });
+      plan_date: localDateStr // Format YYYY-MM-DD
+    };
+    
+    console.log('📤 Données complètes envoyées:', dataWithDate); // Debug
+    
+    const result = await upsertPlanning(dataWithDate);
     if (result.success) {
       setShowPlanningModal(false);
       setEditingPlanning(null);
@@ -83,7 +90,6 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
     }
     return result;
   };
-
   const monthNames = [
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
@@ -204,8 +210,6 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
       </Card>
 
       {/* CALENDRIER - Version Tailwind UI intégrée */}
-// ...existing code...
-      {/* CALENDRIER COMPLET - CSS INLINE GARANTI */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',

@@ -44,47 +44,50 @@ const PlanningModal = ({ isOpen, onClose, selectedDate, existingPlanning, projec
     return Object.keys(newErrors).length === 0;
   };
 
-  // ✅ CORRIGER : Simplifier la gestion d'erreur
+  // Simplifier la gestion d'erreur
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation locale d'abord
     if (!validateForm()) {
       return;
     }
     
     setLoading(true);
-    setErrors({}); // Réinitialiser les erreurs
+    setErrors({});
     
     try {
       console.log('📝 Données du formulaire:', formData);
       
-      // Préparer les données
-const dataToSave = {
-  planned_hours: parseFloat(formData.planned_hours),
-  project_id: formData.project_id ? parseInt(formData.project_id, 10) : null, // <-- Correction ici
-  description: formData.description?.trim() || '',
-  color: formData.color
-};
+      const dataToSave = {
+        planned_hours: parseFloat(formData.planned_hours),
+        project_id: formData.project_id ? parseInt(formData.project_id, 10) : null,
+        description: formData.description?.trim() || '',
+        color: formData.color
+      };
       
       console.log('📤 Données à sauvegarder:', dataToSave);
       
-      // ✅ CORRIGER : Gestion d'erreur simplifiée
       const result = await onSave(dataToSave);
       
       console.log('✅ Résultat:', result);
       
       if (result?.success) {
-        // Succès - la modal se ferme automatiquement via onSave
         console.log('🎉 Sauvegarde réussie');
+        
+        // ✅ AJOUTER : Nettoyage forcé après succès
+        setTimeout(() => {
+          document.body.style.overflow = '';
+          document.body.style.paddingRight = '';
+          document.body.classList.remove('modal-open');
+        }, 200);
+        
+        // La modal se ferme automatiquement via onSave
       } else {
-        // Erreur retournée par le serveur
         const errorMessage = result?.error || 'Erreur lors de la sauvegarde';
         console.error('❌ Erreur serveur:', errorMessage);
         setErrors({ general: errorMessage });
       }
     } catch (error) {
-      // Erreur de réseau ou autre
       console.error('💥 Erreur catch:', error);
       setErrors({ general: 'Erreur de connexion. Veuillez réessayer.' });
     } finally {
@@ -101,8 +104,9 @@ const dataToSave = {
     setLoading(true);
     
     try {
+      // Envoyer 0 heures pour déclencher la suppression
       const result = await onSave({
-        planned_hours: 0,
+        planned_hours: 0,  // suppression côté serveur
         project_id: null,
         description: '',
         color: '#3B82F6'
@@ -110,6 +114,23 @@ const dataToSave = {
       
       if (result?.success) {
         console.log('🗑️ Suppression réussie');
+        
+        // ✅ AJOUTER : Nettoyage forcé après suppression réussie
+        setTimeout(() => {
+          document.body.style.overflow = '';
+          document.body.style.paddingRight = '';
+          document.body.classList.remove('modal-open');
+          
+          // Supprimer tous les overlays orphelins
+          const overlays = document.querySelectorAll('[class*="bg-gray-900"][class*="bg-opacity"]');
+          overlays.forEach(overlay => {
+            if (overlay.parentNode) {
+              overlay.parentNode.removeChild(overlay);
+            }
+          });
+        }, 100);
+        
+        // La modal se ferme automatiquement via onSave
       } else {
         setErrors({ general: result?.error || 'Erreur lors de la suppression' });
       }
@@ -121,7 +142,7 @@ const dataToSave = {
     }
   };
 
-  // ✅ Fonction de fermeture propre
+  // Fonction de fermeture propre
   const handleClose = () => {
     setFormData({
       planned_hours: '',
@@ -130,6 +151,22 @@ const dataToSave = {
       color: '#3B82F6'
     });
     setErrors({});
+    
+    // ✅ FORCER le nettoyage du body
+    setTimeout(() => {
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+      document.body.classList.remove('modal-open');
+      
+      // Supprimer tous les overlays orphelins
+      const overlays = document.querySelectorAll('[class*="bg-gray-900"][class*="bg-opacity"]');
+      overlays.forEach(overlay => {
+        if (overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay);
+        }
+      });
+    }, 50);
+    
     onClose();
   };
 

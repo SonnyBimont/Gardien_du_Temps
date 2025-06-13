@@ -46,24 +46,97 @@ exports.getYearlyPlanning = async (req, res) => {
 // Créer/modifier une planification
 exports.upsertPlanning = async (req, res) => {
   try {
+    console.log('🎯 DEBUT upsertPlanning');
+    console.log('👤 User:', req.user ? req.user.id : 'NON AUTHENTIFIE');
+    console.log('📦 Body reçu:', req.body);
+
     const { plan_date, planned_hours, project_id = null, color = '#3B82F6', description = '' } = req.body;
 
-    const [planning] = await Hour_Planning.upsert({
+    // ✅ VALIDATION CORRIGEE
+    if (!plan_date) {
+      console.error('❌ plan_date manquant');
+      return res.status(400).json({
+        success: false,
+        message: 'La date de planification est obligatoire',
+        error: 'Missing plan_date field'
+      });
+    }
+
+    // ✅ CORRIGER : Accepter 0 pour la suppression
+    if (planned_hours === null || planned_hours === undefined || isNaN(planned_hours)) {
+      console.error('❌ planned_hours invalide:', planned_hours);
+      return res.status(400).json({
+        success: false,
+        message: 'Le nombre d\'heures doit être un nombre valide',
+        error: 'Invalid planned_hours field'
+      });
+    }
+
+    const hoursValue = parseFloat(planned_hours);
+    if (hoursValue < 0 || hoursValue > 24) {
+      console.error('❌ planned_hours hors limite:', hoursValue);
+      return res.status(400).json({
+        success: false,
+        message: 'Le nombre d\'heures doit être entre 0 et 24',
+        error: 'planned_hours out of range'
+      });
+    }
+
+    if (!req.user || !req.user.id) {
+      console.error('❌ Utilisateur non authentifié');
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié',
+        error: 'Unauthorized'
+      });
+    }
+
+    console.log('✅ Validation OK, tentative upsert...');
+
+    // ✅ GESTION SUPPRESSION : Si 0 heures, supprimer l'enregistrement
+    if (hoursValue === 0) {
+      console.log('🗑️ Suppression demandée (0 heures)');
+      
+      const deleted = await Hour_Planning.destroy({
+        where: {
+          user_id: req.user.id,
+          plan_date: plan_date
+        }
+      });
+      
+      console.log('✅ Lignes supprimées:', deleted);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Planification supprimée',
+        data: null
+      });
+    }
+
+    // CREATION/MODIFICATION normale
+    const dataToInsert = {
       user_id: req.user.id,
       plan_date,
-      planned_hours: parseFloat(planned_hours),
-      project_id,
+      planned_hours: hoursValue,
+      project_id: project_id || null,
       color,
-      description
-    }, { returning: true });
+      description: description?.trim() || ''
+    };
+
+    console.log('📝 Données à insérer:', dataToInsert);
+
+    const [planning] = await Hour_Planning.upsert(dataToInsert, { returning: true });
+
+    console.log('✅ Planning sauvegardé:', planning.toJSON());
 
     res.status(200).json({
       success: true,
       data: planning
     });
   } catch (error) {
-    console.error('❌ ERREUR UPSERT PLANNING:', error); // <-- AJOUTE CE LOG
-    res.status(400).json({
+    console.error('❌ ERREUR UPSERT PLANNING:', error);
+    console.error('📍 Stack trace:', error.stack);
+    res.status(500).json({
       success: false,
       message: 'Erreur lors de la sauvegarde',
       error: error.message
