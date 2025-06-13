@@ -47,6 +47,11 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: 'project_id',
             as: 'tasks'
         });
+
+        Project.hasMany(models.Hour_Planning, {
+            foreignKey: 'project_id',
+            as: 'hourPlannings'
+});
     };
 
     return Project;

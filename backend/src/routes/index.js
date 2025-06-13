@@ -9,6 +9,7 @@ const projectRoutes = require('./projectRoutes');
 const taskRoutes = require('./taskRoutes');
 const timeTrackingRoutes = require('./timeTrackingRoutes');
 const plannedScheduleRoutes = require('./plannedScheduleRoutes');
+const hourPlanningRoutes = require('./hourPlanningRoutes');
 const schoolVacationRoutes = require('./schoolVacationRoutes');
 const activityLogRoutes = require('./activityLogRoutes');
 
@@ -20,6 +21,7 @@ router.use('/projects', projectRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/time-tracking', timeTrackingRoutes);
 router.use('/planned-schedules', plannedScheduleRoutes);
+router.use('/hour-planning', hourPlanningRoutes);
 router.use('/school-vacations', schoolVacationRoutes);
 router.use('/activity-logs', activityLogRoutes);
 

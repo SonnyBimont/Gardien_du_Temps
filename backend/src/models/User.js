@@ -106,6 +106,11 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: 'validated_by',
             as: 'validated_time_trackings'
         });
+
+        User.hasMany(models.Hour_Planning, {
+            foreignKey: 'user_id',
+            as: 'hourPlannings'
+});
     };
 
     return User;
