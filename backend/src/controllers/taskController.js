@@ -165,7 +165,7 @@ exports.getTasksByProject = async (req, res) => {
     }
 };
 
-// Récupérer les tâches assignées à un utilisateur
+// Récupérer les tâches assignées à un utilisateur 
 exports.getTasksByUser = async (req, res) => {
     try {
         const user = await User.findByPk(req.params.userId, {
@@ -191,4 +191,91 @@ exports.getTasksByUser = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: 'Erreur lors de la récupération des tâches', error: error.message });
     }
+};
+
+// METHODE SUPPLEMENTAIRE
+exports.getTasksByAnimator = async (req, res) => {
+  try {
+    const tasks = await Task.findAll({
+      where: { 
+        assigned_to: req.user.id,
+        status: { [Op.in]: ['todo', 'in_progress'] } // Pas les terminées
+      },
+      include: [
+        { model: Project, as: 'project' },
+        { 
+          model: Time_Tracking, 
+          as: 'timeEntries',
+          where: { user_id: req.user.id },
+          required: false
+        }
+      ]
+    });
+
+    // Calculer le temps total par tâche
+    const tasksWithTime = tasks.map(task => {
+      const totalMinutes = task.timeEntries?.reduce((sum, entry) => {
+        if (entry.tracking_type === 'task_time') {
+          return sum + (entry.duration_minutes || 0);
+        }
+        return sum;
+      }, 0) || 0;
+
+      return {
+        ...task.toJSON(),
+        totalTimeSpent: Math.round(totalMinutes / 60 * 100) / 100, // En heures
+        formattedTime: `${Math.floor(totalMinutes / 60)}h${(totalMinutes % 60).toString().padStart(2, '0')}`
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      count: tasksWithTime.length,
+      data: tasksWithTime
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: 'Erreur lors de la récupération des tâches', 
+      error: error.message 
+    });
+  }
+};
+
+// MODIFIER pour marquer comme terminée
+exports.markTaskAsCompleted = async (req, res) => {
+  try {
+    const [updated] = await Task.update(
+      { 
+        status: 'completed',
+        completed_at: new Date()
+      },
+      { where: { id: req.params.id } }
+    );
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tâche non trouvée'
+      });
+    }
+
+    const updatedTask = await Task.findByPk(req.params.id, {
+      include: [
+        { model: Project, as: 'project' },
+        { model: User, as: 'assignedUser', attributes: ['id', 'first_name', 'last_name'] }
+      ]
+    });
+
+    res.status(200).json({
+      success: true,
+      data: updatedTask
+    });
+  } catch (error) {
+    res.status(400).json({ 
+      success: false,
+      message: 'Erreur lors de la validation', 
+      error: error.message 
+    });
+  }
 };

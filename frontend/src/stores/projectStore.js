@@ -8,6 +8,7 @@ export const useProjectStore = create(
       // État
       projects: [],
       tasks: [],
+      myTasks: [], // Pour l'animateur
       currentProject: null,
       currentTask: null,
       projectStats: {},
@@ -22,6 +23,8 @@ export const useProjectStore = create(
         dateRange: null
       },
 
+
+      
       // Actions pour les projets
       fetchProjects: async (filters = {}) => {
         set({ loading: true, error: null });
