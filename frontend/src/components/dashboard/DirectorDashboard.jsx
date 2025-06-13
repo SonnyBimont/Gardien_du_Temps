@@ -31,6 +31,7 @@ import StatsCard from '../common/StatsCard';
 import Button from '../common/Button';
 import Input from '../common/Input';
 import Modal from '../common/Modal';
+import YearlyPlanningRoadmap from '../common/YearlyPlanningRoadmap';
 import CreateUserForm from '../forms/CreateUserForm';
 import EditUserForm from '../forms/EditUserForm';
 
@@ -673,17 +674,22 @@ const canClockOut = status.arrival && !status.departure;
         </div>
       </Card>
 
-      <Card clickable hoverable className="p-4">
-        <div className="flex items-center">
-          <div className="p-3 bg-orange-100 rounded-lg">
-            <Settings className="w-6 h-6 text-orange-600" />
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Gérer</p>
-            <p className="text-lg font-semibold text-gray-900">Prévisionnel</p>
-          </div>
-        </div>
-      </Card>
+<Card 
+  clickable 
+  hoverable 
+  className="p-4"
+  onClick={() => setActiveView('planning')}
+>
+  <div className="flex items-center">
+    <div className="p-3 bg-indigo-100 rounded-lg">
+      <Calendar className="w-6 h-6 text-indigo-600" />
+    </div>
+    <div className="ml-4">
+      <p className="text-sm font-medium text-gray-600">Planifier</p>
+      <p className="text-lg font-semibold text-gray-900">Mes Heures</p>
+    </div>
+  </div>
+</Card>
     </div>
   );
 
@@ -1751,6 +1757,8 @@ const createEmptyStats = (animator, period, dateRange) => {
         return renderTeamManagement();
       case 'schedule':
         return renderScheduleManagement();
+      case 'planning':
+        return <YearlyPlanningRoadmap onBack={() => setActiveView('dashboard')} />; 
       default:
         return renderDashboard();
     }
