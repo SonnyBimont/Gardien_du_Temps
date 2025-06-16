@@ -34,6 +34,7 @@ import Modal from '../common/Modal';
 import YearlyPlanningRoadmap from '../common/YearlyPlanningRoadmap';
 import CreateUserForm from '../forms/CreateUserForm';
 import EditUserForm from '../forms/EditUserForm';
+import CreateProjectForm from '../forms/CreateProjectForm';
 
 
 // ===== CONSTANTES =====
@@ -87,6 +88,7 @@ const DirectorDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAllAnimators, setShowAllAnimators] = useState(false);
   const [showAllActivity, setShowAllActivity] = useState(false);
+    const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const [recentActivityLimit, setRecentActivityLimit] = useState(30);
   
   // États pour la gestion d'équipe
@@ -663,14 +665,15 @@ const canClockOut = status.arrival && !status.departure;
       </Card>
 
       <Card clickable hoverable className="p-4">
-        <div className="flex items-center">
-          <div className="p-3 bg-purple-100 rounded-lg">
-            <FileText className="w-6 h-6 text-purple-600" />
-          </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">Exporter</p>
-            <p className="text-lg font-semibold text-gray-900">Rapports</p>
-          </div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">Projets</h2>
+          <Button
+            variant="primary"
+            onClick={() => setShowCreateProjectModal(true)}
+            className="mb-0"
+          >
+            + Créer un projet
+          </Button>
         </div>
       </Card>
 
@@ -695,13 +698,7 @@ const canClockOut = status.arrival && !status.departure;
 
   const renderStatsCards = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-      <StatsCard
-        title="Mes Animateurs"
-        value={totalAnimators}
-        change={`${activeAnimators} actifs`}
-        trend="positive"
-        icon={<Users className="w-6 h-6" />}
-      />
+
 
       <StatsCard
         title="Mes Heures"
@@ -710,6 +707,16 @@ const canClockOut = status.arrival && !status.departure;
         trend="neutral"
         icon={<Clock className="w-6 h-6" />}
       />
+
+      <StatsCard
+        title="Mes Animateurs"
+        value={totalAnimators}
+        change={`${activeAnimators} actifs`}
+        trend="positive"
+        icon={<Users className="w-6 h-6" />}
+      />
+
+
     </div>
   );
 
@@ -727,9 +734,7 @@ const canClockOut = status.arrival && !status.departure;
     </>
   );
 
-  // Je continue dans le prochain message pour éviter la troncature...  // ===== FONCTIONS DE RENDU SUITE =====
-  
-  // Liste des animateurs
+    // Liste des animateurs
   const renderAnimatorsList = () => (
     <Card title="Mes Animateurs" className="h-full">
       <div className="space-y-4">
@@ -998,11 +1003,11 @@ const canClockOut = status.arrival && !status.departure;
                   {member.totalHours || '0'}h
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {/* ✅ CORRIGÉ: Afficher l'objectif cohérent avec la période */}
+                  {/*  Afficher l'objectif cohérent avec la période */}
                   {member.periodObjective || '0'}h
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  {/* ✅ NOUVEAU: Afficher la différence en heures au lieu du pourcentage */}
+                  {/* Afficher la différence en heures au lieu du pourcentage */}
                   <span className={`${
                     (member.hoursDifference || 0) >= 0 
                       ? 'text-green-600' 
@@ -1011,7 +1016,7 @@ const canClockOut = status.arrival && !status.departure;
                     {(member.hoursDifference || 0) >= 0 ? '+' : ''}{member.hoursDifference || '0'}h
                   </span>
                 </td>
-                {/* ✅ SUPPRIMÉ: Colonne Statut */}
+                {/* Colonne Statut */}
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">
                     <Button
@@ -1353,7 +1358,6 @@ const calculateComprehensiveStats = (entries, animator, period, dateRange) => {
     return createEmptyStats(animator, period, dateRange);
   }
 
-  // ✅ UTILISER calculateTotalHours qui existe déjà
   const processedDays = calculateTotalHours(entries);
   console.log('📈 Jours traités:', processedDays.length);
   console.log('📊 Premier jour traité:', processedDays[0]);
@@ -1825,6 +1829,22 @@ const createEmptyStats = (animator, period, dateRange) => {
   </Modal>
 )}
 
+{showCreateProjectModal && (
+  <Modal
+    isOpen={showCreateProjectModal}
+    onClose={() => setShowCreateProjectModal(false)}
+    title="Créer un projet"
+    size="md"
+  >
+    <CreateProjectForm
+      onSuccess={() => {
+        setShowCreateProjectModal(false);
+        // Optionnel: rafraîchir la liste des projets ici
+      }}
+      onCancel={() => setShowCreateProjectModal(false)}
+    />
+  </Modal>
+)}
       {/* Modal des statistiques détaillées */}
       {renderAnimatorStatsModal()}
     </div>

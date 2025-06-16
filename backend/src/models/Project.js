@@ -18,6 +18,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.TEXT,
             allowNull: false
         },
+        assigned_to: {
+            type: DataTypes.INTEGER,
+            allowNull: true
+        },
         start_date: {
             type: DataTypes.DATE,
             allowNull: false
@@ -41,7 +45,10 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: 'structure_id',
             as: 'structure'
         });
-
+        Project.belongsTo(models.User, {
+            foreignKey: 'assigned_to',
+            as: 'assignedUser'
+        });
         // Project has many Tasks
         Project.hasMany(models.Task, {
             foreignKey: 'project_id',

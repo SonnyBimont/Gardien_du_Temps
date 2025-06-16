@@ -34,7 +34,7 @@ const CreateProjectForm = ({ onSuccess, onCancel, initialData = null }) => {
 
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+  }, []);
 
   // Nettoyer les erreurs quand l'utilisateur tape
   useEffect(() => {
