@@ -382,17 +382,18 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
                 display: 'flex',
                 flexDirection: 'column',
                 border: dayData.isToday ? '2px solid #3b82f6' : 'none',
-                transition: 'background-color 0.2s ease'
+                transition: 'background-color 0.2s ease',
+                overflow: 'hidden',
+                maxHeight: '120px',
               }}
               onClick={() => handleDateClick(dayData)}
-              onMouseEnter={(e) => {
-                if (dayData.isCurrentMonth) {
-                  e.target.style.backgroundColor = '#eff6ff';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = dayData.isCurrentMonth ? 'white' : '#f9fafb';
-              }}
+  onMouseEnter={e => {
+    if (dayData.isCurrentMonth) e.currentTarget.style.backgroundColor = '#eff6ff';
+  }}
+  onMouseLeave={e => {
+    if (dayData.isCurrentMonth) e.currentTarget.style.backgroundColor = 'white';
+    else e.currentTarget.style.backgroundColor = '#f9fafb';
+  }}
             >
               {/* Numéro du jour */}
               <div style={{

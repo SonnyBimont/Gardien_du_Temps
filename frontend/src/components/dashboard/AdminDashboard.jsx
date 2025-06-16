@@ -315,13 +315,6 @@ const AdminDashboard = () => {
           icon={<UserPlus className="w-6 h-6" />}
         />
 
-        <StatsCard
-          title="Pointages"
-          value={stats?.total_entries || 0}
-          change={currentPeriodLabel}
-          trend="neutral"
-          icon={<Activity className="w-6 h-6" />}
-        />
       </div>
     );
   };
@@ -371,19 +364,32 @@ const AdminDashboard = () => {
       title="Gestion des Utilisateurs"
       header={
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Utilisateurs ({filteredUsers.length})
-            </h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAllUsers(!showAllUsers)}
-              className="shrink-0"
-            >
-              {showAllUsers ? "Réduire" : "Voir tout"}
-            </Button>
-          </div>
+<div className="flex items-center justify-between">
+  <h3 className="text-lg font-semibold text-gray-900">
+    Utilisateurs ({filteredUsers.length})
+  </h3>
+  <div className="flex items-center gap-2">
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setShowAllUsers(!showAllUsers)}
+      className="shrink-0"
+    >
+      {showAllUsers ? "Réduire" : "Voir tout"}
+    </Button>
+    <button
+      onClick={() => setShowInactiveUsers(!showInactiveUsers)}
+      className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        showInactiveUsers
+          ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+      }`}
+      title={showInactiveUsers ? "Masquer les inactifs" : "Afficher tous"}
+    >
+      {showInactiveUsers ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+    </button>
+  </div>
+</div>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             <Button
@@ -433,17 +439,7 @@ const AdminDashboard = () => {
               </select>
             </div>
 
-            <button
-              onClick={() => setShowInactiveUsers(!showInactiveUsers)}
-              className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                showInactiveUsers
-                  ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-              }`}
-              title={showInactiveUsers ? "Masquer les inactifs" : "Afficher tous"}
-            >
-              {showInactiveUsers ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+
           </div>
         </div>
       }
