@@ -3,6 +3,7 @@ import { Calendar, Target, BarChart3, Clock, Plus } from 'lucide-react';
 import { usePlanningStore } from '../../stores/planningStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { useAuthStore } from '../../stores/authStore';
+import { exportPlannedHoursToCSV } from '../../utils/exportCSV';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import PlanningModal from '../common/PlanningModal';
@@ -118,6 +119,31 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
     );
   }
 
+const getMonthlyPlannedHours = () => {
+  if (!yearlyPlanning?.planning) return 0;
+  
+  let total = 0;
+  
+  yearlyPlanning.planning.forEach(p => {
+    try {
+      if (p.plan_date && p.planned_hours) {
+        const [year, month] = p.plan_date.split('-').map(Number);
+        
+        if (year === selectedYear && (month - 1) === currentMonth) {
+          const hours = Number(p.planned_hours);
+          if (!isNaN(hours)) {
+            total += hours;
+          }
+        }
+      }
+    } catch (e) {
+      // Ignorer les erreurs de parsing
+    }
+  });
+  
+  return Math.round(total * 100) / 100;
+};
+
   return (
     <div className="space-y-6">
       {/* Statistiques */}
@@ -138,7 +164,15 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
                   ← Retour
                 </Button>
               )}
-              
+
+              <Button 
+  variant="outline" 
+  onClick={() => exportPlannedHoursToCSV(yearlyPlanning, selectedYear)}
+  className="ml-2"
+>
+  📊 Exporter Planning
+</Button>
+
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
@@ -179,14 +213,13 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
             </div>
             
             <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-              <div className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs font-bold mx-auto mb-2">
-                %
-              </div>
-              <p className="text-sm text-purple-600 font-medium">Progression</p>
+              <Calendar className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+              <p className="text-sm text-purple-600 font-medium">Ce mois</p>
               <p className="text-xl font-bold text-purple-900">
-                {yearlyPlanning.completion_rate || 0}%
+                {getMonthlyPlannedHours()}h
               </p>
             </div>
+
           </div>
 
         </div>

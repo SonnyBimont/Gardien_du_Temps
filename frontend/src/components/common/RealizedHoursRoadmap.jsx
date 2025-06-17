@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, Target, BarChart3, Clock, CheckCircle } from 'lucide-react';
 import { useTimeStore } from '../../stores/timeStore';
 import { useAuthStore } from '../../stores/authStore';
 import { usePlanningStore } from '../../stores/planningStore';
 import { calculateTotalHours, formatHours } from '../../utils/timeCalculations';
+import { exportRealizedHoursToCSV } from '../../utils/exportCSV';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import api from '../../services/api';
@@ -20,7 +21,7 @@ const RealizedHoursRoadmap = ({ onBack }) => {
 
   useEffect(() => {
     loadYearData();
-    fetchYearlyPlanning(); // ✅ AJOUTER : Charger aussi les planifications
+    fetchYearlyPlanning(); // Charger aussi les planifications
   }, [selectedYear]); 
 
 const loadYearData = async () => {
@@ -31,7 +32,7 @@ const loadYearData = async () => {
     const startDate = `${selectedYear}-01-01`;
     const endDate = `${selectedYear}-12-31`;
     
-    // ✅ UN SEUL appel au lieu de fetchTimeHistory
+    // UN SEUL appel au lieu de fetchTimeHistory
     const response = await api.get(`/time-tracking/range?startDate=${startDate}&endDate=${endDate}&userId=${user.id}`);
     
     if (response.data.success) {
@@ -67,6 +68,50 @@ const loadYearData = async () => {
   }
 };
 
+const monthlyStats = useMemo(() => {
+  const monthData = Object.entries(realizedHours)
+    .filter(([date]) => {
+      const d = new Date(date);
+      return d.getFullYear() === selectedYear && d.getMonth() === currentMonth;
+    })
+    .reduce((acc, [, data]) => acc + (data.workingHours || 0), 0);
+  
+  return Math.round(monthData * 100) / 100;
+}, [realizedHours, selectedYear, currentMonth]);
+
+  const getMonthlyRealizedHours = () => {
+    if (!realizedHours || Object.keys(realizedHours).length === 0) {
+      return 0;
+    }
+    
+    try {
+      const monthlyTotal = Object.entries(realizedHours)
+        .filter(([date, data]) => {
+          if (!date || !data) return false;
+          
+          // Gérer différents formats de date
+          const workDate = new Date(date + 'T00:00:00'); // Force format ISO
+          
+          // Vérifier que la date est valide
+          if (isNaN(workDate.getTime())) return false;
+          
+          return workDate.getFullYear() === selectedYear && 
+                 workDate.getMonth() === currentMonth;
+        })
+        .reduce((total, [, data]) => {
+          const hours = parseFloat(data.workingHours) || 0;
+          return total + hours;
+        }, 0);
+      
+      // Vérifier que le résultat est un nombre valide
+      return isNaN(monthlyTotal) ? 0 : Math.round(monthlyTotal * 100) / 100;
+      
+    } catch (error) {
+      console.error('Erreur calcul heures mensuelles réalisées:', error);
+      return 0;
+    }
+  };
+
   // Génère une grille plate de 42 jours (6 semaines × 7 jours)
   const getCalendarGrid = (year, month) => {
     const firstDayOfMonth = new Date(year, month, 1);
@@ -83,7 +128,7 @@ const loadYearData = async () => {
       const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const dayData = realizedHours[dateStr];
       
-      // ✅ AJOUTER : Trouver la planification pour ce jour
+      // Trouver la planification pour ce jour
       const planning = yearlyPlanning.planning?.find(p => p.plan_date === dateStr);
       
       return {
@@ -93,7 +138,7 @@ const loadYearData = async () => {
         isCurrentMonth: date.getMonth() === month,
         isToday: dateStr === todayStr,
         realized: dayData,
-        planning: planning // ✅ AJOUTER
+        planning: planning 
       };
     });
   };
@@ -116,6 +161,8 @@ const loadYearData = async () => {
     const today = new Date();
     setCurrentMonth(today.getMonth());
   };
+
+
 
   // Calculer les statistiques
   const annualObjective = user?.annual_hours || 1607;
@@ -161,9 +208,17 @@ const loadYearData = async () => {
               {onBack && (
                 <Button variant="outline" onClick={onBack} className="mr-3">
                   ← Retour
-                </Button>
+                </Button>              
               )}
-              
+            
+<Button 
+  variant="outline" 
+  onClick={() => exportRealizedHoursToCSV(realizedHours, yearlyPlanning, selectedYear)}
+  className="ml-2"
+>
+  📊 Exporter
+</Button>
+
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
@@ -196,14 +251,14 @@ const loadYearData = async () => {
               <p className="text-sm text-orange-600 font-medium">Restant</p>
               <p className="text-xl font-bold text-orange-900">{remaining}h</p>
             </div>
-            
-            <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-              <div className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs font-bold mx-auto mb-2">
-                %
-              </div>
-              <p className="text-sm text-purple-600 font-medium">Avancement</p>
-              <p className="text-xl font-bold text-purple-900">{completionRate}%</p>
-            </div>
+         
+    <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+      <Calendar className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+      <p className="text-sm text-purple-600 font-medium">Ce mois</p>
+      <p className="text-xl font-bold text-purple-900">
+        {getMonthlyRealizedHours()}h
+      </p>
+    </div>
           </div>
 
           {/* Légende des couleurs */}
