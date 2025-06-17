@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Target, BarChart3, Clock, CheckCircle } from 'lucide-react';
 import { useTimeStore } from '../../stores/timeStore';
 import { useAuthStore } from '../../stores/authStore';
+import { usePlanningStore } from '../../stores/planningStore';
 import { calculateTotalHours, formatHours } from '../../utils/timeCalculations';
 import Card from '../common/Card';
 import Button from '../common/Button';
@@ -12,15 +13,15 @@ const RealizedHoursRoadmap = ({ onBack }) => {
   const { user } = useAuthStore();
   const { fetchTimeHistory, timeHistory, loading } = useTimeStore();
 
+  const { yearlyPlanning, fetchYearlyPlanning } = usePlanningStore();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [realizedHours, setRealizedHours] = useState({});
 
-useEffect(() => {
-  if (user?.id) {
+  useEffect(() => {
     loadYearData();
-  }
-}, [selectedYear, user?.id]); 
+    fetchYearlyPlanning(); // ✅ AJOUTER : Charger aussi les planifications
+  }, [selectedYear]); 
 
 const loadYearData = async () => {
   if (loading) return; 
@@ -71,9 +72,7 @@ const loadYearData = async () => {
     const firstDayOfMonth = new Date(year, month, 1);
     const startDay = (firstDayOfMonth.getDay() + 6) % 7; // Lundi=0
     
-    // Date du premier lundi affiché
     const gridStart = new Date(year, month, 1 - startDay);
-
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
@@ -84,13 +83,17 @@ const loadYearData = async () => {
       const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const dayData = realizedHours[dateStr];
       
+      // ✅ AJOUTER : Trouver la planification pour ce jour
+      const planning = yearlyPlanning.planning?.find(p => p.plan_date === dateStr);
+      
       return {
         date,
         dateStr,
         day: date.getDate(),
         isCurrentMonth: date.getMonth() === month,
         isToday: dateStr === todayStr,
-        realized: dayData
+        realized: dayData,
+        planning: planning // ✅ AJOUTER
       };
     });
   };
@@ -204,31 +207,45 @@ const loadYearData = async () => {
           </div>
 
           {/* Légende des couleurs */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Légende :</h4>
-            <div className="flex flex-wrap gap-4 text-xs">
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded mr-2" style={{ backgroundColor: '#10B981' }}></div>
-                <span>≥8h - Journée complète</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded mr-2" style={{ backgroundColor: '#F59E0B' }}></div>
-                <span>6-7h - Journée partielle</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded mr-2" style={{ backgroundColor: '#EF4444' }}></div>
-                <span>3-5h - Demi-journée</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded mr-2" style={{ backgroundColor: '#8B5CF6' }}></div>
-                <span>1-2h - Courte présence</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 rounded mr-2" style={{ backgroundColor: '#f3f4f6' }}></div>
-                <span>0h - Absent</span>
-              </div>
-            </div>
-          </div>
+<div className="bg-gray-50 p-4 rounded-lg">
+  <h4 className="text-sm font-medium text-gray-700 mb-2">Légende :</h4>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+    <div>
+      <p className="font-medium text-gray-600 mb-2">Heures réalisées :</p>
+      <div className="space-y-1">
+        <div className="flex items-center">
+          <div className="w-4 h-4 rounded mr-2" style={{ backgroundColor: '#10B981' }}></div>
+          <span>✅ ≥8h - Journée complète</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-4 h-4 rounded mr-2" style={{ backgroundColor: '#F59E0B' }}></div>
+          <span>✅ 6-7h - Journée partielle</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-4 h-4 rounded mr-2" style={{ backgroundColor: '#EF4444' }}></div>
+          <span>✅ 3-5h - Demi-journée</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p className="font-medium text-gray-600 mb-2">Comparaison :</p>
+      <div className="space-y-1">
+        <div className="flex items-center">
+          <span className="mr-2">📅</span>
+          <span>Heures planifiées</span>
+        </div>
+        <div className="flex items-center">
+          <span className="mr-2">🎯</span>
+          <span className="text-green-600">Objectif atteint</span>
+        </div>
+        <div className="flex items-center">
+          <span className="mr-2">⚠️</span>
+          <span className="text-orange-600">En retard sur l'objectif</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
         </div>
       </Card>
 
@@ -364,113 +381,159 @@ const loadYearData = async () => {
           gap: '1px',
           backgroundColor: '#f3f4f6'
         }}>
-          {calendarDays.map((dayData, idx) => (
-            <div
-              key={idx}
+  {calendarDays.map((dayData, idx) => (
+    <div
+      key={idx}
+      style={{
+        backgroundColor: dayData.isCurrentMonth ? 'white' : '#f9fafb',
+        color: dayData.isCurrentMonth ? '#111827' : '#9ca3af',
+        padding: '12px',
+        minHeight: '100px',
+        maxHeight: '140px', // ✅ AUGMENTER légèrement pour plus de contenu
+        display: 'flex',
+        flexDirection: 'column',
+        border: dayData.isToday ? '2px solid #10B981' : 'none',
+        overflow: 'hidden',
+        boxSizing: 'border-box'
+      }}
+    >
+      {/* Numéro du jour */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '8px'
+      }}>
+        <span style={{
+          fontSize: '14px',
+          fontWeight: '500',
+          display: dayData.isToday ? 'flex' : 'block',
+          alignItems: dayData.isToday ? 'center' : 'unset',
+          justifyContent: dayData.isToday ? 'center' : 'unset',
+          width: dayData.isToday ? '24px' : 'auto',
+          height: dayData.isToday ? '24px' : 'auto',
+          backgroundColor: dayData.isToday ? '#10B981' : 'transparent',
+          color: dayData.isToday ? 'white' : 'inherit',
+          borderRadius: dayData.isToday ? '50%' : '0',
+          fontWeight: dayData.isToday ? '600' : '500'
+        }}>
+          {dayData.day}
+        </span>
+      </div>
+      
+      {/* Contenu principal */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+        
+        {/* ✅ HEURES RÉALISÉES */}
+        {dayData.realized?.workingHours > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div 
               style={{
-                backgroundColor: dayData.isCurrentMonth ? 'white' : '#f9fafb',
-                color: dayData.isCurrentMonth ? '#111827' : '#9ca3af',
-                padding: '12px',
-                minHeight: '100px',
-                maxHeight: '120px',
-                display: 'flex',
-                flexDirection: 'column',
-                border: dayData.isToday ? '2px solid #10B981' : 'none',
-                overflow: 'hidden',
-                boxSizing: 'border-box'
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: getHoursColor(dayData.realized.workingHours),
+                flexShrink: 0
               }}
-            >
-              {/* Numéro du jour */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '8px'
-              }}>
-                <span style={{
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: dayData.isToday ? 'flex' : 'block',
-                  alignItems: dayData.isToday ? 'center' : 'unset',
-                  justifyContent: dayData.isToday ? 'center' : 'unset',
-                  width: dayData.isToday ? '24px' : 'auto',
-                  height: dayData.isToday ? '24px' : 'auto',
-                  backgroundColor: dayData.isToday ? '#10B981' : 'transparent',
-                  color: dayData.isToday ? 'white' : 'inherit',
-                  borderRadius: dayData.isToday ? '50%' : '0',
-                  fontWeight: dayData.isToday ? '600' : '500'
-                }}>
-                  {dayData.day}
-                </span>
-              </div>
-              
-              {/* Heures réalisées */}
-              <div style={{ flex: 1 }}>
-                {dayData.realized?.workingHours > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div 
-                        style={{
-                          width: '10px',
-                          height: '10px',
-                          borderRadius: '50%',
-                          backgroundColor: getHoursColor(dayData.realized.workingHours),
-                          flexShrink: 0
-                        }}
-                      ></div>
-                      <span style={{
-                        fontSize: '11px',
-                        fontWeight: '600',
-                        color: '#111827',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {formatHours(dayData.realized.workingHours)}
-                      </span>
-                    </div>
-                    
-                    {dayData.realized.arrival && (
-                      <div style={{
-                        fontSize: '8px',
-                        color: '#6b7280',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {dayData.realized.arrival} → {dayData.realized.departure || 'En cours'}
-                      </div>
-                    )}
-                    
-                    {dayData.realized.status && dayData.realized.status !== 'termine' && (
-                      <div style={{
-                        fontSize: '9px',
-                        color: dayData.realized.status === 'present' ? '#F59E0B' : 
-                               dayData.realized.status === 'en_pause' ? '#8B5CF6' : '#9ca3af',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {dayData.realized.status === 'present' ? 'En cours' :
-                         dayData.realized.status === 'en_pause' ? 'En pause' : ''}
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                {dayData.isCurrentMonth && (!dayData.realized || dayData.realized.workingHours === 0) && (
-                  <div style={{
-                    fontSize: '10px',
-                    color: '#9ca3af',
-                    textAlign: 'center',
-                    marginTop: '20px'
-                  }}>
-                    Aucun pointage
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+            ></div>
+            <span style={{
+              fontSize: '10px',
+              fontWeight: '600',
+              color: '#111827',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              ✅ {formatHours(dayData.realized.workingHours)}
+            </span>
+          </div>
+        )}
+        
+        {/* ✅ HEURES PLANIFIÉES */}
+        {dayData.planning?.planned_hours > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div 
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: dayData.planning.color || '#3B82F6',
+                flexShrink: 0
+              }}
+            ></div>
+            <span style={{
+              fontSize: '10px',
+              fontWeight: '500',
+              color: '#6B7280',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              📅 {dayData.planning.planned_hours}h
+            </span>
+          </div>
+        )}
+        
+        {/* ✅ COMPARAISON (si les deux existent) */}
+        {dayData.realized?.workingHours > 0 && dayData.planning?.planned_hours > 0 && (
+          <div style={{
+            fontSize: '9px',
+            color: dayData.realized.workingHours >= dayData.planning.planned_hours ? '#10B981' : '#F59E0B',
+            fontWeight: '500',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>
+            {dayData.realized.workingHours >= dayData.planning.planned_hours ? '🎯' : '⚠️'} 
+            {dayData.realized.workingHours >= dayData.planning.planned_hours 
+              ? `+${(dayData.realized.workingHours - dayData.planning.planned_hours).toFixed(1)}h`
+              : `${(dayData.realized.workingHours - dayData.planning.planned_hours).toFixed(1)}h`
+            }
+          </div>
+        )}
+        
+        {/* Horaires de début/fin (si présents) */}
+        {dayData.realized?.arrival && (
+          <div style={{
+            fontSize: '9px',
+            color: '#9CA3AF',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>
+            {dayData.realized.arrival} → {dayData.realized.departure || 'En cours'}
+          </div>
+        )}
+        
+        {/* Projet planifié (si présent) */}
+        {dayData.planning?.project && (
+          <div style={{
+            fontSize: '8px',
+            color: '#9CA3AF',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>
+            📋 {dayData.planning.project.name}
+          </div>
+        )}
+        
+        {/* Si pas de données */}
+        {dayData.isCurrentMonth && 
+         (!dayData.realized || dayData.realized.workingHours === 0) && 
+         (!dayData.planning || dayData.planning.planned_hours === 0) && (
+          <div style={{
+            fontSize: '9px',
+            color: '#D1D5DB',
+            textAlign: 'center',
+            marginTop: '10px'
+          }}>
+            Aucune donnée
+          </div>
+        )}
+      </div>
+    </div>
+  ))}
         </div>
       </div>
     </div>

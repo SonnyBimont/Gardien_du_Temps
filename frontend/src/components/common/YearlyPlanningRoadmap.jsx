@@ -189,23 +189,6 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
             </div>
           </div>
 
-          {/* Barre de progression */}
-          <div className="mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">Avancement annuel</span>
-              <span className="text-sm text-gray-500">{yearlyPlanning.completion_rate || 0}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div 
-                className={`h-3 rounded-full transition-all duration-300 ${
-                  (yearlyPlanning.completion_rate || 0) >= 100 ? 'bg-green-500' : 
-                  (yearlyPlanning.completion_rate || 0) >= 75 ? 'bg-blue-500' : 
-                  (yearlyPlanning.completion_rate || 0) >= 50 ? 'bg-yellow-500' : 'bg-red-500'
-                }`}
-                style={{ width: `${Math.min(yearlyPlanning.completion_rate || 0, 100)}%` }}
-              ></div>
-            </div>
-          </div>
         </div>
       </Card>
 
