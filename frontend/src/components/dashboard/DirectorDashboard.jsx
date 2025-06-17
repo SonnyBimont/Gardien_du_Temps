@@ -32,6 +32,7 @@ import Button from '../common/Button';
 import Input from '../common/Input';
 import Modal from '../common/Modal';
 import YearlyPlanningRoadmap from '../common/YearlyPlanningRoadmap';
+import RealizedHoursRoadmap from '../common/RealizedHoursRoadmap'; 
 import CreateUserForm from '../forms/CreateUserForm';
 import EditUserForm from '../forms/EditUserForm';
 import CreateProjectForm from '../forms/CreateProjectForm';
@@ -693,6 +694,24 @@ const canClockOut = status.arrival && !status.departure;
     </div>
   </div>
 </Card>
+
+      <Card 
+        clickable 
+        hoverable 
+        className="p-4"
+        onClick={() => setActiveView('realized')}
+      >
+        <div className="flex items-center">
+          <div className="p-3 bg-green-100 rounded-lg">
+            <CheckCircle className="w-6 h-6 text-green-600" />
+          </div>
+          <div className="ml-4">
+            <p className="text-sm font-medium text-gray-600">Consulter</p>
+            <p className="text-lg font-semibold text-gray-900">Heures Réalisées</p>
+          </div>
+        </div>
+      </Card>
+
     </div>
   );
 
@@ -1754,15 +1773,20 @@ const createEmptyStats = (animator, period, dateRange) => {
     );
   };
 
+
   // Rendu du contenu principal selon la vue active
   const renderContent = () => {
     switch (activeView) {
+      case 'dashboard':
+        return renderDashboard();
       case 'team':
         return renderTeamManagement();
       case 'schedule':
         return renderScheduleManagement();
       case 'planning':
-        return <YearlyPlanningRoadmap onBack={() => setActiveView('dashboard')} />; 
+        return <YearlyPlanningRoadmap onBack={() => setActiveView('dashboard')} />;
+      case 'realized': // ✅ NOUVEAU CAS
+        return <RealizedHoursRoadmap onBack={() => setActiveView('dashboard')} />;
       default:
         return renderDashboard();
     }
