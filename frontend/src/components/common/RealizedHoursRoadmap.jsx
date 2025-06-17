@@ -68,6 +68,16 @@ const loadYearData = async () => {
   }
 };
 
+// Fonction pour convertir les heures décimales en heures:minutes
+const formatDecimalHours = (decimalHours) => {
+  if (!decimalHours || decimalHours === 0) return '0h00';
+  
+  const hours = Math.floor(decimalHours);
+  const minutes = Math.round((decimalHours - hours) * 60);
+  
+  return `${hours}h${minutes.toString().padStart(2, '0')}`;
+};
+
 const monthlyStats = useMemo(() => {
   const monthData = Object.entries(realizedHours)
     .filter(([date]) => {
@@ -79,38 +89,35 @@ const monthlyStats = useMemo(() => {
   return Math.round(monthData * 100) / 100;
 }, [realizedHours, selectedYear, currentMonth]);
 
-  const getMonthlyRealizedHours = () => {
-    if (!realizedHours || Object.keys(realizedHours).length === 0) {
-      return 0;
-    }
+const getMonthlyRealizedHours = () => {
+  if (!realizedHours || Object.keys(realizedHours).length === 0) {
+    return '0h00';
+  }
+  
+  try {
+    const monthlyTotal = Object.entries(realizedHours)
+      .filter(([date, data]) => {
+        if (!date || !data) return false;
+        
+        const workDate = new Date(date + 'T00:00:00');
+        
+        if (isNaN(workDate.getTime())) return false;
+        
+        return workDate.getFullYear() === selectedYear && 
+               workDate.getMonth() === currentMonth;
+      })
+      .reduce((total, [, data]) => {
+        const hours = parseFloat(data.workingHours) || 0;
+        return total + hours;
+      }, 0);
     
-    try {
-      const monthlyTotal = Object.entries(realizedHours)
-        .filter(([date, data]) => {
-          if (!date || !data) return false;
-          
-          // Gérer différents formats de date
-          const workDate = new Date(date + 'T00:00:00'); // Force format ISO
-          
-          // Vérifier que la date est valide
-          if (isNaN(workDate.getTime())) return false;
-          
-          return workDate.getFullYear() === selectedYear && 
-                 workDate.getMonth() === currentMonth;
-        })
-        .reduce((total, [, data]) => {
-          const hours = parseFloat(data.workingHours) || 0;
-          return total + hours;
-        }, 0);
-      
-      // Vérifier que le résultat est un nombre valide
-      return isNaN(monthlyTotal) ? 0 : Math.round(monthlyTotal * 100) / 100;
-      
-    } catch (error) {
-      console.error('Erreur calcul heures mensuelles réalisées:', error);
-      return 0;
-    }
-  };
+    return formatDecimalHours(monthlyTotal);
+    
+  } catch (error) {
+    console.error('Erreur calcul heures mensuelles réalisées:', error);
+    return '0h00';
+  }
+};
 
   // Génère une grille plate de 42 jours (6 semaines × 7 jours)
   const getCalendarGrid = (year, month) => {
@@ -166,8 +173,10 @@ const monthlyStats = useMemo(() => {
 
   // Calculer les statistiques
   const annualObjective = user?.annual_hours || 1607;
-  const totalRealized = realizedHours.totalRealizedYear || 0;
-  const remaining = Math.max(0, annualObjective - totalRealized);
+  const totalRealizedDecimal = realizedHours.totalRealizedYear || 0;
+  const totalRealized = formatDecimalHours(totalRealizedDecimal);
+  const remainingDecimal = Math.max(0, annualObjective - totalRealizedDecimal);
+  const remaining = formatDecimalHours(remainingDecimal);
   const completionRate = annualObjective > 0 ? Math.round((totalRealized / annualObjective) * 100 * 100) / 100 : 0;
 
   // Obtenir la couleur selon les heures travaillées
