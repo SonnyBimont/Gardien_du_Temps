@@ -184,3 +184,95 @@ exports.getScheduleTemplates = async (req, res) => {
         res.status(500).json({ message: 'Erreur lors de la récupération des modèles de planning', error: error.message });
     }
 };
+
+// Ajouter les mêmes fonctions utilitaires
+
+exports.getYearBounds = (year, yearType = 'civil') => {
+  switch (yearType) {
+    case 'school':
+      return {
+        startDate: `${year}-09-01`,
+        endDate: `${year + 1}-08-31`
+      };
+    case 'civil':
+    default:
+      return {
+        startDate: `${year}-01-01`,
+        endDate: `${year}-12-31`
+      };
+  }
+};
+
+// ✅ MODIFIER : getYearlyPlanning pour supporter yearType
+exports.getYearlyPlanning = async (req, res) => {
+  try {
+    const { userId, startDate, endDate, yearType, year } = req.query;
+    const targetUserId = userId || req.user.id;
+
+    // ✅ NOUVEAU : Calculer les bornes si yearType et année fournis
+    let finalStartDate = startDate;
+    let finalEndDate = endDate;
+
+    if (yearType && year) {
+      const bounds = getYearBounds(parseInt(year), yearType);
+      finalStartDate = bounds.startDate;
+      finalEndDate = bounds.endDate;
+    }
+
+    if (!finalStartDate || !finalEndDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Les paramètres de période sont requis'
+      });
+    }
+
+    // Récupérer les planifications dans la période
+    const planning = await HourPlanning.findAll({
+      where: {
+        user_id: targetUserId,
+        plan_date: {
+          [Op.between]: [finalStartDate, finalEndDate]
+        }
+      },
+      include: [{
+        model: Project,
+        as: 'project',
+        attributes: ['id', 'name', 'color']
+      }],
+      order: [['plan_date', 'ASC']]
+    });
+
+    // Calculer les statistiques
+    const totalPlanned = planning.reduce((sum, p) => sum + parseFloat(p.planned_hours || 0), 0);
+    
+    // Récupérer l'objectif annuel de l'utilisateur
+    const user = await User.findByPk(targetUserId, {
+      attributes: ['annual_hours', 'year_type']
+    });
+    
+    const annualObjective = user?.annual_hours || 1600;
+    const remainingHours = Math.max(0, annualObjective - totalPlanned);
+
+    res.json({
+      success: true,
+      data: {
+        planning,
+        total_planned: Math.round(totalPlanned * 100) / 100,
+        annual_objective: annualObjective,
+        remaining_hours: Math.round(remainingHours * 100) / 100,
+        period: {
+          start: finalStartDate,
+          end: finalEndDate,
+          yearType: yearType || user?.year_type || 'civil'
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération de la planification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur'
+    });
+  }
+};

@@ -141,15 +141,17 @@ const { protect, authorize } = require('../middlewares/auth');
  */
 
 // Routes pour tous les utilisateurs connectés
-router.get('/profile', (req, res) => {
+router.get('/profile', protect, (req, res) => {
     req.params.id = req.user.id;
     userController.getUserById(req, res);
 });
 
-router.put('/profile', (req, res) => {
-    req.params.id = req.user.id;
-    userController.updateUser(req, res);
-});
+// router.put('/profile', (req, res) => {
+//     req.params.id = req.user.id;
+//     userController.updateUser(req, res);
+// });
+
+router.put('/profile', protect, userController.updateProfile);
 
 // ===== ROUTES UTILISATEURS =====
 

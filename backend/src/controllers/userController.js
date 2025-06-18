@@ -377,25 +377,45 @@ exports.createUser = async (req, res) => {
 
 // Mettre à jour un utilisateur
 exports.updateUser = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const userId = parseInt(id);
-        const updateData = req.body;
-        const currentUser = req.user;
+  try {
+    const { id } = req.params;
+    const { 
+      first_name, 
+      last_name, 
+      email, 
+      annual_hours, 
+      is_active, 
+      role,
+      year_type // ✅ AJOUTER
+    } = req.body;
 
-        // Récupérer l'utilisateur à modifier
-        const userToUpdate = await User.findByPk(userId, {
-            include: [{ model: Structure, as: 'structure' }]
-        });
+    // ✅ AJOUTER : Validation du year_type
+    if (year_type && !['civil', 'school'].includes(year_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le type d\'année doit être "civil" ou "school"'
+      });
+    }
 
-        if (!userToUpdate) {
-            return res.status(404).json({
-                success: false,
-                message: 'Utilisateur non trouvé'
-            });
-        }
+    // Vérifier que l'utilisateur existe
+    const existingUser = await User.findByPk(id);
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
+    // Construire l'objet de mise à jour
+    const updateData = {};
+    if (first_name !== undefined) updateData.first_name = first_name;
+    if (last_name !== undefined) updateData.last_name = last_name;
+    if (email !== undefined) updateData.email = email;
+    if (annual_hours !== undefined) updateData.annual_hours = annual_hours;
+    if (is_active !== undefined) updateData.is_active = is_active;
+    if (role !== undefined) updateData.role = role;
+    if (year_type !== undefined) updateData.year_type = year_type; // ✅ AJOUTER
 
-        // LOGIQUE D'AUTORISATION CORRIGÉE
+
         let canUpdate = false;
 
         if (currentUser.role === 'admin') {
@@ -430,28 +450,35 @@ exports.updateUser = async (req, res) => {
         }
 
         // Mettre à jour l'utilisateur
-        await userToUpdate.update(dataToUpdate);
+    const [updatedRowsCount] = await User.update(updateData, {
+      where: { id }
+    });
+
+    if (updatedRowsCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
 
         // Récupérer l'utilisateur mis à jour avec ses relations
-        const updatedUser = await User.findByPk(userId, {
-            include: [{ model: Structure, as: 'structure' }],
-            attributes: { exclude: ['password'] }
-        });
+    const updatedUser = await User.findByPk(id, {
+      attributes: { exclude: ['password'] }
+    });
 
-        res.json({
-            success: true,
-            message: 'Utilisateur mis à jour avec succès',
-            data: updatedUser
-        });
+    res.json({
+      success: true,
+      message: 'Utilisateur mis à jour avec succès',
+      data: updatedUser
+    });
 
-    } catch (error) {
-        console.error('Erreur lors de la mise à jour de l\'utilisateur:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Erreur lors de la mise à jour de l\'utilisateur',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour de l\'utilisateur:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur'
+    });
+  }
 };
 
 // Supprimer/Désactiver un utilisateur
@@ -590,6 +617,105 @@ exports.toggleUserStatus = async (req, res) => {
             error: error.message 
         });
     }
+};
+   
+exports.updateProfile = async (req, res) => {
+  try {
+    // ✅ AJOUTER : Logs de debug
+    console.log('🔍 Headers authorization:', req.headers.authorization);
+    console.log('🔍 req.user complet:', req.user);
+    console.log('🔍 req.user.id:', req.user?.id);
+    console.log('🔍 Type de req.user.id:', typeof req.user?.id);
+    console.log('🔍 req.body:', req.body);
+    
+    // ✅ VÉRIFIER : Si req.user existe
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié ou ID manquant',
+        debug: {
+          hasReqUser: !!req.user,
+          userKeys: req.user ? Object.keys(req.user) : null
+        }
+      });
+    }
+    
+    const userId = req.user.id;
+    const { 
+      first_name, 
+      last_name, 
+      email, 
+      annual_hours,
+      year_type 
+    } = req.body;
+
+    // ✅ AJOUTER : Validation du year_type
+    if (year_type && !['civil', 'school'].includes(year_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le type d\'année doit être "civil" ou "school"'
+      });
+    }
+
+    // Construire l'objet de mise à jour
+    const updateData = {};
+    if (first_name !== undefined) updateData.first_name = first_name;
+    if (last_name !== undefined) updateData.last_name = last_name;
+    if (email !== undefined) updateData.email = email;
+    if (annual_hours !== undefined) updateData.annual_hours = annual_hours;
+    if (year_type !== undefined) updateData.year_type = year_type;
+
+    console.log('🔄 Données à mettre à jour:', updateData);
+
+    // Vérifier si l'email existe déjà (si fourni)
+    if (email) {
+      const existingUser = await User.findOne({ 
+        where: { 
+          email,
+          id: { [Op.ne]: userId }
+        } 
+      });
+      
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cette adresse email est déjà utilisée'
+        });
+      }
+    }
+
+    const [updatedRowsCount] = await User.update(updateData, {
+      where: { id: userId }
+    });
+
+    if (updatedRowsCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
+
+    // Récupérer l'utilisateur mis à jour
+    const updatedUser = await User.findByPk(userId, {
+      attributes: { exclude: ['password'] }
+    });
+
+    console.log('✅ Utilisateur mis à jour:', updatedUser.toJSON());
+
+    res.json({
+      success: true,
+      message: 'Profil mis à jour avec succès',
+      data: updatedUser
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la mise à jour du profil:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur',
+      error: error.message
+    });
+  }
 };
 
 // ===== STATISTIQUES ADMIN AVEC PÉRIODES FIXES =====

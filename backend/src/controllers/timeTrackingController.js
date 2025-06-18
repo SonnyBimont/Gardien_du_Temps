@@ -135,38 +135,106 @@ exports.getTimeEntriesByUser = async (req, res) => {
 
 // Récupérer les pointages par période
 exports.getTimeEntriesByDateRange = async (req, res) => {
-    try {
-        const { startDate, endDate, userId } = req.query;
-        let whereClause = {};
+  try {
+    const { startDate, endDate, userId, yearType } = req.query;
+    console.log('🔍 Backend timeTracking params:', { startDate, endDate, userId, yearType });
+    
+    let whereClause = {};
 
-        if (startDate && endDate) {
-            whereClause.date_time = {
-                [Op.between]: [new Date(startDate), new Date(endDate)]
-            };
-        }
-
-        if (userId) {
-            whereClause.user_id = userId;
-        }
-
-        const timeEntries = await Time_Tracking.findAll({
-            where: whereClause,
-            include: [
-                { model: User, as: 'user', attributes: { exclude: ['password'] } },
-                { model: Task, as: 'task' }
-            ],
-            order: [['date_time', 'ASC']]
-        });
-
-        res.status(200).json({
-            success: true,
-            count: timeEntries.length,
-            data: timeEntries
-        });
-    } catch (error) {
-        res.status(500).json({ message: 'Erreur lors de la récupération des pointages', error: error.message });
+    if (startDate && endDate) {
+      whereClause.date_time = {
+        [Op.between]: [new Date(startDate), new Date(endDate)]
+      };
+      console.log('📅 Backend période:', { startDate, endDate });
     }
+
+    if (userId) {
+      whereClause.user_id = userId;
+    }
+
+    const timeEntries = await Time_Tracking.findAll({
+      where: whereClause,
+      include: [
+        { model: User, as: 'user', attributes: { exclude: ['password'] } },
+        { model: Task, as: 'task' }
+      ],
+      order: [['date_time', 'ASC']]
+    });
+
+    console.log(`📊 Backend trouvé: ${timeEntries.length} entrées pour la période`);
+
+    res.status(200).json({
+      success: true,
+      count: timeEntries.length,
+      data: timeEntries
+    });
+  } catch (error) {
+    console.error('❌ Erreur backend timeTracking:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des pointages', error: error.message });
+  }
 };
+
+// Récupérer les entrées de temps pour une période spécifique
+exports.getTimeEntriesRange = async (req, res) => {
+  try {
+    const { startDate, endDate, userId, yearType } = req.query;
+    const targetUserId = userId || req.user.id;
+
+    // ✅ NOUVEAU : Si yearType et année fournis, calculer les bornes automatiquement
+    let finalStartDate = startDate;
+    let finalEndDate = endDate;
+
+    if (yearType && req.query.year) {
+      const year = parseInt(req.query.year);
+      const bounds = getYearBounds(year, yearType);
+      finalStartDate = bounds.startDate;
+      finalEndDate = bounds.endDate;
+    }
+
+    if (!finalStartDate || !finalEndDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Les dates de début et de fin sont requises'
+      });
+    }
+
+    const entries = await TimeEntry.findAll({
+      where: {
+        user_id: targetUserId,
+        date_time: {
+          [Op.between]: [
+            new Date(finalStartDate + 'T00:00:00.000Z'),
+            new Date(finalEndDate + 'T23:59:59.999Z')
+          ]
+        }
+      },
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['first_name', 'last_name', 'email']
+      }],
+      order: [['date_time', 'ASC']]
+    });
+
+    res.json({
+      success: true,
+      data: entries,
+      period: {
+        startDate: finalStartDate,
+        endDate: finalEndDate,
+        yearType: yearType || 'civil'
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération des entrées de temps:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur'
+    });
+  }
+};
+
 //AJOUT REPORTING ET CALCUL
 // Pointages du jour (pour frontend)
 exports.getTodayEntries = async (req, res) => {
@@ -671,5 +739,32 @@ exports.getTeamSummary = async (req, res) => {
       message: 'Erreur lors de la récupération du résumé d\'équipe',
       error: error.message
     });
+  }
+};
+
+// Récupérer l'année scolaire à partir d'une date
+exports.getSchoolYear = (date) => {
+  const d = new Date(date);
+  const month = d.getMonth(); // 0-11
+  const year = d.getFullYear();
+  
+  // Si on est entre janvier et août (mois 0-7), on est dans l'exercice de l'année précédente
+  return month >= 8 ? year : year - 1; // 8 = septembre
+};
+
+// Récupérer les bornes d'une année selon le type
+exports.getYearBounds = (year, yearType = 'civil') => {
+  switch (yearType) {
+    case 'school':
+      return {
+        startDate: `${year}-09-01`,
+        endDate: `${year + 1}-08-31`
+      };
+    case 'civil':
+    default:
+      return {
+        startDate: `${year}-01-01`,
+        endDate: `${year}-12-31`
+      };
   }
 };

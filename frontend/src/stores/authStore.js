@@ -105,6 +105,32 @@ export const useAuthStore = create(
         }));
       },
 
+// Mise à jour du type d'année
+updateYearType: async (yearType) => {
+  console.log('🔄 AuthStore: Mise à jour yearType vers:', yearType);
+  
+  try {
+    const response = await api.put('/users/profile', { year_type: yearType });
+    console.log('📡 Réponse API:', response.data);
+    
+    if (response.data.success) {
+      set(state => ({
+        user: { ...state.user, year_type: yearType }
+      }));
+      
+      const currentUser = get().user;
+      const updatedUser = { ...currentUser, year_type: yearType };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      console.log('✅ User mis à jour:', updatedUser);
+      return { success: true };
+    }
+  } catch (error) {
+    console.error('❌ Erreur mise à jour type d\'année:', error);
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+},
+
       clearError: () => set({ error: null }),
 
       // Getters

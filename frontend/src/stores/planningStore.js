@@ -1,6 +1,6 @@
-// frontend/src/stores/planningStore.js
 import { create } from 'zustand';
 import api from '../services/api';
+import { getYearBounds, YEAR_TYPES } from '../utils/dateUtils'; 
 
 export const usePlanningStore = create((set, get) => ({
   yearlyPlanning: {
@@ -14,17 +14,27 @@ export const usePlanningStore = create((set, get) => ({
   loading: false,
   error: null,
   
-  fetchYearlyPlanning: async (year = null) => {
-    const targetYear = year || get().selectedYear;
+  // Support du yearType
+  fetchYearlyPlanning: async (userId = null, startDate = null, endDate = null) => {
     set({ loading: true, error: null });
     
     try {
-      const response = await api.get(`/hour-planning/yearly?year=${targetYear}`);
+      let url = '/hour-planning/yearly';
+      const params = new URLSearchParams();
+      
+      if (userId) params.append('userId', userId);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      if (params.toString()) {
+        url += '?' + params.toString();
+      }
+      
+      const response = await api.get(url);
       
       if (response.data.success) {
         set({ 
           yearlyPlanning: response.data.data,
-          selectedYear: targetYear,
           loading: false 
         });
         return { success: true, data: response.data.data };
@@ -42,6 +52,7 @@ export const usePlanningStore = create((set, get) => ({
       const response = await api.post('/hour-planning/upsert', planningData);
       
       if (response.data.success) {
+        // ✅ CORRIGER : Recharger les données après modification
         await get().fetchYearlyPlanning();
         return { success: true, data: response.data.data };
       }
@@ -54,7 +65,6 @@ export const usePlanningStore = create((set, get) => ({
 
   setSelectedYear: (year) => {
     set({ selectedYear: year });
-    get().fetchYearlyPlanning(year);
   },
 
   clearError: () => set({ error: null })

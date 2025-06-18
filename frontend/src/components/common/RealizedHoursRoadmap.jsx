@@ -4,70 +4,88 @@ import { useTimeStore } from "../../stores/timeStore";
 import { useAuthStore } from "../../stores/authStore";
 import { usePlanningStore } from "../../stores/planningStore";
 import { calculateTotalHours, formatHours } from "../../utils/timeCalculations";
-import { exportRealizedHoursToCSV,exportRHReport } from "../../utils/exportCSV";
+import {exportRHReport } from "../../utils/exportCSV";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import api from "../../services/api";
+import { 
+  YEAR_TYPES, 
+  getYearByType, 
+  getYearBounds, 
+  filterByYearType, 
+  getCurrentYear 
+} from '../../utils/dateUtils';
 
+// Composant pour afficher le calendrier des heures réalisées
 const RealizedHoursRoadmap = ({ onBack }) => {
   const { user } = useAuthStore();
   const { fetchTimeHistory, timeHistory, loading } = useTimeStore();
-
   const { yearlyPlanning, fetchYearlyPlanning } = usePlanningStore();
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  
+  // ✅ CORRIGER : Récupérer d'abord le yearType, puis initialiser selectedYear
+  const yearType = user?.year_type || YEAR_TYPES.CIVIL;
+  const [selectedYear, setSelectedYear] = useState(() => getCurrentYear(yearType)); // ✅ Fonction callback
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [realizedHours, setRealizedHours] = useState({});
 
-  useEffect(() => {
+useEffect(() => {
+  if (user?.id) {
     loadYearData();
-    fetchYearlyPlanning(); // Charger aussi les planifications
-  }, [selectedYear]);
+  }
+}, [selectedYear, yearType, user?.id]); // ✅ AJOUTER yearType dans les dépendances
 
-  const loadYearData = async () => {
-    if (loading) return;
+// ✅ AJOUTER : useEffect pour charger la planification aussi
+useEffect(() => {
+  if (user?.id && selectedYear && yearType) {
+    const { startDate, endDate } = getYearBounds(selectedYear, yearType);
+    fetchYearlyPlanning(user.id, startDate, endDate);
+  }
+}, [selectedYear, yearType, user?.id, fetchYearlyPlanning]);
 
-    try {
-      // Calculer la plage de dates pour l'année
-      const startDate = `${selectedYear}-01-01`;
-      const endDate = `${selectedYear}-12-31`;
+const loadYearData = async () => {
+  if (loading) return;
 
-      // UN SEUL appel au lieu de fetchTimeHistory
-      const response = await api.get(
-        `/time-tracking/range?startDate=${startDate}&endDate=${endDate}&userId=${user.id}`
-      );
+  try {
+    console.log('🔄 Chargement données année:', { selectedYear, yearType });
+    
+    // ✅ CORRECTION : Calculer les bornes selon le type d'année
+    const { startDate, endDate } = getYearBounds(selectedYear, yearType);
+    console.log('📅 Période de chargement:', { startDate, endDate });
+    
+    const response = await api.get(`/time-tracking/range?startDate=${startDate}&endDate=${endDate}&userId=${user.id}`);
+    
+    if (response.data.success) {
+      const entries = response.data.data || [];
+      console.log(`📊 Données reçues: ${entries.length} entrées`);
+      
+      const processedData = calculateTotalHours(entries);
+      const yearlyData = {};
+      let totalRealizedYear = 0;
 
-      if (response.data.success) {
-        const entries = response.data.data || [];
-        const processedData = calculateTotalHours(entries);
+      // ✅ CORRECTION : Ne pas re-filtrer, les données sont déjà filtrées par l'API
+      processedData.forEach(day => {
+        yearlyData[day.date] = {
+          workingHours: day.workingHours,
+          arrival: day.arrival,
+          departure: day.departure,
+          breakStart: day.breakStart,
+          breakEnd: day.breakEnd,
+          status: day.status
+        };
+        totalRealizedYear += day.workingHours;
+      });
 
-        // Calculer directement les heures réalisées
-        const yearlyData = {};
-        let totalRealizedYear = 0;
-
-        processedData.forEach((day) => {
-          const dayDate = new Date(day.date);
-          if (dayDate.getFullYear() === selectedYear) {
-            yearlyData[day.date] = {
-              workingHours: day.workingHours,
-              arrival: day.arrival,
-              departure: day.departure,
-              breakStart: day.breakStart,
-              breakEnd: day.breakEnd,
-              status: day.status,
-            };
-            totalRealizedYear += day.workingHours;
-          }
-        });
-
-        setRealizedHours({
-          ...yearlyData,
-          totalRealizedYear: Math.round(totalRealizedYear * 100) / 100,
-        });
-      }
-    } catch (error) {
-      console.error("Erreur chargement heures réalisées:", error);
+      console.log(`✅ Données traitées: ${Object.keys(yearlyData).length} jours, ${totalRealizedYear}h total`);
+      
+      setRealizedHours({
+        ...yearlyData,
+        totalRealizedYear: Math.round(totalRealizedYear * 100) / 100
+      });
     }
-  };
+  } catch (error) {
+    console.error('❌ Erreur chargement heures réalisées:', error);
+  }
+};
 
   // Fonction pour convertir les heures décimales en heures:minutes
   const formatDecimalHours = (decimalHours) => {
@@ -92,36 +110,60 @@ const RealizedHoursRoadmap = ({ onBack }) => {
     return Math.round(monthData * 100) / 100;
   }, [realizedHours, selectedYear, currentMonth]);
 
+  // Fonction pour obtenir les heures réalisées du mois sélectionné
   const getMonthlyRealizedHours = () => {
     if (!realizedHours || Object.keys(realizedHours).length === 0) {
-      return "0h00";
+      return '0h00';
     }
-
+    
     try {
       const monthlyTotal = Object.entries(realizedHours)
         .filter(([date, data]) => {
           if (!date || !data) return false;
-
-          const workDate = new Date(date + "T00:00:00");
-
+          
+          const workDate = new Date(date + 'T00:00:00');
           if (isNaN(workDate.getTime())) return false;
-
-          return (
-            workDate.getFullYear() === selectedYear &&
-            workDate.getMonth() === currentMonth
-          );
+          
+          // ✅ NOUVEAU : Vérifier que la date appartient à l'année ET au mois sélectionné
+          const dateYear = getYearByType(workDate, yearType);
+          return dateYear === selectedYear && workDate.getMonth() === currentMonth;
         })
         .reduce((total, [, data]) => {
           const hours = parseFloat(data.workingHours) || 0;
           return total + hours;
         }, 0);
-
+      
       return formatDecimalHours(monthlyTotal);
+      
     } catch (error) {
-      console.error("Erreur calcul heures mensuelles réalisées:", error);
-      return "0h00";
+      console.error('Erreur calcul heures mensuelles réalisées:', error);
+      return '0h00';
     }
   };
+
+  //  Le sélecteur d'année pour afficher le bon format
+const renderYearSelector = () => (
+  <div className="flex items-center space-x-3">
+    <label className="text-sm font-medium text-gray-700">
+      {yearType === YEAR_TYPES.SCHOOL ? 'Année scolaire :' : 'Année :'}
+    </label>
+    <select
+      value={selectedYear}
+      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+      className="border border-gray-300 rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-green-500"
+    >
+      {[...Array(5)].map((_, i) => {
+        const year = getCurrentYear(yearType) - 2 + i;
+        return (
+          <option key={year} value={year}>
+            {yearType === YEAR_TYPES.SCHOOL ? `${year}-${year + 1}` : year}
+            {year === getCurrentYear(yearType) ? ' (actuel)' : ''}
+          </option>
+        );
+      })}
+    </select>
+  </div>
+);
 
   // Génère une grille plate de 42 jours (6 semaines × 7 jours)
   const getCalendarGrid = (year, month) => {
@@ -177,6 +219,7 @@ const RealizedHoursRoadmap = ({ onBack }) => {
     "Décembre",
   ];
 
+  // Navigation entre les mois
   const navigateMonth = (direction) => {
     setCurrentMonth((prev) => {
       if (direction === "prev") return prev === 0 ? 11 : prev - 1;
@@ -184,6 +227,7 @@ const RealizedHoursRoadmap = ({ onBack }) => {
     });
   };
 
+  // Aller au mois actuel
   const goToToday = () => {
     const today = new Date();
     setCurrentMonth(today.getMonth());
@@ -551,7 +595,7 @@ const RealizedHoursRoadmap = ({ onBack }) => {
                 color: dayData.isCurrentMonth ? "#111827" : "#9ca3af",
                 padding: "12px",
                 minHeight: "100px",
-                maxHeight: "140px", // ✅ AUGMENTER légèrement pour plus de contenu
+                maxHeight: "140px", 
                 display: "flex",
                 flexDirection: "column",
                 border: dayData.isToday ? "2px solid #10B981" : "none",

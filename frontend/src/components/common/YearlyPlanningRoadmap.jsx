@@ -1,36 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Target, BarChart3, Clock, Plus } from 'lucide-react';
+import { Calendar, Target, BarChart3, Clock, Plus, Settings } from 'lucide-react';
 import { usePlanningStore } from '../../stores/planningStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { useAuthStore } from '../../stores/authStore';
 import { exportPlannedHoursToCSV } from '../../utils/exportCSV';
 import Card from '../common/Card';
 import Button from '../common/Button';
+import Modal from '../common/Modal';
+import YearTypeSelector from '../common/YearTypeSelector';
 import PlanningModal from '../common/PlanningModal';
+import { 
+  YEAR_TYPES, 
+  getYearByType, 
+  getYearBounds, 
+  filterByYearType, 
+  getCurrentYear 
+} from '../../utils/dateUtils';
 
 const YearlyPlanningRoadmap = ({ onBack }) => {
   const { user } = useAuthStore();
-  const {
-    yearlyPlanning,
-    selectedYear,
-    loading,
-    fetchYearlyPlanning,
-    setSelectedYear,
-    upsertPlanning
-  } = usePlanningStore();
-
-  const { projects, fetchProjects } = useProjectStore();
-
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [showPlanningModal, setShowPlanningModal] = useState(false);
-  const [editingPlanning, setEditingPlanning] = useState(null);
+  const { yearlyPlanning, fetchYearlyPlanning, loading, upsertPlanning } = usePlanningStore();
+  const { projects } = useProjectStore();
+  
+  // ✅ CORRIGER : Récupérer d'abord le yearType, puis initialiser selectedYear
+  const yearType = user?.year_type || YEAR_TYPES.CIVIL;
+  const [selectedYear, setSelectedYear] = useState(() => getCurrentYear(yearType)); // ✅ Fonction callback
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  
+  // États pour les modals
+  const [showPlanningModal, setShowPlanningModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [editingPlanning, setEditingPlanning] = useState(null);
+  const [showYearTypeModal, setShowYearTypeModal] = useState(false);
 
-  useEffect(() => {
-    fetchYearlyPlanning();
-    if (fetchProjects) fetchProjects();
-    // eslint-disable-next-line
-  }, [selectedYear]);
+  // ✅ AJOUTER : Effet pour mettre à jour selectedYear quand yearType change
+useEffect(() => {
+  const loadPlanningData = async () => {
+    if (user?.id && selectedYear && yearType) {
+      const { startDate, endDate } = getYearBounds(selectedYear, yearType);
+      await fetchYearlyPlanning(user.id, startDate, endDate);
+    }
+  };
+  
+  loadPlanningData();
+}, [selectedYear, yearType, user?.id, fetchYearlyPlanning]);
 
   // Génère une grille plate de 42 jours (6 semaines × 7 jours)
   const getCalendarGrid = (year, month) => {
@@ -119,30 +132,58 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
     );
   }
 
-const getMonthlyPlannedHours = () => {
-  if (!yearlyPlanning?.planning) return 0;
-  
-  let total = 0;
-  
-  yearlyPlanning.planning.forEach(p => {
-    try {
-      if (p.plan_date && p.planned_hours) {
-        const [year, month] = p.plan_date.split('-').map(Number);
-        
-        if (year === selectedYear && (month - 1) === currentMonth) {
-          const hours = Number(p.planned_hours);
-          if (!isNaN(hours)) {
-            total += hours;
-          }
-        }
-      }
-    } catch (e) {
-      // Ignorer les erreurs de parsing
+  const getMonthlyPlannedHours = () => {
+    if (!yearlyPlanning.planning || !Array.isArray(yearlyPlanning.planning)) {
+      return 0;
     }
-  });
-  
-  return Math.round(total * 100) / 100;
-};
+    
+    try {
+      const monthlyTotal = yearlyPlanning.planning
+        .filter(p => {
+          if (!p.plan_date) return false;
+          
+          const planDate = new Date(p.plan_date + 'T00:00:00');
+          if (isNaN(planDate.getTime())) return false;
+          
+          // ✅ NOUVEAU : Vérifier que la date appartient à l'année ET au mois
+          const dateYear = getYearByType(planDate, yearType);
+          return dateYear === selectedYear && planDate.getMonth() === currentMonth;
+        })
+        .reduce((total, planning) => {
+          const hours = parseFloat(planning.planned_hours) || 0;
+          return total + hours;
+        }, 0);
+      
+      return isNaN(monthlyTotal) ? 0 : Math.round(monthlyTotal * 100) / 100;
+      
+    } catch (error) {
+      console.error('Erreur calcul heures mensuelles planifiées:', error);
+      return 0;
+    }
+  };
+
+const renderYearSelector = () => (
+  <div className="flex items-center space-x-3">
+    <label className="text-sm font-medium text-gray-700">
+      {yearType === YEAR_TYPES.SCHOOL ? 'Année scolaire :' : 'Année :'}
+    </label>
+    <select
+      value={selectedYear}
+      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+      className="border border-gray-300 rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-500"
+    >
+      {[...Array(5)].map((_, i) => {
+        const year = getCurrentYear(yearType) - 2 + i;
+        return (
+          <option key={year} value={year}>
+            {yearType === YEAR_TYPES.SCHOOL ? `${year}-${year + 1}` : year}
+            {year === getCurrentYear(yearType) ? ' (actuel)' : ''}
+          </option>
+        );
+      })}
+    </select>
+  </div>
+);
 
   return (
     <div className="space-y-6">
@@ -158,32 +199,47 @@ const getMonthlyPlannedHours = () => {
               <p className="text-gray-600 mt-1">Organisez votre temps pour {selectedYear}</p>
             </div>
             
-            <div className="flex items-center space-x-3">
-              {onBack && (
-                <Button variant="outline" onClick={onBack} className="mr-3">
-                  ← Retour
-                </Button>
-              )}
+<div className="flex items-center space-x-3">
+  {onBack && (
+    <Button variant="outline" onClick={onBack} className="mr-3">
+      ← Retour
+    </Button>
+  )}
 
-              <Button 
-  variant="outline" 
-  onClick={() => exportPlannedHoursToCSV(yearlyPlanning, selectedYear)}
-  className="ml-2"
->
-  📊 Exporter Planning
-</Button>
+  <Button 
+    variant="outline" 
+    onClick={() => exportPlannedHoursToCSV(yearlyPlanning, selectedYear, yearType)}
+    className="ml-2"
+  >
+    📊 Exporter Planning
+  </Button>
 
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="border border-gray-300 rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-500"
-              >
-                {[...Array(5)].map((_, i) => {
-                  const year = new Date().getFullYear() - 2 + i;
-                  return <option key={year} value={year}>{year}</option>;
-                })}
-              </select>
-            </div>
+  <Button 
+    variant="outline"
+    onClick={() => setShowYearTypeModal(true)}
+    size="sm"
+  >
+    <Settings className="w-4 h-4 mr-2" />
+    Type d'année
+  </Button>
+
+  {/* ✅ REMPLACER ce select par renderYearSelector() ou le corriger */}
+  <select
+    value={selectedYear}
+    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+    className="border border-gray-300 rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-500"
+  >
+    {[...Array(5)].map((_, i) => {
+      const year = getCurrentYear(yearType) - 2 + i;
+      return (
+        <option key={year} value={year}>
+          {yearType === YEAR_TYPES.SCHOOL ? `${year}-${year + 1}` : year}
+          {year === getCurrentYear(yearType) ? ' (actuel)' : ''}
+        </option>
+      );
+    })}
+  </select>
+</div>
           </div>
 
           {/* Statistiques en ligne */}
@@ -509,6 +565,21 @@ const getMonthlyPlannedHours = () => {
           onSave={handleSavePlanning}
         />
       )}
+      {/* Modal pour les paramètres */}
+{showYearTypeModal && (
+  <Modal
+    isOpen={showYearTypeModal}
+    onClose={() => setShowYearTypeModal(false)}
+    title="Paramètres du calendrier"
+    size="lg"
+    className="z-50" // ✅ AJOUTER z-index élevé
+  >
+    <YearTypeSelector 
+      onClose={() => setShowYearTypeModal(false)} 
+    />
+  </Modal>
+)}
+
     </div>
   );
 };

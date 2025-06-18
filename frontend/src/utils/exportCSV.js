@@ -1,15 +1,19 @@
+import { YEAR_TYPES, getYearByType } from './dateUtils';
 /**
  * Exporte les données de comparaison heures réalisées vs planifiées en CSV
  * @param {Object} realizedHours - Données des heures réalisées
  * @param {Object} yearlyPlanning - Données de planification annuelle
  * @param {number} selectedYear - Année sélectionnée
  */
-export const exportRealizedHoursToCSV = (realizedHours, yearlyPlanning, selectedYear) => {
+export const exportRealizedHoursToCSV = (realizedHours, yearlyPlanning, selectedYear, yearType = YEAR_TYPES.CIVIL) => {
   const csvData = [];
-  csvData.push(['Date', 'Heures Réalisées', 'Heures Planifiées', 'Écart', 'Projet', 'Statut']);
+  csvData.push(['Date', 'Heures Réalisées', 'Heures Planifiées', 'Écart', 'Projet', 'Statut', 'Note/Description']);
 
   Object.entries(realizedHours)
-    .filter(([date]) => new Date(date).getFullYear() === selectedYear)
+    .filter(([date]) => {
+      const dateYear = getYearByType(new Date(date), yearType);
+      return dateYear === selectedYear;
+    })
     .sort(([a], [b]) => new Date(a) - new Date(b))
     .forEach(([date, realized]) => {
       const planning = yearlyPlanning.planning?.find(p => p.plan_date === date);
@@ -115,6 +119,7 @@ export const exportPlannedHoursToCSV = (yearlyPlanning, selectedYear) => {
  * Export pour les RH avec détails complets
  */
 export const exportRHReport = (realizedHours, yearlyPlanning, selectedYear, user) => {
+  const yearType = user?.year_type || YEAR_TYPES.CIVIL;
   const csvData = [];
   csvData.push([
     'Employé',
@@ -168,8 +173,8 @@ export const exportRHReport = (realizedHours, yearlyPlanning, selectedYear, user
   if (link.download !== undefined) {
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `rapport-RH-${user?.last_name || 'utilisateur'}-${selectedYear}.csv`);
-    link.style.visibility = 'hidden';
+    const yearSuffix = yearType === YEAR_TYPES.SCHOOL ? `-${selectedYear}-${selectedYear + 1}` : `-${selectedYear}`;
+    link.setAttribute('download', `rapport-RH-${user?.last_name || 'utilisateur'}${yearSuffix}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

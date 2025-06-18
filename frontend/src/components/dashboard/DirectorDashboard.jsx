@@ -33,6 +33,7 @@ import Input from '../common/Input';
 import Modal from '../common/Modal';
 import YearlyPlanningRoadmap from '../common/YearlyPlanningRoadmap';
 import RealizedHoursRoadmap from '../common/RealizedHoursRoadmap'; 
+import YearTypeSelector from '../common/YearTypeSelector'; 
 import CreateUserForm from '../forms/CreateUserForm';
 import EditUserForm from '../forms/EditUserForm';
 import CreateProjectForm from '../forms/CreateProjectForm';
@@ -1156,6 +1157,10 @@ const canClockOut = status.arrival && !status.departure;
         </div>
       </div>
 
+    {/* Section paramètres d'année */}
+    <Card title="Préférences de calcul d'objectifs" className="mb-6">
+      <YearTypeSelector />
+    </Card>
       {/* Panel de pointage */}
       {renderDirectorTimeTracking()}
 

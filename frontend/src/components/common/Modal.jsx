@@ -88,10 +88,15 @@ useEffect(() => {
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      return () => document.removeEventListener('keydown', handleEscape);
-    }
+  if (isOpen) {
+    document.addEventListener('keydown', handleEscape);
+    document.body.style.overflow = 'hidden'; // ✅ Empêcher scroll
+  }
+
+  return () => {
+    document.removeEventListener('keydown', handleEscape);
+    document.body.style.overflow = 'unset'; // ✅ IMPORTANT : Restaurer scroll
+  };
   }, [isOpen, closeOnEscape, onClose]);
 
   const handleOverlayClick = (e) => {
