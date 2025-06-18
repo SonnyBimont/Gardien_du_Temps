@@ -265,12 +265,6 @@ exports.quickTimeEntry = async (req, res) => {
                         message: 'Vous devez d\'abord pointer votre arrivée'
                     });
                 }
-                if (hasBreakStart && !hasBreakEnd) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'Vous êtes déjà en pause'
-                    });
-                }
                 if (hasDeparture) {
                     return res.status(400).json({
                         success: false,
@@ -279,14 +273,23 @@ exports.quickTimeEntry = async (req, res) => {
                 }
                 break;
                 
-            case 'break_end':
-                if (!hasBreakStart || hasBreakEnd) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'Vous n\'êtes pas en pause'
-                    });
-                }
-                break;
+case 'break_end':
+  // Vérifier qu'il y a une pause en cours
+  const lastBreakStart = todayEntries
+    .filter(e => e.tracking_type === 'break_start')
+    .sort((a, b) => new Date(b.date_time) - new Date(a.date_time))[0];
+  
+  const lastBreakEnd = todayEntries
+    .filter(e => e.tracking_type === 'break_end')
+    .sort((a, b) => new Date(b.date_time) - new Date(a.date_time))[0];
+  
+  if (!lastBreakStart || (lastBreakEnd && new Date(lastBreakEnd.date_time) > new Date(lastBreakStart.date_time))) {
+    return res.status(400).json({
+      success: false,
+      message: 'Vous n\'êtes pas en pause'
+    });
+  }
+  break;
                 
             case 'departure':
                 if (!hasArrival) {

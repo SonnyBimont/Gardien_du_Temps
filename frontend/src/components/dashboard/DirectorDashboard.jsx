@@ -307,6 +307,62 @@ const calculatePeriodObjective = (period, weeklyHours, annualHours) => {
     return 'incomplet';
   };
 
+// ===== FONCTIONS UTILITAIRES POUR PAUSES MULTIPLES =====
+
+// Récupère toutes les paires de pauses (début/fin) pour la journée
+const getPauses = (entries) => {
+  const pauses = [];
+  let currentBreakStart = null;
+
+  entries
+    .filter(e => e.tracking_type === 'break_start' || e.tracking_type === 'break_end')
+    .sort((a, b) => new Date(a.date_time) - new Date(b.date_time))
+    .forEach(entry => {
+      if (entry.tracking_type === 'break_start') {
+        currentBreakStart = entry;
+      } else if (entry.tracking_type === 'break_end' && currentBreakStart) {
+        pauses.push({ start: currentBreakStart, end: entry });
+        currentBreakStart = null;
+      }
+    });
+
+  // Si une pause a commencé mais pas terminée
+  if (currentBreakStart) {
+    pauses.push({ start: currentBreakStart, end: null });
+  }
+
+  return pauses;
+};
+
+// Détermine si une pause est en cours (dernier break_start sans break_end)
+const isOnBreak = (entries) => {
+  const pauses = getPauses(entries);
+  return pauses.length > 0 && pauses[pauses.length - 1].end === null;
+};
+
+// Calcule le temps travaillé hors pauses (toutes les pauses)
+const getWorkedTimeWithMultipleBreaks = () => {
+  if (status.arrival && status.departure) {
+    const start = new Date(status.arrival.date_time);
+    const end = new Date(status.departure.date_time);
+    let totalMinutes = (end - start) / (1000 * 60);
+
+    // Soustraire toutes les pauses terminées
+    getPauses(myTodayEntries).forEach(pause => {
+      if (pause.start && pause.end) {
+        const breakStart = new Date(pause.start.date_time);
+        const breakEnd = new Date(pause.end.date_time);
+        totalMinutes -= (breakEnd - breakStart) / (1000 * 60);
+      }
+    });
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = Math.round(totalMinutes % 60);
+    return `${hours}h${minutes.toString().padStart(2, '0')}`;
+  }
+  return '--h--';
+};
+
   // ===== GESTIONNAIRES D'ÉVÉNEMENTS =====
   const handleEditUser = (user) => {
     setSelectedUser(user);
@@ -603,9 +659,9 @@ const loadTeamData = async () => {
     return '--h--';
   };
 
+  // Statut de pointage
 const canClockIn = !status.arrival && !status.departure;
-const canStartBreak = status.arrival && !status.breakStart && !status.departure;
-const canEndBreak = status.breakStart && !status.breakEnd && !status.departure;
+const canPauseOrResume = status.arrival && !status.departure;
 const canClockOut = status.arrival && !status.departure;
 
   // ===== COMPOSANTS DE RENDU =====
@@ -1148,30 +1204,30 @@ const renderDirectorTimeTracking = () => (
             </div>
           </button>
 
-          <button
-            onClick={() => handleClockAction(canStartBreak ? 'break_start' : 'break_end')}
-            disabled={(!canStartBreak && !canEndBreak) || (actionLoading === 'break_start' || actionLoading === 'break_end')}
-            className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-              (canStartBreak || canEndBreak) && !actionLoading
-                ? 'border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 cursor-pointer'
-                : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            <div className="flex flex-col items-center">
-              <PauseCircle className="w-8 h-8 mb-2" />
-              <span className="text-sm font-medium">
-                {actionLoading === 'break_start' || actionLoading === 'break_end' 
-                  ? 'En cours...' 
-                  : canStartBreak 
-                    ? 'Pause' 
-                    : canEndBreak 
-                      ? 'Reprise'
-                      : 'Pause'
-                }
-              </span>
-            </div>
-          </button>
+ {/* Bonton Pause/Reprise          */}
+<button
+  onClick={() => handleClockAction(isOnBreak(myTodayEntries) ? 'break_end' : 'break_start')}
+  disabled={!canPauseOrResume || (actionLoading === 'break_start' || actionLoading === 'break_end')}
+  className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+    canPauseOrResume && !actionLoading
+      ? 'border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 cursor-pointer'
+      : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+  }`}
+>
+  <div className="flex flex-col items-center">
+    <PauseCircle className="w-8 h-8 mb-2" />
+    <span className="text-sm font-medium">
+      {actionLoading === 'break_start' || actionLoading === 'break_end'
+        ? 'En cours...'
+        : isOnBreak(myTodayEntries)
+          ? 'Reprise'
+          : 'Pause'
+      }
+    </span>
+  </div>
+</button>
 
+{/* Bouton Départ */}
           <button
             onClick={() => handleClockAction('departure')}
             disabled={!canClockOut || actionLoading === 'departure'}
@@ -1251,9 +1307,34 @@ const renderDirectorTimeTracking = () => (
           <div className="border-t pt-3 mt-3">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-700">Temps travaillé :</span>
-              <span className="text-lg font-bold text-gray-900">{getWorkedTime()}</span>
+    <span className="text-lg font-bold text-gray-900">{getWorkedTimeWithMultipleBreaks()}</span>
             </div>
           </div>
+
+        {/* Détail de toutes les pauses */}
+<div className="border-t pt-3 mt-3">
+  <h4 className="text-sm font-semibold text-gray-700 mb-2">Détail des pauses :</h4>
+  {getPauses(myTodayEntries).length === 0 ? (
+    <div className="text-xs text-gray-400 italic">Aucune pause effectuée</div>
+  ) : (
+    <ul className="text-xs text-gray-700 space-y-1">
+      {getPauses(myTodayEntries).map((pause, idx) => (
+        <li key={idx} className="flex justify-between items-center">
+          <span className="font-medium">Pause {idx + 1} :</span>
+          <span>
+            {pause.start ? new Date(pause.start.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+            {" → "}
+            {pause.end ? (
+              new Date(pause.end.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+            ) : (
+              <span className="text-orange-500 font-medium">en cours</span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>  
         </div>
 
         {/* Aide contextuelle */}
