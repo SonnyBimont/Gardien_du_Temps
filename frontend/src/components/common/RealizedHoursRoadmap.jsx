@@ -695,14 +695,8 @@ const RealizedHoursRoadmap = ({ onBack }) => {
                         : "⚠️"}
                       {dayData.realized.workingHours >=
                         dayData.planning.planned_hours
-                        ? `+${(
-                          dayData.realized.workingHours -
-                          dayData.planning.planned_hours
-                        ).toFixed(1)}h`
-                        : `${(
-                          dayData.realized.workingHours -
-                          dayData.planning.planned_hours
-                        ).toFixed(1)}h`}
+                        ? `+${formatDecimalHours(dayData.realized.workingHours - dayData.planning.planned_hours)}`
+                        : `${formatDecimalHours(dayData.realized.workingHours - dayData.planning.planned_hours)}`}
                     </div>
                   )}
 
