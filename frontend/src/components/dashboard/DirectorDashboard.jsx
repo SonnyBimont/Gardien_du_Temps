@@ -667,7 +667,7 @@ const canClockOut = status.arrival && !status.departure;
 
       <Card clickable hoverable className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Projets</h2>
+          <h2 className="text-xl font-bold">Projets (à venir)</h2>
           <Button
             variant="primary"
             onClick={() => setShowCreateProjectModal(true)}
