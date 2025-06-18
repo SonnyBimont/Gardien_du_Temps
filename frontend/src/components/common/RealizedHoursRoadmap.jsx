@@ -4,7 +4,7 @@ import { useTimeStore } from "../../stores/timeStore";
 import { useAuthStore } from "../../stores/authStore";
 import { usePlanningStore } from "../../stores/planningStore";
 import { calculateTotalHours, formatHours } from "../../utils/timeCalculations";
-import { exportRealizedHoursToCSV } from "../../utils/exportCSV";
+import { exportRealizedHoursToCSV,exportRHReport } from "../../utils/exportCSV";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import api from "../../services/api";
@@ -243,19 +243,13 @@ const RealizedHoursRoadmap = ({ onBack }) => {
                 </Button>
               )}
 
-              <Button
-                variant="outline"
-                onClick={() =>
-                  exportRealizedHoursToCSV(
-                    realizedHours,
-                    yearlyPlanning,
-                    selectedYear
-                  )
-                }
-                className="ml-2"
-              >
-                📊 Exporter
-              </Button>
+  <Button 
+    variant="outline" 
+    onClick={() => exportRHReport(realizedHours, yearlyPlanning, selectedYear, user)}
+    className="ml-2"
+  >
+    📊 Exporter CSV
+  </Button>
 
               <select
                 value={selectedYear}
