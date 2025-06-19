@@ -26,6 +26,35 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.ENUM('A', 'B', 'C'),
             allowNull: false
         },
+        phone: {
+            type: DataTypes.STRING(20),
+            allowNull: true
+        },
+        email: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+            validate: {
+                isEmail: true
+            }
+        },
+        manager_name: {
+            type: DataTypes.STRING(255),
+            allowNull: true
+        },
+        manager_email: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+            validate: {
+                isEmail: true
+            }
+        },
+        capacity: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            validate: {
+                min: 1
+            }
+        },
         active: {
             type: DataTypes.BOOLEAN,
             allowNull: false,
@@ -37,17 +66,17 @@ module.exports = (sequelize, DataTypes) => {
     });
 
     Structure.associate = (models) => {
-        // Structure has many Users
         Structure.hasMany(models.User, {
             foreignKey: 'structure_id',
             as: 'users'
         });
 
-        // Structure has many Projects
-        Structure.hasMany(models.Project, {
-            foreignKey: 'structure_id',
-            as: 'projects'
-        });
+        if (models.Project) {
+            Structure.hasMany(models.Project, {
+                foreignKey: 'structure_id',
+                as: 'projects'
+            });
+        }
     };
 
     return Structure;

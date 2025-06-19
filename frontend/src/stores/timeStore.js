@@ -245,10 +245,40 @@ fetchTeamSummary: async (days = 30, structureId = null) => {
   set({ teamLoading: true, error: null });
   
   try {
-    const params = new URLSearchParams({ days: days.toString() });
+    // ✅ CORRECTION: Utiliser le bon nom de paramètre
+    const params = new URLSearchParams();
+    
+    // Mapper les périodes textuelles vers des nombres de jours
+    let daysNumber = 30; // Par défaut
+    switch (days) {
+      case 'current_week':
+      case 'previous_week':
+        daysNumber = 7;
+        break;
+      case 'current_month':
+      case 'previous_month':
+      case 'last_30_days':
+        daysNumber = 30;
+        break;
+      case 'current_quarter':
+      case 'previous_quarter':
+        daysNumber = 90;
+        break;
+      case 'current_year':
+      case 'previous_year':
+        daysNumber = 365;
+        break;
+      default:
+        daysNumber = parseInt(days) || 30;
+    }
+    
+    params.append('days', daysNumber.toString());
     if (structureId) params.append('structureId', structureId);
     
+    console.log('📡 Requête team-summary avec params:', params.toString());
+    
     const response = await api.get(`/time-tracking/team-summary?${params}`);
+    console.log('📊 Réponse brute team-summary:', response.data);
     
     if (response.data.success) {
       set({ 
@@ -260,6 +290,7 @@ fetchTeamSummary: async (days = 30, structureId = null) => {
       throw new Error(response.data.message || 'Erreur lors du chargement');
     }
   } catch (error) {
+    console.error('❌ Erreur fetchTeamSummary:', error);
     const errorMessage = error.response?.data?.message || error.message;
     set({ error: errorMessage, teamLoading: false });
     return { success: false, error: errorMessage };

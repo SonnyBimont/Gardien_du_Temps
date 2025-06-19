@@ -58,6 +58,18 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DATE,
             allowNull: true
         },
+year_type: {
+  type: DataTypes.ENUM('civil', 'school'),
+  allowNull: false,
+  defaultValue: 'civil',
+  comment: 'Type d\'année préféré : civil (janvier-décembre) ou school (septembre-août)',
+  validate: {
+    isIn: {
+      args: [['civil', 'school']],
+      msg: 'Le type d\'année doit être "civil" ou "school"'
+    }
+  }
+},
         active: {
             type: DataTypes.BOOLEAN,
             allowNull: false,
@@ -106,6 +118,11 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: 'validated_by',
             as: 'validated_time_trackings'
         });
+
+        User.hasMany(models.Hour_Planning, {
+            foreignKey: 'user_id',
+            as: 'hourPlannings'
+});
     };
 
     return User;

@@ -9,9 +9,11 @@ exports.protect = async (req, res, next) => {
         let token;
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
             token = req.headers.authorization.split(' ')[1];
+            console.log('🎫 Token trouvé:', token ? 'OUI' : 'NON');
         }
 
         if (!token) {
+            console.error('❌ Pas de token');
             return res.status(401).json({ message: 'Accès non autorisé' });
         }
 
@@ -28,6 +30,7 @@ exports.protect = async (req, res, next) => {
         req.user = user;
         next();
     } catch (error) {
+        console.error('❌ Erreur auth middleware:', error);
         return res.status(401).json({ message: 'Accès non autorisé' });
     }
 };

@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import Button from './Button';
 import Card from './Card';
 
+
 const Layout = ({ children, title, sidebar, breadcrumbs, actions }) => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();

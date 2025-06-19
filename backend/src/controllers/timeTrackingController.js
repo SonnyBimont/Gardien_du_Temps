@@ -135,38 +135,106 @@ exports.getTimeEntriesByUser = async (req, res) => {
 
 // Récupérer les pointages par période
 exports.getTimeEntriesByDateRange = async (req, res) => {
-    try {
-        const { startDate, endDate, userId } = req.query;
-        let whereClause = {};
+  try {
+    const { startDate, endDate, userId, yearType } = req.query;
+    console.log('🔍 Backend timeTracking params:', { startDate, endDate, userId, yearType });
+    
+    let whereClause = {};
 
-        if (startDate && endDate) {
-            whereClause.date_time = {
-                [Op.between]: [new Date(startDate), new Date(endDate)]
-            };
-        }
-
-        if (userId) {
-            whereClause.user_id = userId;
-        }
-
-        const timeEntries = await Time_Tracking.findAll({
-            where: whereClause,
-            include: [
-                { model: User, as: 'user', attributes: { exclude: ['password'] } },
-                { model: Task, as: 'task' }
-            ],
-            order: [['date_time', 'ASC']]
-        });
-
-        res.status(200).json({
-            success: true,
-            count: timeEntries.length,
-            data: timeEntries
-        });
-    } catch (error) {
-        res.status(500).json({ message: 'Erreur lors de la récupération des pointages', error: error.message });
+    if (startDate && endDate) {
+      whereClause.date_time = {
+        [Op.between]: [new Date(startDate), new Date(endDate)]
+      };
+      console.log('📅 Backend période:', { startDate, endDate });
     }
+
+    if (userId) {
+      whereClause.user_id = userId;
+    }
+
+    const timeEntries = await Time_Tracking.findAll({
+      where: whereClause,
+      include: [
+        { model: User, as: 'user', attributes: { exclude: ['password'] } },
+        { model: Task, as: 'task' }
+      ],
+      order: [['date_time', 'ASC']]
+    });
+
+    console.log(`📊 Backend trouvé: ${timeEntries.length} entrées pour la période`);
+
+    res.status(200).json({
+      success: true,
+      count: timeEntries.length,
+      data: timeEntries
+    });
+  } catch (error) {
+    console.error('❌ Erreur backend timeTracking:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des pointages', error: error.message });
+  }
 };
+
+// Récupérer les entrées de temps pour une période spécifique
+exports.getTimeEntriesRange = async (req, res) => {
+  try {
+    const { startDate, endDate, userId, yearType } = req.query;
+    const targetUserId = userId || req.user.id;
+
+    // ✅ NOUVEAU : Si yearType et année fournis, calculer les bornes automatiquement
+    let finalStartDate = startDate;
+    let finalEndDate = endDate;
+
+    if (yearType && req.query.year) {
+      const year = parseInt(req.query.year);
+      const bounds = getYearBounds(year, yearType);
+      finalStartDate = bounds.startDate;
+      finalEndDate = bounds.endDate;
+    }
+
+    if (!finalStartDate || !finalEndDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Les dates de début et de fin sont requises'
+      });
+    }
+
+    const entries = await TimeEntry.findAll({
+      where: {
+        user_id: targetUserId,
+        date_time: {
+          [Op.between]: [
+            new Date(finalStartDate + 'T00:00:00.000Z'),
+            new Date(finalEndDate + 'T23:59:59.999Z')
+          ]
+        }
+      },
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['first_name', 'last_name', 'email']
+      }],
+      order: [['date_time', 'ASC']]
+    });
+
+    res.json({
+      success: true,
+      data: entries,
+      period: {
+        startDate: finalStartDate,
+        endDate: finalEndDate,
+        yearType: yearType || 'civil'
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération des entrées de temps:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur'
+    });
+  }
+};
+
 //AJOUT REPORTING ET CALCUL
 // Pointages du jour (pour frontend)
 exports.getTodayEntries = async (req, res) => {
@@ -265,12 +333,6 @@ exports.quickTimeEntry = async (req, res) => {
                         message: 'Vous devez d\'abord pointer votre arrivée'
                     });
                 }
-                if (hasBreakStart && !hasBreakEnd) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'Vous êtes déjà en pause'
-                    });
-                }
                 if (hasDeparture) {
                     return res.status(400).json({
                         success: false,
@@ -279,14 +341,23 @@ exports.quickTimeEntry = async (req, res) => {
                 }
                 break;
                 
-            case 'break_end':
-                if (!hasBreakStart || hasBreakEnd) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'Vous n\'êtes pas en pause'
-                    });
-                }
-                break;
+case 'break_end':
+  // Vérifier qu'il y a une pause en cours
+  const lastBreakStart = todayEntries
+    .filter(e => e.tracking_type === 'break_start')
+    .sort((a, b) => new Date(b.date_time) - new Date(a.date_time))[0];
+  
+  const lastBreakEnd = todayEntries
+    .filter(e => e.tracking_type === 'break_end')
+    .sort((a, b) => new Date(b.date_time) - new Date(a.date_time))[0];
+  
+  if (!lastBreakStart || (lastBreakEnd && new Date(lastBreakEnd.date_time) > new Date(lastBreakStart.date_time))) {
+    return res.status(400).json({
+      success: false,
+      message: 'Vous n\'êtes pas en pause'
+    });
+  }
+  break;
                 
             case 'departure':
                 if (!hasArrival) {
@@ -614,8 +685,25 @@ exports.getTeamSummary = async (req, res) => {
       });
 
       // Calculer l'objectif pour la période
-      const dailyObjective = (user.weekly_hours || 35) / 7;
-      const periodObjective = dailyObjective * parseInt(days);
+      const weeklyHours = user.weekly_hours || 35;
+      const annualHours = user.annual_hours;
+  
+  let periodObjective;
+  
+  // Calculer selon le nombre de jours de la période
+  if (parseInt(days) <= 7) {
+    // Période hebdomadaire
+    periodObjective = weeklyHours;
+  } else if (parseInt(days) <= 31) {
+    // Période mensuelle (jusqu'à 31 jours)
+    periodObjective = weeklyHours * 4.33;
+  } else if (parseInt(days) <= 92) {
+    // Période trimestrielle (jusqu'à 92 jours)
+    periodObjective = weeklyHours * 13;
+  } else {
+    // Période annuelle (plus de 92 jours) - ✅ UTILISER annual_hours
+    periodObjective = annualHours || (weeklyHours * 52);
+  }
 
       return {
         user: {
@@ -651,5 +739,32 @@ exports.getTeamSummary = async (req, res) => {
       message: 'Erreur lors de la récupération du résumé d\'équipe',
       error: error.message
     });
+  }
+};
+
+// Récupérer l'année scolaire à partir d'une date
+exports.getSchoolYear = (date) => {
+  const d = new Date(date);
+  const month = d.getMonth(); // 0-11
+  const year = d.getFullYear();
+  
+  // Si on est entre janvier et août (mois 0-7), on est dans l'exercice de l'année précédente
+  return month >= 8 ? year : year - 1; // 8 = septembre
+};
+
+// Récupérer les bornes d'une année selon le type
+exports.getYearBounds = (year, yearType = 'civil') => {
+  switch (yearType) {
+    case 'school':
+      return {
+        startDate: `${year}-09-01`,
+        endDate: `${year + 1}-08-31`
+      };
+    case 'civil':
+    default:
+      return {
+        startDate: `${year}-01-01`,
+        endDate: `${year}-12-31`
+      };
   }
 };

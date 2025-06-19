@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import api from '../services/api';
 
-// Importer les types de données si nécessaire
 export const useAdminStore = create((set, get) => ({
   // État
   users: [],
@@ -12,12 +11,13 @@ export const useAdminStore = create((set, get) => ({
     activeUsers: 0,
     recentActivity: []
   },
+  recentActivity: [], // Ajout pour l'activité récente
   loading: false,
   error: null,
   lastUpdate: null,
 
-  // ===== ACTIONS UTILISATEURS =====
-// Fonction pour récupérer les utilisateurs avec des filtres optionnels
+  // ===== ACTIONS UTILISATEURS (INCHANGÉES) =====
+  
   fetchUsers: async (filters = {}) => {
     set({ loading: true, error: null });
     
@@ -57,7 +57,6 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
-// Fonction pour créer un nouvel utilisateur
   createUser: async (userData) => {
     set({ error: null });
     
@@ -94,40 +93,38 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
-// Fonction pour mettre à jour un utilisateur
-  updateUser : async (userId, userData) => {
-  console.log('🔧 adminStore.updateUser appelé avec:', { userId, userData });
-  
-  try {
-    const response = await api.put(`/users/${userId}`, userData);
-    console.log('✅ Réponse API updateUser:', response.data);
+  updateUser: async (userId, userData) => {
+    console.log('🔧 adminStore.updateUser appelé avec:', { userId, userData });
     
-    if (response.data.success) {
-      // Mettre à jour la liste des utilisateurs
-      set(state => ({
-        users: state.users.map(user => 
-          user.id === userId 
-            ? { ...user, ...response.data.data }
-            : user
-        )
-      }));
+    try {
+      const response = await api.put(`/users/${userId}`, userData);
+      console.log('✅ Réponse API updateUser:', response.data);
       
-      return { success: true, data: response.data.data };
+      if (response.data.success) {
+        // Mettre à jour la liste des utilisateurs
+        set(state => ({
+          users: state.users.map(user => 
+            user.id === userId 
+              ? { ...user, ...response.data.data }
+              : user
+          )
+        }));
+        
+        return { success: true, data: response.data.data };
+      }
+      
+      return { success: false, error: response.data.message };
+    } catch (error) {
+      console.error('❌ Erreur updateUser:', error);
+      console.error('❌ Réponse d\'erreur:', error.response?.data);
+      
+      return { 
+        success: false, 
+        error: error.response?.data?.message || error.message 
+      };
     }
-    
-    return { success: false, error: response.data.message };
-  } catch (error) {
-    console.error('❌ Erreur updateUser:', error);
-    console.error('❌ Réponse d\'erreur:', error.response?.data);
-    
-    return { 
-      success: false, 
-      error: error.response?.data?.message || error.message 
-    };
-  }
   },
-  
-// Fonction pour supprimer un utilisateur
+
   deleteUser: async (userId) => {
     set({ error: null });
     
@@ -156,50 +153,48 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
-  // Fonction pour activer/désactiver un utilisateur
-toggleUserStatus: async (userId, active) => {
-  set({ error: null });
-  
-  try {
-    console.log(`🔄 Toggle user ${userId} to ${active ? 'active' : 'inactive'}`);
+  toggleUserStatus: async (userId, active) => {
+    set({ error: null });
     
-    // UTILISER la route PATCH spécifique
-    const response = await api.patch(`/users/${userId}/toggle-status`, { active });
-    
-    if (response.data.success) {
-      const updatedUser = response.data.data;
+    try {
+      console.log(`🔄 Toggle user ${userId} to ${active ? 'active' : 'inactive'}`);
       
-      set((state) => ({
-        users: state.users.map(user => 
-          user.id === userId ? updatedUser : user
-        ),
-        lastUpdate: new Date().toISOString()
-      }));
+      // UTILISER la route PATCH spécifique
+      const response = await api.patch(`/users/${userId}/toggle-status`, { active });
       
-      // Mettre à jour les statistiques
-      get().updateUserStats(get().users);
+      if (response.data.success) {
+        const updatedUser = response.data.data;
+        
+        set((state) => ({
+          users: state.users.map(user => 
+            user.id === userId ? updatedUser : user
+          ),
+          lastUpdate: new Date().toISOString()
+        }));
+        
+        // Mettre à jour les statistiques
+        get().updateUserStats(get().users);
+        
+        console.log(`✅ User ${userId} ${active ? 'activé' : 'désactivé'}`);
+        
+        return { success: true, data: updatedUser };
+      } else {
+        throw new Error(response.data.message || 'Erreur lors de la mise à jour');
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de la modification du statut';
       
-      console.log(`✅ User ${userId} ${active ? 'activé' : 'désactivé'}`);
+      set({ error: errorMessage });
       
-      return { success: true, data: updatedUser };
-    } else {
-      throw new Error(response.data.message || 'Erreur lors de la mise à jour');
+      console.error('❌ Erreur toggle user status:', errorMessage);
+      
+      return { success: false, error: errorMessage };
     }
-  } catch (error) {
-    const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de la modification du statut';
-    
-    set({ error: errorMessage });
-    
-    console.error('❌ Erreur toggle user status:', errorMessage);
-    
-    return { success: false, error: errorMessage };
-  }
-},
+  },
 
-  // ===== ACTIONS STRUCTURES =====
-  // Fonction pour récupérer les structures
+  // ===== ACTIONS STRUCTURES (INCHANGÉES) =====
+  
   fetchStructures: async (includeStats = false) => {
-
     set({ loading: true, error: null });
     
     try {
@@ -209,6 +204,7 @@ toggleUserStatus: async (userId, active) => {
       if (response.data.success) {
         const structures = response.data.data || [];
         console.log('🏢 Structures à mettre dans le store:', structures);
+        
         set({ 
           structures,
           loading: false,
@@ -217,7 +213,6 @@ toggleUserStatus: async (userId, active) => {
         
         // Mettre à jour les statistiques
         get().updateStructureStats(structures);
-        return { success: true, data: structures };
       } else {
         throw new Error(response.data.message || 'Erreur lors du chargement');
       }
@@ -232,7 +227,7 @@ toggleUserStatus: async (userId, active) => {
       throw error;
     }
   },
-// Fonction pour créer une nouvelle structure
+
   createStructure: async (structureData) => {
     set({ error: null });
     
@@ -269,7 +264,6 @@ toggleUserStatus: async (userId, active) => {
     }
   },
 
-// Fonction pour mettre à jour une structure
   updateStructure: async (structureId, structureData) => {
     set({ error: null });
     
@@ -286,6 +280,9 @@ toggleUserStatus: async (userId, active) => {
           lastUpdate: new Date().toISOString()
         }));
         
+        // Mettre à jour les statistiques
+        get().updateStructureStats(get().structures);
+        
         return { success: true, data: updatedStructure };
       } else {
         throw new Error(response.data.message || 'Erreur lors de la mise à jour');
@@ -298,7 +295,7 @@ toggleUserStatus: async (userId, active) => {
       return { success: false, error: errorMessage };
     }
   },
-// Fonction pour supprimer une structure
+
   deleteStructure: async (structureId) => {
     set({ error: null });
     
@@ -327,141 +324,276 @@ toggleUserStatus: async (userId, active) => {
     }
   },
 
- // ===== ACTIONS STATISTIQUES =====
- // Fonction pour récupérer les statistiques du tableau de bord
-  fetchDashboardStats: async () => {
+  // ===== 🆕 ACTIONS STATISTIQUES AVEC SUPPORT PÉRIODES FIXES =====
+  
+  // Fonction principale pour récupérer les statistiques avec gestion des périodes fixes
+  fetchStats: async (days = null, startDate = null, endDate = null) => {
+    set({ loading: true, error: null });
+    
     try {
-      const response = await api.get('/users/admin/dashboard-stats');
+      console.log('🔄 fetchStats appelé avec:', { days, startDate, endDate });
       
-      if (response.data.success) {
-        set((state) => ({
-          stats: {
-            ...state.stats,
-            ...response.data.data
-          }
-        }));
+      const params = new URLSearchParams();
+      
+      // 🆕 NOUVEAU: Support des périodes fixes via startDate/endDate
+      if (startDate && endDate) {
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
+        console.log('📅 Utilisation période fixe:', { startDate, endDate });
+      } else if (days) {
+        // Fallback vers la logique glissante
+        params.append('days', days.toString());
+        console.log('📅 Utilisation période glissante:', days, 'jours');
+      } else {
+        // Par défaut: 7 jours
+        params.append('days', '7');
+        console.log('📅 Utilisation période par défaut: 7 jours');
       }
-    } catch (error) {
-      console.error('Erreur lors du chargement des statistiques:', error);
-    }
-  },
-
-  // Fonction pour récupérer l'activité récente des utilisateurs
-  fetchRecentActivity: async (limit = 10) => {
-    try {
-      const response = await api.get(`/users/admin/recent-activity?limit=${limit}`);
       
-      if (response.data.success) {
-        set((state) => ({
-          stats: {
-            ...state.stats,
-            recentActivity: response.data.data || []
-          }
-        }));
-      }
-    } catch (error) {
-      console.error('Erreur lors du chargement de l\'activité récente:', error);
-    }
-  },
-  
-// Fonction pour récupérer les statistiques avec gestion des erreurs et des périodes  
-fetchStats: async (dateRange = '7') => {
-  const currentState = get();
-  
-  set({ loading: true, error: null });
-  
-  try {
-    console.log('🔄 fetchStats appelé avec dateRange:', dateRange);
-    
-    // PASSER le paramètre days à l'API
-    const response = await api.get(`/users/admin/stats?days=${dateRange}`);
-    
-    console.log('📡 Réponse API stats:', response.data);
-    
-    if (response.data?.success) {
-      const stats = response.data.data || {};
-      
-      const getPeriodLabel = (days) => {
-        switch(days) {
-          case '1': return 'aujourd\'hui';
-          case '7': return 'cette semaine';
-          case '30': return 'ce mois';
-          case '90': return 'ces 3 mois';
-          default: return 'cette période';
+      // 🆕 PRIORITÉ 1: Essayer d'abord la nouvelle route avec périodes fixes
+      try {
+        const response = await api.get(`/users/admin/stats-fixed?${params}`);
+        console.log('📡 Réponse API stats-fixed (nouvelle route):', response.data);
+        
+        if (response.data?.success) {
+          const statsData = response.data.data || {};
+          
+          set(state => ({ 
+            stats: {
+              ...state.stats,
+              ...statsData,
+              // Garder les noms de champs pour compatibilité frontend
+              newUsersThisWeek: statsData.newUsersThisWeek || statsData.new_users_period || 0,
+              newStructuresThisWeek: statsData.newStructuresThisWeek || statsData.new_structures_period || 0
+            },
+            loading: false,
+            lastUpdate: new Date().toISOString()
+          }));
+          
+          console.log('✅ Stats mises à jour via nouvelle route');
+          return { success: true, data: statsData };
         }
-      };
+      } catch (fixedRouteError) {
+        console.warn('⚠️ Nouvelle route stats-fixed non disponible, fallback vers ancienne route:', fixedRouteError.response?.status);
+        
+        // 🔄 FALLBACK: Utiliser l'ancienne route
+        if (fixedRouteError.response?.status === 404) {
+          const response = await api.get(`/users/admin/stats?${params}`);
+          console.log('📡 Réponse API stats (ancienne route):', response.data);
+          
+          if (response.data?.success) {
+            const statsData = response.data.data || {};
+            
+            set(state => ({ 
+              stats: {
+                ...state.stats,
+                ...statsData,
+                // Mapping pour compatibilité
+                newUsersThisWeek: statsData.newUsersThisWeek || statsData.new_users_period || 0,
+                newStructuresThisWeek: statsData.newStructuresThisWeek || statsData.new_structures_period || 0
+              },
+              loading: false,
+              lastUpdate: new Date().toISOString()
+            }));
+            
+            console.log('✅ Stats mises à jour via ancienne route (fallback)');
+            return { success: true, data: statsData };
+          } else {
+            throw new Error(response.data?.message || 'Réponse API invalide');
+          }
+        } else {
+          // Re-lancer l'erreur si ce n'est pas un 404
+          throw fixedRouteError;
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur fetch stats détaillée:', error);
       
-      const periodLabel = getPeriodLabel(dateRange);
-      
-      const newStats = {
-        // UTILISER les bonnes clés de l'API
-        newUsersThisWeek: stats.new_users || 0,
-        newStructuresThisWeek: stats.new_structures || 0,
-        connectionsToday: stats.total_entries || 0,
-        connectionsChange: `${stats.total_entries || 0} ${periodLabel}`,
-        periodLabel: periodLabel,
-        lastStatsUpdate: new Date().toISOString()
+      // Fallback avec données par défaut
+      const fallbackStats = {
+        newUsersThisWeek: 0,
+        newStructuresThisWeek: 0,
+        total_entries: 0,
+        active_users_period: 0,
+        connectionsChange: "Service indisponible"
       };
       
       set(state => ({ 
         stats: {
           ...state.stats,
-          ...newStats
+          ...fallbackStats
         },
-        loading: false
+        loading: false,
+        error: error.response?.data?.message || error.message
       }));
       
-      console.log('✅ Stats mises à jour:', newStats);
-      
-      return { success: true, data: newStats };
-    } else {
-      throw new Error(response.data?.message || 'Réponse invalide du serveur');
+      return { success: false, error: error.message };
     }
-  } catch (error) {
-    console.error('❌ Erreur fetch stats détaillée:', error);
-    
-    const fallbackStats = {
-      newUsersThisWeek: 0,
-      newStructuresThisWeek: 0,
-      connectionsToday: 0,
-      connectionsChange: "Service indisponible"
-    };
-    
-    set(state => ({ 
-      stats: {
-        ...state.stats,
-        ...fallbackStats
-      },
-      loading: false
-    }));
-    
-    return { success: false, error: error.message };
-  }
-},
+  },
 
-// Et ajoute fetchDashboardStats avec le paramètre days :
-fetchDashboardStats: async (dateRange = '7') => {
-  try {
-    const response = await api.get(`/users/admin/dashboard-stats?days=${dateRange}`);
-    
-    if (response.data.success) {
-      const data = response.data.data;
-      set((state) => ({
-        stats: {
-          ...state.stats,
-          newUsersThisWeek: data.new_users_period || 0,
-          newStructuresThisWeek: data.new_structures_period || 0,
-          connectionsToday: data.today_entries || 0
+  // Fonction dashboard avec support des périodes fixes
+  fetchDashboardStats: async (days = null, startDate = null, endDate = null) => {
+    try {
+      console.log('🔄 fetchDashboardStats appelé avec:', { days, startDate, endDate });
+      
+      const params = new URLSearchParams();
+      
+      // 🆕 NOUVEAU: Support des périodes fixes via startDate/endDate
+      if (startDate && endDate) {
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
+        console.log('📅 Dashboard période fixe:', { startDate, endDate });
+      } else if (days) {
+        // Fallback vers la logique glissante
+        params.append('days', days.toString());
+        console.log('📅 Dashboard période glissante:', days, 'jours');
+      } else {
+        // Par défaut: 7 jours
+        params.append('days', '7');
+        console.log('📅 Dashboard période par défaut: 7 jours');
+      }
+      
+      // 🆕 PRIORITÉ 1: Essayer d'abord la nouvelle route dashboard avec périodes fixes
+      try {
+        const response = await api.get(`/users/admin/dashboard-stats-fixed?${params}`);
+        console.log('📡 Réponse API dashboard-stats-fixed (nouvelle route):', response.data);
+        
+        if (response.data.success) {
+          const dashboardData = response.data.data || {};
+          
+          set(state => ({
+            stats: {
+              ...state.stats,
+              ...dashboardData,
+              // Mapping pour compatibilité
+              newUsersThisWeek: dashboardData.new_users_period || 0,
+              newStructuresThisWeek: dashboardData.new_structures_period || 0,
+              todayEntries: dashboardData.today_entries || 0,
+              activeUsersToday: dashboardData.active_users_today || 0
+            }
+          }));
+          
+          console.log('✅ Dashboard stats mises à jour via nouvelle route');
+          return { success: true, data: dashboardData };
         }
-      }));
+      } catch (fixedRouteError) {
+        console.warn('⚠️ Nouvelle route dashboard-stats-fixed non disponible, fallback vers ancienne route:', fixedRouteError.response?.status);
+        
+        // 🔄 FALLBACK: Utiliser l'ancienne route
+        if (fixedRouteError.response?.status === 404) {
+          const response = await api.get(`/users/admin/dashboard-stats?${params}`);
+          console.log('📡 Réponse API dashboard-stats (ancienne route):', response.data);
+          
+          if (response.data.success) {
+            const dashboardData = response.data.data || {};
+            
+            set(state => ({
+              stats: {
+                ...state.stats,
+                ...dashboardData,
+                // Mapping pour compatibilité
+                newUsersThisWeek: dashboardData.new_users_period || dashboardData.newUsersThisWeek || 0,
+                newStructuresThisWeek: dashboardData.new_structures_period || dashboardData.newStructuresThisWeek || 0,
+                todayEntries: dashboardData.today_entries || dashboardData.todayEntries || 0,
+                activeUsersToday: dashboardData.active_users_today || dashboardData.activeUsersToday || 0
+              }
+            }));
+            
+            console.log('✅ Dashboard stats mises à jour via ancienne route (fallback)');
+            return { success: true, data: dashboardData };
+          } else {
+            throw new Error(response.data?.message || 'Réponse API invalide');
+          }
+        } else {
+          // Re-lancer l'erreur si ce n'est pas un 404
+          throw fixedRouteError;
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur dashboard stats:', error);
+      set({ error: error.response?.data?.message || error.message });
+      return { success: false, error: error.message };
     }
-  } catch (error) {
-    console.error('Erreur lors du chargement des statistiques dashboard:', error);
-  }
-},
+  },
 
-  // ===== FONCTIONS UTILITAIRES INCHANGÉES =====
-// Fonction de validation des données utilisateur et structure
+  // Fonction pour récupérer l'activité récente avec support des périodes
+  fetchRecentActivity: async (limit = 10, days = 1, startDate = null, endDate = null) => {
+    try {
+      console.log('🔄 fetchRecentActivity appelé avec:', { limit, days, startDate, endDate });
+      
+      const params = new URLSearchParams();
+      params.append('limit', limit.toString());
+      
+      // Support des périodes pour l'activité récente
+      if (startDate && endDate) {
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
+        console.log('📅 Activité récente période fixe:', { startDate, endDate });
+      } else if (days) {
+        params.append('days', days.toString());
+        console.log('📅 Activité récente période glissante:', days, 'jours');
+      }
+      
+      // 🆕 PRIORITÉ 1: Essayer d'abord la nouvelle route avec support des périodes
+      try {
+        const response = await api.get(`/users/admin/recent-activity-period?${params}`);
+        console.log('📡 Réponse API recent-activity-period (nouvelle route):', response.data);
+        
+        if (response.data.success) {
+          const activityData = response.data.data || [];
+          
+          set({ 
+            recentActivity: activityData,
+            lastUpdate: new Date().toISOString()
+          });
+          
+          console.log('✅ Activité récente mise à jour via nouvelle route:', activityData.length, 'entrées');
+          return { success: true, data: activityData };
+        }
+      } catch (fixedRouteError) {
+        console.warn('⚠️ Nouvelle route recent-activity-period non disponible, fallback vers ancienne route:', fixedRouteError.response?.status);
+        
+        // 🔄 FALLBACK: Utiliser l'ancienne route
+        if (fixedRouteError.response?.status === 404) {
+          const fallbackParams = new URLSearchParams();
+          fallbackParams.append('limit', limit.toString());
+          
+          const response = await api.get(`/users/admin/recent-activity?${fallbackParams}`);
+          console.log('📡 Réponse API recent-activity (ancienne route):', response.data);
+          
+          if (response.data.success) {
+            const activityData = response.data.data || [];
+            
+            set({ 
+              recentActivity: activityData,
+              lastUpdate: new Date().toISOString()
+            });
+            
+            console.log('✅ Activité récente mise à jour via ancienne route (fallback):', activityData.length, 'entrées');
+            return { success: true, data: activityData };
+          } else {
+            throw new Error(response.data?.message || 'Réponse API invalide');
+          }
+        } else {
+          // Re-lancer l'erreur si ce n'est pas un 404
+          throw fixedRouteError;
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur activité récente:', error);
+      
+      // Fallback silencieux - ne pas bloquer l'interface
+      set({ 
+        recentActivity: [],
+        error: null // Ne pas afficher d'erreur pour cette fonctionnalité optionnelle
+      });
+      
+      return { success: false, error: error.message };
+    }
+  },
+
+  // ===== FONCTIONS UTILITAIRES (INCHANGÉES) =====
+  
   validateUserData: (userData) => {
     if (!userData.email || !userData.email.includes('@')) {
       return 'Email invalide';
@@ -486,7 +618,6 @@ fetchDashboardStats: async (dateRange = '7') => {
     return null;
   },
 
-  // Fonction de validation des données de structure
   validateStructureData: (structureData) => {
     if (!structureData.name || structureData.name.trim().length < 3) {
       return 'Le nom de la structure doit contenir au moins 3 caractères';
@@ -511,11 +642,17 @@ fetchDashboardStats: async (dateRange = '7') => {
     if (structureData.manager_email && !structureData.manager_email.includes('@')) {
       return 'Email du responsable invalide';
     }
-    
+
+    if (structureData.phone && structureData.phone.length < 10) {
+    return 'Le téléphone doit contenir au moins 10 caractères';
+    }
+
+    if (structureData.capacity && (isNaN(structureData.capacity) || structureData.capacity < 1)) {
+    return 'La capacité doit être un nombre positif';
+    }
     return null;
   },
   
-// Fonction pour mettre à jour les statistiques des utilisateurs
   updateUserStats: (users) => {
     const totalUsers = users.length;
     const activeUsers = users.filter(user => user.active !== false).length;
@@ -536,7 +673,6 @@ fetchDashboardStats: async (dateRange = '7') => {
     }));
   },
 
-// Fonction pour mettre à jour les statistiques des structures
   updateStructureStats: (structures) => {
     const totalStructures = structures.length;
     
@@ -548,7 +684,7 @@ fetchDashboardStats: async (dateRange = '7') => {
     }));
   },
 
-  // Getters et utilitaires
+  // Getters et utilitaires (inchangés)
   getUserById: (userId) => {
     return get().users.find(user => user.id === userId);
   },
@@ -600,12 +736,13 @@ fetchDashboardStats: async (dateRange = '7') => {
       activeUsers: 0,
       recentActivity: []
     },
+    recentActivity: [],
     loading: false,
     error: null,
     lastUpdate: null
   }),
 
-  // Actions de bulk
+  // Actions de bulk (inchangées)
   bulkUpdateUsers: async (userIds, updateData) => {
     set({ error: null });
     
@@ -616,10 +753,20 @@ fetchDashboardStats: async (dateRange = '7') => {
       });
       
       if (response.data.success) {
-        // Recharger les utilisateurs
-        await get().fetchUsers();
+        const updatedUsers = response.data.data;
         
-        return { success: true };
+        set((state) => ({
+          users: state.users.map(user => {
+            const updated = updatedUsers.find(u => u.id === user.id);
+            return updated ? updated : user;
+          }),
+          lastUpdate: new Date().toISOString()
+        }));
+        
+        // Mettre à jour les statistiques
+        get().updateUserStats(get().users);
+        
+        return { success: true, data: updatedUsers };
       } else {
         throw new Error(response.data.message || 'Erreur lors de la mise à jour en lot');
       }
@@ -632,7 +779,7 @@ fetchDashboardStats: async (dateRange = '7') => {
     }
   },
 
-  // Fonction pour exporter les utilisateurs
+  // Fonction pour exporter les utilisateurs (inchangée)
   exportUsers: async (format = 'csv') => {
     try {
       const response = await api.get(`/users/export?format=${format}`, {

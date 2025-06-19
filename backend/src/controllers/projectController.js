@@ -110,3 +110,87 @@ exports.getProjectsByStructure = async (req, res) => {
         res.status(500).json({ message: 'Erreur lors de la récupération des projets', error: error.message });
     }
 };
+
+// METHODE SUPPLEMENTAIRE : Récupérer les projets par directeur 
+exports.getProjectsByDirector = async (req, res) => {
+  try {
+    const projects = await Project.findAll({
+      where: { 
+        structure_id: req.user.structure_id 
+      },
+      include: [
+        { 
+          model: Task, 
+          as: 'tasks',
+          include: [
+            { model: User, as: 'assignedUser', attributes: ['id', 'first_name', 'last_name'] }
+          ]
+        }
+      ]
+    });
+
+    res.status(200).json({
+      success: true,
+      count: projects.length,
+      data: projects
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de la récupération des projets', 
+      error: error.message 
+    });
+  }
+};
+
+// AJOUTER assignation de tâche
+exports.assignTaskToAnimator = async (req, res) => {
+  try {
+    const { taskId, animatorId } = req.body;
+    
+    // Vérifier que l'animateur appartient à la même structure
+    const animator = await User.findOne({
+      where: { 
+        id: animatorId, 
+        structure_id: req.user.structure_id,
+        role: 'animator'
+      }
+    });
+    
+    if (!animator) {
+      return res.status(400).json({
+        success: false,
+        message: 'Animateur non trouvé ou non autorisé'
+      });
+    }
+
+    const [updated] = await Task.update(
+      { assigned_to: animatorId },
+      { where: { id: taskId } }
+    );
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tâche non trouvée'
+      });
+    }
+
+    const updatedTask = await Task.findByPk(taskId, {
+      include: [
+        { model: User, as: 'assignedUser', attributes: ['id', 'first_name', 'last_name'] }
+      ]
+    });
+
+    res.status(200).json({
+      success: true,
+      data: updatedTask
+    });
+  } catch (error) {
+    res.status(400).json({ 
+      success: false,
+      message: 'Erreur lors de l\'assignation', 
+      error: error.message 
+    });
+  }
+};

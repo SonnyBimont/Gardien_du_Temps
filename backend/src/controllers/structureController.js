@@ -45,7 +45,12 @@ exports.createStructure = async (req, res) => {
             address,
             city,
             postal_code,
-            school_vacation_zone
+            school_vacation_zone,
+            phone,
+            email,
+            manager_name,
+            manager_email,
+            capacity
         } = req.body;
 
         // Validation des champs obligatoires 
@@ -64,12 +69,38 @@ exports.createStructure = async (req, res) => {
             });
         }
 
+        if (email && !email.includes('@')) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email de la structure invalide'
+            });
+        }
+
+        if (manager_email && !manager_email.includes('@')) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email du responsable invalide'
+            });
+        }
+
+        if (capacity && (isNaN(capacity) || capacity < 1)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La capacité doit être un nombre positif'
+            });
+        }
+
         const structure = await Structure.create({
             name,
             address,
             city,
             postal_code,
             school_vacation_zone,
+            phone: phone || null,
+            email: email || null,
+            manager_name: manager_name || null,
+            manager_email: manager_email || null,
+            capacity: capacity ? parseInt(capacity) : null,
             active: true 
         });
 
@@ -105,22 +136,82 @@ exports.createStructure = async (req, res) => {
 // Mettre à jour une structure
 exports.updateStructure = async (req, res) => {
     try {
-        const [updated] = await Structure.update(req.body, {
+        const {
+            name,
+            address,
+            city,
+            postal_code,
+            school_vacation_zone,
+            // 🆕 NOUVEAUX CHAMPS
+            phone,
+            email,
+            manager_name,
+            manager_email,
+            capacity,
+            active
+        } = req.body;
+
+        // 🆕 Validations optionnelles pour les nouveaux champs
+        if (email && !email.includes('@')) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email de la structure invalide'
+            });
+        }
+
+        if (manager_email && !manager_email.includes('@')) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email du responsable invalide'
+            });
+        }
+
+        if (capacity && (isNaN(capacity) || capacity < 1)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La capacité doit être un nombre positif'
+            });
+        }
+
+        const updateData = {
+            name,
+            address,
+            city,
+            postal_code,
+            school_vacation_zone,
+            phone: phone || null,
+            email: email || null,
+            manager_name: manager_name || null,
+            manager_email: manager_email || null,
+            capacity: capacity ? parseInt(capacity) : null,
+            active
+        };
+
+        const [updated] = await Structure.update(updateData, {
             where: { id: req.params.id }
         });
 
         if (!updated) {
-            return res.status(404).json({ message: 'Structure non trouvée' });
+            return res.status(404).json({ 
+                success: false,
+                message: 'Structure non trouvée' 
+            });
         }
 
         const updatedStructure = await Structure.findByPk(req.params.id);
 
         res.status(200).json({
             success: true,
-            data: updatedStructure
+            data: updatedStructure,
+            message: 'Structure mise à jour avec succès'
         });
     } catch (error) {
-        res.status(400).json({ message: 'Erreur lors de la mise à jour de la structure', error: error.message });
+        console.error('Erreur updateStructure:', error);
+        res.status(400).json({ 
+            success: false,
+            message: 'Erreur lors de la mise à jour de la structure', 
+            error: error.message 
+        });
     }
 };
 

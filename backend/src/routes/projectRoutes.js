@@ -397,4 +397,18 @@ router
     .route('/structure/:structureId')
     .get(protect, projectController.getProjectsByStructure);
 
+// // AJOUTER ces routes
+// router
+// .get('/director/projects', protect, authorize('director'), projectController.getProjectsByDirector);
+
+// router
+// .post('/assign-task', protect, authorize('director'), projectController.assignTaskToAnimator);
+
+// // AJOUTER ces routes
+// router
+// .get('/my-tasks', protect, authorize('animator'), taskController.getTasksByAnimator);
+
+// router
+// .patch('/:id/complete', protect, authorize('director'), taskController.markTaskAsCompleted);
+
 module.exports = router;

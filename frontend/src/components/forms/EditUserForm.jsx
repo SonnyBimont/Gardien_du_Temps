@@ -29,7 +29,7 @@ const EditUserForm = ({
     contract_end_date: '',
     active: true
   });
-
+    
   const [showPassword, setShowPassword] = useState(false);
   const [formErrors, setFormErrors] = useState({});
 
@@ -40,20 +40,18 @@ const EditUserForm = ({
         first_name: user.first_name || '',
         last_name: user.last_name || '',
         email: user.email || '',
-        password: '', // Toujours vide pour sécurité
-        role: user.role || '',
-        structure_id: user.structure_id?.toString() || '',
-        phone: user.phone || '',
+        role: fixedRole || user.role || '',
+        structure_id: fixedStructureId || user.structure_id || '',
+        weekly_hours: user.weekly_hours || '',
+        annual_hours: user.annual_hours || '',
         contract_type: user.contract_type || '',
-        weekly_hours: user.weekly_hours?.toString() || '',
-        annual_hours: user.annual_hours?.toString() || '',
         contract_start_date: user.contract_start_date ? user.contract_start_date.split('T')[0] : '',
-        contract_end_date: user.contract_end_date ? user.contract_end_date.split('T')[0] : '',
-        active: user.active ?? true
+      contract_end_date: user.contract_end_date ? user.contract_end_date.split('T')[0] : '',
+        active: user.active !== undefined ? user.active : true
       });
     }
-  }, [user]);
-
+  }, [user, fixedRole, fixedStructureId]);
+    
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -111,6 +109,15 @@ const EditUserForm = ({
     if (!formData.annual_hours || formData.annual_hours <= 0) {
       errors.annual_hours = 'Les heures annuelles sont obligatoires';
     }
+
+  if (formData.contract_start_date && formData.contract_end_date) {
+    const startDate = new Date(formData.contract_start_date);
+    const endDate = new Date(formData.contract_end_date);
+    
+    if (endDate <= startDate) {
+      errors.contract_end_date = 'La date de fin doit être postérieure à la date de début';
+    }
+  }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -180,26 +187,17 @@ const handleSubmit = async (e) => {
 };
 
   return (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-    <Card className="w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between p-4 sm:p-6 border-b shrink-0">
-        <div className="flex items-center">
-          <User className="w-6 h-6 text-blue-600 mr-3" />
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
-            Modifier l'utilisateur
-          </h2>
-        </div>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <X className="w-6 h-6" />
-        </button>
-      </div>
+  <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+    {/* En-tête simple */}
+    <div className="mb-6">
+      <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        Informations de l'utilisateur
+      </h2>
+      <p className="text-gray-600">
+        Modifiez les informations ci-dessous
+      </p>
+    </div>
 
-      {/* Formulaire scrollable */}
-      <div className="flex-1 overflow-y-auto">
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Informations personnelles */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
@@ -438,45 +436,38 @@ const handleSubmit = async (e) => {
               Utilisateur actif
             </label>
           </div>
-        </form>
-      </div>
 
-      {/* Boutons d'action - FIXES en bas */}
-      <div className="shrink-0 border-t bg-white p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={loading}
-            className="w-full sm:w-auto"
-          >
-            Annuler
-          </Button>
+    {/* Boutons d'action */}
+    <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-6 border-t border-gray-200">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onClose}
+        disabled={loading}
+        className="w-full sm:w-auto"
+      >
+        Annuler
+      </Button>
 
-          <Button
-            type="submit"
-            disabled={loading}
-            className="flex items-center justify-center w-full sm:w-auto"
-            onClick={handleSubmit}
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Modification...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Modifier l'utilisateur
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-    </Card>
-  </div>
+      <Button
+        type="submit"
+        disabled={loading}
+        className="flex items-center justify-center w-full sm:w-auto"
+      >
+        {loading ? (
+          <>
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            Modification...
+          </>
+        ) : (
+          <>
+            <Save className="w-4 h-4 mr-2" />
+            Modifier l'utilisateur
+          </>
+        )}
+      </Button>
+    </div>
+  </form>
 );
-};
-
+}
 export default EditUserForm;
