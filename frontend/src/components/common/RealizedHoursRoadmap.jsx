@@ -22,19 +22,204 @@ const RealizedHoursRoadmap = ({ onBack }) => {
   const { fetchTimeHistory, timeHistory, loading } = useTimeStore();
   const { yearlyPlanning, fetchYearlyPlanning } = usePlanningStore();
   
-  // ✅ CORRIGER : Récupérer d'abord le yearType, puis initialiser selectedYear
+  // Récupérer d'abord le yearType, puis initialiser selectedYear
   const yearType = user?.year_type || YEAR_TYPES.CIVIL;
   const [selectedYear, setSelectedYear] = useState(() => getCurrentYear(yearType)); // ✅ Fonction callback
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+
+  // Même logique d'initialisation du mois
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const today = new Date();
+    const todayMonth = today.getMonth();
+    
+    if (yearType === YEAR_TYPES.SCHOOL) {
+      const currentSchoolYear = getCurrentYear(YEAR_TYPES.SCHOOL);
+      if (selectedYear === currentSchoolYear) {
+        return todayMonth;
+      } else {
+        return 8; // septembre
+      }
+    }    
+    return todayMonth;
+  });
+
   const [realizedHours, setRealizedHours] = useState({});
+
+  // Mêmes fonctions utilitaires que dans YearlyPlanningRoadmap
+  const getMonthBounds = (year, yearType) => {
+    if (yearType === YEAR_TYPES.SCHOOL) {
+      return {
+        startMonth: 8, // septembre
+        endMonth: 7,   // août de l'année suivante
+        startYear: year,
+        endYear: year + 1
+      };
+    } else {
+      return {
+        startMonth: 0, // janvier
+        endMonth: 11,  // décembre
+        startYear: year,
+        endYear: year
+      };
+    }
+  };
+
+  // Fonction pour obtenir l'année d'affichage du calendrier
+  const getCalendarYear = (month) => {
+    if (yearType === YEAR_TYPES.SCHOOL) {
+      // En mode scolaire, si on est de septembre à décembre : année N
+      // Si on est de janvier à août : année N+1
+      return month >= 8 ? selectedYear : selectedYear + 1;
+    } else {
+      // Mode civil : toujours l'année sélectionnée
+      return selectedYear;
+    }
+  };
+
+  const getDisplayMonth = () => {
+    const year = getCalendarYear(currentMonth);
+    return `${monthNames[currentMonth]} ${year}`;
+  };
+
+  // Génère une grille plate de 42 jours (6 semaines × 7 jours)
+  const getCalendarGrid = (year, month) => {
+    const calendarYear = getCalendarYear(month);
+    
+    const firstDayOfMonth = new Date(calendarYear, month, 1);
+    const startDay = (firstDayOfMonth.getDay() + 6) % 7; // Lundi=0
+
+    const gridStart = new Date(calendarYear, month, 1 - startDay);
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(
+      today.getMonth() + 1
+    ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    return Array.from({ length: 42 }, (_, i) => {
+      const date = new Date(gridStart);
+      date.setDate(gridStart.getDate() + i);
+
+      const dateStr = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      const dayData = realizedHours[dateStr];
+
+      const planning = yearlyPlanning.planning?.find(
+        (p) => p.plan_date === dateStr
+      );
+
+      return {
+        date,
+        dateStr,
+        day: date.getDate(),
+        isCurrentMonth: date.getMonth() === month,
+        isToday: dateStr === todayStr,
+        realized: dayData,
+        planning: planning,
+      };
+    });
+  };
+
+  // Navigation entre les mois
+  const navigateMonth = (direction) => {
+    setCurrentMonth(prev => {
+      const bounds = getMonthBounds(selectedYear, yearType);
+      
+      if (yearType === YEAR_TYPES.SCHOOL) {
+        if (direction === 'prev') {
+          if (prev === bounds.startMonth) {
+            return bounds.endMonth;
+          } else if (prev === 0) {
+            return 11;
+          } else {
+            return prev - 1;
+          }
+        } else {
+          if (prev === bounds.endMonth) {
+            return bounds.startMonth;
+          } else if (prev === 11) {
+            return 0;
+          } else {
+            return prev + 1;
+          }
+        }
+      } else {
+        if (direction === 'prev') {
+          return prev === 0 ? 11 : prev - 1;
+        } else {
+          return prev === 11 ? 0 : prev + 1;
+        }
+      }
+    });
+  };
+
+  // Aller au mois actuel
+  const goToToday = () => {
+    const today = new Date();
+    const todayMonth = today.getMonth();
+    const todayYear = today.getFullYear();
+    
+    if (yearType === YEAR_TYPES.SCHOOL) {
+      const currentSchoolYear = getCurrentYear(YEAR_TYPES.SCHOOL);
+      if (selectedYear !== currentSchoolYear) {
+        setSelectedYear(currentSchoolYear);
+      }
+    } else {
+      if (selectedYear !== todayYear) {
+        setSelectedYear(todayYear);
+      }
+    }
+    
+    setCurrentMonth(todayMonth);
+  };
+
+  const calendarDays = getCalendarGrid(selectedYear, currentMonth);
+
+  const monthNames = [
+    "Janvier",
+    "Février",
+    "Mars",
+    "Avril",
+    "Mai",
+    "Juin",
+    "Juillet",
+    "Août",
+    "Septembre",
+    "Octobre",
+    "Novembre",
+    "Décembre",
+  ];
+
+  //  Le sélecteur d'année pour afficher le bon format
+const renderYearSelector = () => (
+  <div className="flex items-center space-x-3">
+    <label className="text-sm font-medium text-gray-700">
+      {yearType === YEAR_TYPES.SCHOOL ? 'Année scolaire :' : 'Année :'}
+    </label>
+    <select
+      value={selectedYear}
+      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+      className="border border-gray-300 rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-green-500"
+    >
+      {[...Array(5)].map((_, i) => {
+        const year = getCurrentYear(yearType) - 2 + i;
+        return (
+          <option key={year} value={year}>
+            {yearType === YEAR_TYPES.SCHOOL ? `${year}-${year + 1}` : year}
+            {year === getCurrentYear(yearType) ? ' (actuel)' : ''}
+          </option>
+        );
+      })}
+    </select>
+  </div>
+);
+
 
 useEffect(() => {
   if (user?.id) {
     loadYearData();
   }
-}, [selectedYear, yearType, user?.id]); // ✅ AJOUTER yearType dans les dépendances
+}, [selectedYear, yearType, user?.id]); // yearType dans les dépendances
 
-// ✅ AJOUTER : useEffect pour charger la planification aussi
+// useEffect pour charger la planification aussi
 useEffect(() => {
   if (user?.id && selectedYear && yearType) {
     const { startDate, endDate } = getYearBounds(selectedYear, yearType);
@@ -117,6 +302,8 @@ const loadYearData = async () => {
     }
     
     try {
+      const calendarYear = getCalendarYear(currentMonth);
+      
       const monthlyTotal = Object.entries(realizedHours)
         .filter(([date, data]) => {
           if (!date || !data) return false;
@@ -124,9 +311,7 @@ const loadYearData = async () => {
           const workDate = new Date(date + 'T00:00:00');
           if (isNaN(workDate.getTime())) return false;
           
-          // ✅ NOUVEAU : Vérifier que la date appartient à l'année ET au mois sélectionné
-          const dateYear = getYearByType(workDate, yearType);
-          return dateYear === selectedYear && workDate.getMonth() === currentMonth;
+          return workDate.getFullYear() === calendarYear && workDate.getMonth() === currentMonth;
         })
         .reduce((total, [, data]) => {
           const hours = parseFloat(data.workingHours) || 0;
@@ -139,98 +324,6 @@ const loadYearData = async () => {
       console.error('Erreur calcul heures mensuelles réalisées:', error);
       return '0h00';
     }
-  };
-
-  //  Le sélecteur d'année pour afficher le bon format
-const renderYearSelector = () => (
-  <div className="flex items-center space-x-3">
-    <label className="text-sm font-medium text-gray-700">
-      {yearType === YEAR_TYPES.SCHOOL ? 'Année scolaire :' : 'Année :'}
-    </label>
-    <select
-      value={selectedYear}
-      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-      className="border border-gray-300 rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-green-500"
-    >
-      {[...Array(5)].map((_, i) => {
-        const year = getCurrentYear(yearType) - 2 + i;
-        return (
-          <option key={year} value={year}>
-            {yearType === YEAR_TYPES.SCHOOL ? `${year}-${year + 1}` : year}
-            {year === getCurrentYear(yearType) ? ' (actuel)' : ''}
-          </option>
-        );
-      })}
-    </select>
-  </div>
-);
-
-  // Génère une grille plate de 42 jours (6 semaines × 7 jours)
-  const getCalendarGrid = (year, month) => {
-    const firstDayOfMonth = new Date(year, month, 1);
-    const startDay = (firstDayOfMonth.getDay() + 6) % 7; // Lundi=0
-
-    const gridStart = new Date(year, month, 1 - startDay);
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(
-      today.getMonth() + 1
-    ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
-    return Array.from({ length: 42 }, (_, i) => {
-      const date = new Date(gridStart);
-      date.setDate(gridStart.getDate() + i);
-
-      const dateStr = `${date.getFullYear()}-${String(
-        date.getMonth() + 1
-      ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-      const dayData = realizedHours[dateStr];
-
-      // Trouver la planification pour ce jour
-      const planning = yearlyPlanning.planning?.find(
-        (p) => p.plan_date === dateStr
-      );
-
-      return {
-        date,
-        dateStr,
-        day: date.getDate(),
-        isCurrentMonth: date.getMonth() === month,
-        isToday: dateStr === todayStr,
-        realized: dayData,
-        planning: planning,
-      };
-    });
-  };
-
-  const calendarDays = getCalendarGrid(selectedYear, currentMonth);
-
-  const monthNames = [
-    "Janvier",
-    "Février",
-    "Mars",
-    "Avril",
-    "Mai",
-    "Juin",
-    "Juillet",
-    "Août",
-    "Septembre",
-    "Octobre",
-    "Novembre",
-    "Décembre",
-  ];
-
-  // Navigation entre les mois
-  const navigateMonth = (direction) => {
-    setCurrentMonth((prev) => {
-      if (direction === "prev") return prev === 0 ? 11 : prev - 1;
-      else return prev === 11 ? 0 : prev + 1;
-    });
-  };
-
-  // Aller au mois actuel
-  const goToToday = () => {
-    const today = new Date();
-    setCurrentMonth(today.getMonth());
   };
 
   // Calculer les statistiques
@@ -429,7 +522,7 @@ const renderYearSelector = () => (
               color: "#111827",
             }}
           >
-            {monthNames[currentMonth]} {selectedYear}
+            {getDisplayMonth()} 
           </h1>
 
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>

@@ -22,10 +22,27 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
   const { yearlyPlanning, fetchYearlyPlanning, loading, upsertPlanning } = usePlanningStore();
   const { projects } = useProjectStore();
   
-  // ✅ CORRIGER : Récupérer d'abord le yearType, puis initialiser selectedYear
+  // Récupérer d'abord le yearType, puis initialiser selectedYear
   const yearType = user?.year_type || YEAR_TYPES.CIVIL;
-  const [selectedYear, setSelectedYear] = useState(() => getCurrentYear(yearType)); // ✅ Fonction callback
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(() => getCurrentYear(yearType)); // Fonction callback
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const today = new Date();
+    const todayMonth = today.getMonth();
+    
+    if (yearType === YEAR_TYPES.SCHOOL) {
+      // En mode scolaire, vérifier si on est dans l'année scolaire sélectionnée
+      const currentSchoolYear = getCurrentYear(YEAR_TYPES.SCHOOL);
+      if (selectedYear === currentSchoolYear) {
+        // On est dans l'année scolaire actuelle, afficher le mois actuel
+        return todayMonth;
+      } else {
+        // Année scolaire différente, commencer en septembre
+        return 8; // septembre = mois 8
+      }
+    }
+    
+    return todayMonth; // Mode civil : mois actuel
+  });
   
   // États pour les modals
   const [showPlanningModal, setShowPlanningModal] = useState(false);
@@ -33,25 +50,52 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
   const [editingPlanning, setEditingPlanning] = useState(null);
   const [showYearTypeModal, setShowYearTypeModal] = useState(false);
 
-  // ✅ AJOUTER : Effet pour mettre à jour selectedYear quand yearType change
-useEffect(() => {
-  const loadPlanningData = async () => {
-    if (user?.id && selectedYear && yearType) {
-      const { startDate, endDate } = getYearBounds(selectedYear, yearType);
-      await fetchYearlyPlanning(user.id, startDate, endDate);
+  // Fonction pour obtenir les bornes de mois selon le type d'année
+  const getMonthBounds = (year, yearType) => {
+    if (yearType === YEAR_TYPES.SCHOOL) {
+      return {
+        startMonth: 8, // septembre
+        endMonth: 7,   // août de l'année suivante
+        startYear: year,
+        endYear: year + 1
+      };
+    } else {
+      return {
+        startMonth: 0, // janvier
+        endMonth: 11,  // décembre
+        startYear: year,
+        endYear: year
+      };
     }
   };
-  
-  loadPlanningData();
-}, [selectedYear, yearType, user?.id, fetchYearlyPlanning]);
+
+  // Fonction pour obtenir l'année d'affichage du calendrier
+  const getCalendarYear = (month) => {
+    if (yearType === YEAR_TYPES.SCHOOL) {
+      // En mode scolaire, si on est de septembre à décembre : année N
+      // Si on est de janvier à août : année N+1
+      return month >= 8 ? selectedYear : selectedYear + 1;
+    } else {
+      // Mode civil : toujours l'année sélectionnée
+      return selectedYear;
+    }
+  };
+
+  // Mettre à jour l'affichage du mois dans le header
+  const getDisplayMonth = () => {
+    const year = getCalendarYear(currentMonth);
+    return `${monthNames[currentMonth]} ${year}`;
+  };  
 
   // Génère une grille plate de 42 jours (6 semaines × 7 jours)
-  const getCalendarGrid = (year, month) => {
-    const firstDayOfMonth = new Date(year, month, 1);
+  const getCalendarGrid = (selectedYear, month) => {
+    const calendarYear = getCalendarYear(month); // la bonne année
+    
+    const firstDayOfMonth = new Date(calendarYear, month, 1);
     const startDay = (firstDayOfMonth.getDay() + 6) % 7; // Lundi=0
     
     // Date du premier lundi affiché
-    const gridStart = new Date(year, month, 1 - startDay);
+    const gridStart = new Date(calendarYear, month, 1 - startDay);
 
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -74,7 +118,108 @@ useEffect(() => {
     });
   };
 
+  // Navigation des mois selon le type d'année
+  const navigateMonth = (direction) => {
+    setCurrentMonth(prev => {
+      const bounds = getMonthBounds(selectedYear, yearType);
+      
+      if (yearType === YEAR_TYPES.SCHOOL) {
+        if (direction === 'prev') {
+          if (prev === bounds.startMonth) {
+            // Septembre → revenir à août de l'année suivante
+            return bounds.endMonth;
+          } else if (prev === 0) {
+            // Janvier → Décembre année précédente
+            return 11;
+          } else {
+            return prev - 1;
+          }
+        } else {
+          if (prev === bounds.endMonth) {
+            // Août → revenir à septembre
+            return bounds.startMonth;
+          } else if (prev === 11) {
+            // Décembre → Janvier année suivante
+            return 0;
+          } else {
+            return prev + 1;
+          }
+        }
+      } else {
+        // Mode civil : comportement normal
+        if (direction === 'prev') {
+          return prev === 0 ? 11 : prev - 1;
+        } else {
+          return prev === 11 ? 0 : prev + 1;
+        }
+      }
+    });
+  };
+
+  // Fonction "Aller à aujourd'hui" selon le type d'année
+  const goToToday = () => {
+    const today = new Date();
+    const todayMonth = today.getMonth();
+    const todayYear = today.getFullYear();
+    
+    if (yearType === YEAR_TYPES.SCHOOL) {
+      // Déterminer l'année scolaire du jour actuel
+      const currentSchoolYear = getCurrentYear(YEAR_TYPES.SCHOOL);
+      
+      // Mettre à jour l'année sélectionnée si nécessaire
+      if (selectedYear !== currentSchoolYear) {
+        setSelectedYear(currentSchoolYear);
+      }
+    } else {
+      // Mode civil : mettre à jour l'année si nécessaire
+      if (selectedYear !== todayYear) {
+        setSelectedYear(todayYear);
+      }
+    }
+    
+    // Toujours aller au mois actuel
+    setCurrentMonth(todayMonth);
+  };
+
+  // getMonthlyPlannedHours pour la bonne année
+  const getMonthlyPlannedHours = () => {
+    if (!yearlyPlanning.planning || !Array.isArray(yearlyPlanning.planning)) {
+      return 0;
+    }
+    
+    try {
+      const calendarYear = getCalendarYear(currentMonth); // ✅ Année correcte
+      
+      const monthlyTotal = yearlyPlanning.planning
+        .filter(p => {
+          if (!p.plan_date) return false;
+          
+          const planDate = new Date(p.plan_date + 'T00:00:00');
+          if (isNaN(planDate.getTime())) return false;
+          
+          // ✅ CORRIGER : Vérifier avec la bonne année du calendrier
+          return planDate.getFullYear() === calendarYear && planDate.getMonth() === currentMonth;
+        })
+        .reduce((total, planning) => {
+          const hours = parseFloat(planning.planned_hours) || 0;
+          return total + hours;
+        }, 0);
+      
+      return isNaN(monthlyTotal) ? 0 : Math.round(monthlyTotal * 100) / 100;
+      
+    } catch (error) {
+      console.error('Erreur calcul heures mensuelles planifiées:', error);
+      return 0;
+    }
+  };
+
+  // Utiliser la nouvelle fonction getCalendarGrid
   const calendarDays = getCalendarGrid(selectedYear, currentMonth);
+
+  const monthNames = [
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+  ];
 
   const handleDateClick = (dayData) => {
     if (!dayData.isCurrentMonth) return;
@@ -104,63 +249,6 @@ useEffect(() => {
     }
     return result;
   };
-  const monthNames = [
-    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-  ];
-
-  const navigateMonth = (direction) => {
-    setCurrentMonth(prev => {
-      if (direction === 'prev') return prev === 0 ? 11 : prev - 1;
-      else return prev === 11 ? 0 : prev + 1;
-    });
-  };
-
-  const goToToday = () => {
-    const today = new Date();
-    setCurrentMonth(today.getMonth());
-  };
-
-  if (loading && !yearlyPlanning.planning) {
-    return (
-      <Card title="Planification Annuelle">
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3">Chargement...</span>
-        </div>
-      </Card>
-    );
-  }
-
-  const getMonthlyPlannedHours = () => {
-    if (!yearlyPlanning.planning || !Array.isArray(yearlyPlanning.planning)) {
-      return 0;
-    }
-    
-    try {
-      const monthlyTotal = yearlyPlanning.planning
-        .filter(p => {
-          if (!p.plan_date) return false;
-          
-          const planDate = new Date(p.plan_date + 'T00:00:00');
-          if (isNaN(planDate.getTime())) return false;
-          
-          // ✅ NOUVEAU : Vérifier que la date appartient à l'année ET au mois
-          const dateYear = getYearByType(planDate, yearType);
-          return dateYear === selectedYear && planDate.getMonth() === currentMonth;
-        })
-        .reduce((total, planning) => {
-          const hours = parseFloat(planning.planned_hours) || 0;
-          return total + hours;
-        }, 0);
-      
-      return isNaN(monthlyTotal) ? 0 : Math.round(monthlyTotal * 100) / 100;
-      
-    } catch (error) {
-      console.error('Erreur calcul heures mensuelles planifiées:', error);
-      return 0;
-    }
-  };
 
 const renderYearSelector = () => (
   <div className="flex items-center space-x-3">
@@ -184,6 +272,29 @@ const renderYearSelector = () => (
     </select>
   </div>
 );
+
+  // Effet pour mettre à jour selectedYear quand yearType change
+useEffect(() => {
+  const loadPlanningData = async () => {
+    if (user?.id && selectedYear && yearType) {
+      const { startDate, endDate } = getYearBounds(selectedYear, yearType);
+      await fetchYearlyPlanning(user.id, startDate, endDate);
+    }
+  };
+  
+  loadPlanningData();
+}, [selectedYear, yearType, user?.id, fetchYearlyPlanning]);
+
+  if (loading && !yearlyPlanning.planning) {
+    return (
+      <Card title="Planification Annuelle">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3">Chargement...</span>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -301,7 +412,7 @@ const renderYearSelector = () => (
             fontWeight: '600',
             color: '#111827'
           }}>
-            {monthNames[currentMonth]} {selectedYear}
+            {getDisplayMonth()}
           </h1>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
