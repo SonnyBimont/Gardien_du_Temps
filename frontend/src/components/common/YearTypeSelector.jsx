@@ -52,6 +52,8 @@ const YearTypeSelector = ({ className = '', onClose }) => {
   const handleSave = async () => {
     if (selectedType === user?.year_type) {
       console.log('✅ Aucun changement nécessaire');
+    document.body.style.overflow = '';
+    document.body.style.overflow = 'unset';
       if (onClose) onClose();
       return;
     }

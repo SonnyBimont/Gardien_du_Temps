@@ -1157,10 +1157,6 @@ const canClockOut = status.arrival && !status.departure;
         </div>
       </div>
 
-    {/* Section paramètres d'année */}
-    <Card title="Préférences de calcul d'objectifs" className="mb-6">
-      <YearTypeSelector />
-    </Card>
       {/* Panel de pointage */}
       {renderDirectorTimeTracking()}
 

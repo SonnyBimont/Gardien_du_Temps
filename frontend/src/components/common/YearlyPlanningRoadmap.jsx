@@ -680,13 +680,45 @@ useEffect(() => {
 {showYearTypeModal && (
   <Modal
     isOpen={showYearTypeModal}
-    onClose={() => setShowYearTypeModal(false)}
+    onClose={() => {
+      // ✅ COPIER la logique de PlanningModal qui fonctionne
+      setTimeout(() => {
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        document.body.classList.remove('modal-open');
+        
+        // Supprimer tous les overlays orphelins
+        const overlays = document.querySelectorAll('[class*="bg-gray-900"][class*="bg-opacity"]');
+        overlays.forEach(overlay => {
+          if (overlay.parentNode) {
+            overlay.parentNode.removeChild(overlay);
+          }
+        });
+      }, 50);
+      
+      setShowYearTypeModal(false);
+    }}
     title="Paramètres du calendrier"
     size="lg"
-    className="z-50" // ✅ AJOUTER z-index élevé
   >
     <YearTypeSelector 
-      onClose={() => setShowYearTypeModal(false)} 
+      onClose={() => {
+        // ✅ MÊME nettoyage ici
+        setTimeout(() => {
+          document.body.style.overflow = '';
+          document.body.style.paddingRight = '';
+          document.body.classList.remove('modal-open');
+          
+          const overlays = document.querySelectorAll('[class*="bg-gray-900"][class*="bg-opacity"]');
+          overlays.forEach(overlay => {
+            if (overlay.parentNode) {
+              overlay.parentNode.removeChild(overlay);
+            }
+          });
+        }, 50);
+        
+        setShowYearTypeModal(false);
+      }} 
     />
   </Modal>
 )}
