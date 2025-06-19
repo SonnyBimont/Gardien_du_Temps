@@ -7,7 +7,7 @@ export const YEAR_TYPES = {
 };
 
 /**
- * Configuration par défaut (peut être changée plus tard)
+ * Configuration par défaut = ANNEE SCOLAIRE (peut être changée plus tard)
  */
 export const DEFAULT_YEAR_TYPE = YEAR_TYPES.SCHOOL;
 
@@ -26,7 +26,7 @@ export const getSchoolYear = (date) => {
 };
 
 /**
- * Détermine l'année civile (janvier à décembre) - identique au comportement actuel
+ * Détermine l'année civile (janvier à décembre) 
  * @param {Date|string} date - Date à analyser
  * @returns {number} - Année civile
  */
