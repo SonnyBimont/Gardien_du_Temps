@@ -1,42 +1,48 @@
+// ✅ CORRIGER : Tous les imports nécessaires
 import React, { useState, useEffect } from 'react';
-import { Calendar, Target, BarChart3, Clock, Plus, Settings } from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
 import { usePlanningStore } from '../../stores/planningStore';
 import { useProjectStore } from '../../stores/projectStore';
-import { useAuthStore } from '../../stores/authStore';
-import { exportPlannedHoursToCSV } from '../../utils/exportCSV';
-import Card from '../common/Card';
-import Button from '../common/Button';
-import Modal from '../common/Modal';
-import YearTypeSelector from '../common/YearTypeSelector';
-import PlanningModal from '../common/PlanningModal';
+import { useVacations } from '../../hooks/useVacations';
+import api from '../../services/api';
+import Card from './Card';
+import Button from './Button';
+import Modal from './Modal';
+import PlanningModal from './PlanningModal';
+import YearTypeSelector from './YearTypeSelector';
+import {useSchoolVacationStore} from '../../stores/schoolVacationStore';
+import { 
+  Calendar, 
+  Target, 
+  BarChart3, 
+  Clock, 
+  Plus, 
+  Settings 
+} from 'lucide-react';
 import { 
   YEAR_TYPES, 
-  getYearByType, 
-  getYearBounds, 
-  filterByYearType, 
-  getCurrentYear 
+  getCurrentYear, 
+  getYearBounds 
 } from '../../utils/dateUtils';
+import { exportPlannedHoursToCSV } from '../../utils/exportCSV';
 
 const YearlyPlanningRoadmap = ({ onBack }) => {
   const { user } = useAuthStore();
   const { yearlyPlanning, fetchYearlyPlanning, loading, upsertPlanning } = usePlanningStore();
   const { projects } = useProjectStore();
   
-  // Récupérer d'abord le yearType, puis initialiser selectedYear
   const yearType = user?.year_type || YEAR_TYPES.CIVIL;
-  const [selectedYear, setSelectedYear] = useState(() => getCurrentYear(yearType)); // Fonction callback
+  const [selectedYear, setSelectedYear] = useState(() => getCurrentYear(yearType));
+  
   const [currentMonth, setCurrentMonth] = useState(() => {
     const today = new Date();
     const todayMonth = today.getMonth();
     
     if (yearType === YEAR_TYPES.SCHOOL) {
-      // En mode scolaire, vérifier si on est dans l'année scolaire sélectionnée
       const currentSchoolYear = getCurrentYear(YEAR_TYPES.SCHOOL);
       if (selectedYear === currentSchoolYear) {
-        // On est dans l'année scolaire actuelle, afficher le mois actuel
         return todayMonth;
       } else {
-        // Année scolaire différente, commencer en septembre
         return 8; // septembre = mois 8
       }
     }
@@ -49,6 +55,141 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [editingPlanning, setEditingPlanning] = useState(null);
   const [showYearTypeModal, setShowYearTypeModal] = useState(false);
+
+  // ✅ CORRIGER : Hook useVacations appelé au bon endroit (niveau composant)
+  const { startDate, endDate } = getYearBounds(selectedYear, yearType);
+  const { isVacationDay, getVacationInfo, loading: vacationLoading, error: vacationError } = useVacations(startDate, endDate, 'B');
+
+  const { fetchVacations: fetchVacationsFromStore } = useSchoolVacationStore();
+
+
+// ✅ AJOUTER : États pour la synchronisation
+const [syncLoading, setSyncLoading] = useState(false);
+const [syncStatus, setSyncStatus] = useState(null);
+
+// ✅ AJOUTER : Fonction de synchronisation des vacances
+const syncVacationsFromAPI = async () => {
+  setSyncLoading(true);
+  setSyncStatus(null);
+  
+  try {
+    console.log('🔄 Synchronisation des vacances depuis l\'API educ.gouv...');
+    
+    const currentSchoolYear = selectedYear;
+    const schoolYears = [
+      `${currentSchoolYear - 1}-${currentSchoolYear}`, // 2023-2024
+      `${currentSchoolYear}-${currentSchoolYear + 1}`,   // 2024-2025
+      `${currentSchoolYear + 1}-${currentSchoolYear + 2}` // 2025-2026
+    ];
+    
+    console.log('📅 Années à synchroniser:', schoolYears);
+    
+    const response = await api.post('/school-vacations/sync', {
+      zones: ['A', 'B', 'C'],
+      schoolYears: schoolYears
+    });
+    
+    console.log('📡 Réponse API complète:', response.data);
+    console.log('📊 Type de response.data.results:', typeof response.data.results);
+    console.log('📊 Contenu results:', response.data.results);
+    
+    if (response.data.success) {
+      console.log('✅ Synchronisation réussie');
+      
+      // ✅ CORRIGER : Gestion defensive des résultats
+      let results = [];
+      let count = 0;
+      
+      // Essayer différents formats de réponse
+      if (response.data.results) {
+        if (Array.isArray(response.data.results)) {
+          results = response.data.results;
+          count = results.length;
+        } else if (typeof response.data.results === 'object') {
+          // Si results est un objet avec created/updated
+          count = (response.data.results.created || 0) + (response.data.results.updated || 0);
+          results = []; // Pas de détails disponibles
+        }
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        results = response.data.data;
+        count = results.length;
+      } else if (response.data.count) {
+        count = response.data.count;
+        results = [];
+      }
+      
+      console.log(`📊 Résultats traités: ${count} périodes, ${results.length} détails`);
+      
+      setSyncStatus({
+        type: 'success',
+        message: `${count} périodes synchronisées depuis l'API gouvernementale`,
+        details: Array.isArray(results) ? results : []
+      });
+      
+      // ✅ FORCER : Rechargement après synchronisation
+      console.log('🔄 Rechargement des vacances...');
+      await fetchVacationsFromStore(startDate, endDate, 'B');
+      
+      // Auto-masquer après 8 secondes au lieu de 5
+      setTimeout(() => setSyncStatus(null), 8000);
+      
+    } else {
+      throw new Error(response.data.message || 'Erreur de synchronisation');
+    }
+    
+  } catch (error) {
+    console.error('❌ Erreur synchronisation:', error);
+    console.error('❌ Détails erreur:', error.response?.data);
+    
+    setSyncStatus({
+      type: 'error',
+      message: error.response?.data?.message || error.message || 'Erreur lors de la synchronisation'
+    });
+    
+    setTimeout(() => setSyncStatus(null), 10000);
+  } finally {
+    setSyncLoading(false);
+  }
+};
+
+
+  // ✅ CORRIGER : useEffect pour synchroniser les vacances (niveau composant)
+  useEffect(() => {
+    const syncVacationsIfNeeded = async () => {
+      try {
+        // Vérifier s'il y a des vacances dans la base
+        const response = await api.get('/school-vacations/calendar?zone=B&schoolYear=2024-2025');
+        
+        if (!response.data.success || response.data.count === 0) {
+          console.log('🔄 Aucune vacance trouvée, synchronisation...');
+          
+          // Synchroniser automatiquement
+          await api.post('/school-vacations/sync-auto');
+          
+          // Le hook se rechargera automatiquement
+        }
+      } catch (error) {
+        console.log('ℹ️ Synchronisation automatique non disponible:', error.message);
+      }
+    };
+
+    syncVacationsIfNeeded();
+  }, []); // Exécution unique au montage
+
+  // ✅ CORRIGER : useEffect pour debug (niveau composant)
+  useEffect(() => {
+    if (vacationError) {
+      console.warn('⚠️ Erreur vacances:', vacationError);
+    }
+    if (!vacationLoading) {
+      console.log('🏖️ Vacances chargées, test avec une date...');
+      const testDate = new Date('2024-12-23'); // Vacances de Noël
+      console.log('Test date 23/12/2024:', {
+        isVacation: isVacationDay(testDate),
+        info: getVacationInfo(testDate)
+      });
+    }
+  }, [vacationLoading, vacationError, isVacationDay, getVacationInfo]);
 
   // Fonction pour obtenir les bornes de mois selon le type d'année
   const getMonthBounds = (year, yearType) => {
@@ -72,11 +213,8 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
   // Fonction pour obtenir l'année d'affichage du calendrier
   const getCalendarYear = (month) => {
     if (yearType === YEAR_TYPES.SCHOOL) {
-      // En mode scolaire, si on est de septembre à décembre : année N
-      // Si on est de janvier à août : année N+1
       return month >= 8 ? selectedYear : selectedYear + 1;
     } else {
-      // Mode civil : toujours l'année sélectionnée
       return selectedYear;
     }
   };
@@ -85,16 +223,14 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
   const getDisplayMonth = () => {
     const year = getCalendarYear(currentMonth);
     return `${monthNames[currentMonth]} ${year}`;
-  };  
+  };
 
   // Génère une grille plate de 42 jours (6 semaines × 7 jours)
   const getCalendarGrid = (selectedYear, month) => {
-    const calendarYear = getCalendarYear(month); // la bonne année
+    const calendarYear = getCalendarYear(month);
     
     const firstDayOfMonth = new Date(calendarYear, month, 1);
     const startDay = (firstDayOfMonth.getDay() + 6) % 7; // Lundi=0
-    
-    // Date du premier lundi affiché
     const gridStart = new Date(calendarYear, month, 1 - startDay);
 
     const today = new Date();
@@ -107,13 +243,19 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
       const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const planning = yearlyPlanning.planning?.find(p => p.plan_date === dateStr);
       
+      // ✅ CORRIGER : Utiliser les hooks correctement définis
+      const isVacation = isVacationDay(date);
+      const vacationInfo = isVacation ? getVacationInfo(date) : null;
+      
       return {
         date,
         dateStr,
         day: date.getDate(),
         isCurrentMonth: date.getMonth() === month,
         isToday: dateStr === todayStr, 
-        planning
+        planning,
+        isVacation,
+        vacationInfo
       };
     });
   };
@@ -126,27 +268,22 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
       if (yearType === YEAR_TYPES.SCHOOL) {
         if (direction === 'prev') {
           if (prev === bounds.startMonth) {
-            // Septembre → revenir à août de l'année suivante
             return bounds.endMonth;
           } else if (prev === 0) {
-            // Janvier → Décembre année précédente
             return 11;
           } else {
             return prev - 1;
           }
         } else {
           if (prev === bounds.endMonth) {
-            // Août → revenir à septembre
             return bounds.startMonth;
           } else if (prev === 11) {
-            // Décembre → Janvier année suivante
             return 0;
           } else {
             return prev + 1;
           }
         }
       } else {
-        // Mode civil : comportement normal
         if (direction === 'prev') {
           return prev === 0 ? 11 : prev - 1;
         } else {
@@ -163,21 +300,16 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
     const todayYear = today.getFullYear();
     
     if (yearType === YEAR_TYPES.SCHOOL) {
-      // Déterminer l'année scolaire du jour actuel
       const currentSchoolYear = getCurrentYear(YEAR_TYPES.SCHOOL);
-      
-      // Mettre à jour l'année sélectionnée si nécessaire
       if (selectedYear !== currentSchoolYear) {
         setSelectedYear(currentSchoolYear);
       }
     } else {
-      // Mode civil : mettre à jour l'année si nécessaire
       if (selectedYear !== todayYear) {
         setSelectedYear(todayYear);
       }
     }
     
-    // Toujours aller au mois actuel
     setCurrentMonth(todayMonth);
   };
 
@@ -188,7 +320,7 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
     }
     
     try {
-      const calendarYear = getCalendarYear(currentMonth); // ✅ Année correcte
+      const calendarYear = getCalendarYear(currentMonth);
       
       const monthlyTotal = yearlyPlanning.planning
         .filter(p => {
@@ -197,7 +329,6 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
           const planDate = new Date(p.plan_date + 'T00:00:00');
           if (isNaN(planDate.getTime())) return false;
           
-          // ✅ CORRIGER : Vérifier avec la bonne année du calendrier
           return planDate.getFullYear() === calendarYear && planDate.getMonth() === currentMonth;
         })
         .reduce((total, planning) => {
@@ -213,7 +344,6 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
     }
   };
 
-  // Utiliser la nouvelle fonction getCalendarGrid
   const calendarDays = getCalendarGrid(selectedYear, currentMonth);
 
   const monthNames = [
@@ -236,10 +366,10 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
     
     const dataWithDate = {
       ...planningData,
-      plan_date: localDateStr // Format YYYY-MM-DD
+      plan_date: localDateStr
     };
     
-    console.log('📤 Données complètes envoyées:', dataWithDate); // Debug
+    console.log('📤 Données complètes envoyées:', dataWithDate);
     
     const result = await upsertPlanning(dataWithDate);
     if (result.success) {
@@ -250,40 +380,39 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
     return result;
   };
 
-const renderYearSelector = () => (
-  <div className="flex items-center space-x-3">
-    <label className="text-sm font-medium text-gray-700">
-      {yearType === YEAR_TYPES.SCHOOL ? 'Année scolaire :' : 'Année :'}
-    </label>
-    <select
-      value={selectedYear}
-      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-      className="border border-gray-300 rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-500"
-    >
-      {[...Array(5)].map((_, i) => {
-        const year = getCurrentYear(yearType) - 2 + i;
-        return (
-          <option key={year} value={year}>
-            {yearType === YEAR_TYPES.SCHOOL ? `${year}-${year + 1}` : year}
-            {year === getCurrentYear(yearType) ? ' (actuel)' : ''}
-          </option>
-        );
-      })}
-    </select>
-  </div>
-);
+  const renderYearSelector = () => (
+    <div className="flex items-center space-x-3">
+      <label className="text-sm font-medium text-gray-700">
+        {yearType === YEAR_TYPES.SCHOOL ? 'Année scolaire :' : 'Année civile :'}
+      </label>
+      <select
+        value={selectedYear}
+        onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+        className="border border-gray-300 rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-500"
+      >
+        {[...Array(5)].map((_, i) => {
+          const year = getCurrentYear(yearType) - 2 + i;
+          return (
+            <option key={year} value={year}>
+              {yearType === YEAR_TYPES.SCHOOL ? `${year}-${year + 1}` : year}
+              {year === getCurrentYear(yearType) ? ' (actuel)' : ''}
+            </option>
+          );
+        })}
+      </select>
+    </div>
+  );
 
-  // Effet pour mettre à jour selectedYear quand yearType change
-useEffect(() => {
-  const loadPlanningData = async () => {
-    if (user?.id && selectedYear && yearType) {
-      const { startDate, endDate } = getYearBounds(selectedYear, yearType);
-      await fetchYearlyPlanning(user.id, startDate, endDate);
-    }
-  };
-  
-  loadPlanningData();
-}, [selectedYear, yearType, user?.id, fetchYearlyPlanning]);
+  useEffect(() => {
+    const loadPlanningData = async () => {
+      if (user?.id && selectedYear && yearType) {
+        const { startDate, endDate } = getYearBounds(selectedYear, yearType);
+        await fetchYearlyPlanning(user.id, startDate, endDate);
+      }
+    };
+    
+    loadPlanningData();
+  }, [selectedYear, yearType, user?.id, fetchYearlyPlanning]);
 
   if (loading && !yearlyPlanning.planning) {
     return (
@@ -310,48 +439,142 @@ useEffect(() => {
               <p className="text-gray-600 mt-1">Organisez votre temps pour {selectedYear}</p>
             </div>
             
-<div className="flex items-center space-x-3">
-  {onBack && (
-    <Button variant="outline" onClick={onBack} className="mr-3">
-      ← Retour
-    </Button>
-  )}
-
-  <Button 
-    variant="outline" 
-    onClick={() => exportPlannedHoursToCSV(yearlyPlanning, selectedYear, yearType)}
-    className="ml-2"
-  >
-    📊 Exporter Planning
-  </Button>
-
+            <div className="flex items-center space-x-3">
+              {onBack && (
+                <Button variant="outline" onClick={onBack} className="mr-3">
+                  ← Retour
+                </Button>
+              )}
   <Button 
     variant="outline"
-    onClick={() => setShowYearTypeModal(true)}
+    onClick={syncVacationsFromAPI}
     size="sm"
+    disabled={syncLoading}
+    className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 disabled:opacity-50"
   >
-    <Settings className="w-4 h-4 mr-2" />
-    Type d'année
+    {syncLoading ? (
+      <>
+        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
+        Synchronisation...
+      </>
+    ) : (
+      <>
+        🏖️ Sync Vacances
+      </>
+    )}
   </Button>
-
-  {/* ✅ REMPLACER ce select par renderYearSelector() ou le corriger */}
-  <select
-    value={selectedYear}
-    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-    className="border border-gray-300 rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-500"
+  {/* ✅ NOUVEAU : Bouton de debug pour 2024-2025 */}
+  <Button 
+    variant="outline"
+    onClick={async () => {
+      console.log('🔍 DEBUG: Vérification vacances 2024-2025...');
+      
+      try {
+        // Test 1: Vérifier ce qu'on a en base pour 2024-2025
+        const response1 = await api.get('/school-vacations/calendar?zone=B&schoolYear=2024-2025');
+        console.log('📊 Vacances 2024-2025 en base:', response1.data);
+        
+        // Test 2: Vérifier l'API gouvernementale directement
+        const response2 = await api.get('/school-vacations/raw-data?zone=B&schoolYear=2024-2025');
+        console.log('📊 API gouv 2024-2025:', response2.data);
+        
+        // Test 3: Forcer sync uniquement 2024-2025
+        const response3 = await api.post('/school-vacations/sync', {
+          zones: ['B'],
+          schoolYears: ['2024-2025']
+        });
+        console.log('📊 Sync forcée 2024-2025:', response3.data);
+        
+        alert('Vérifications terminées, regardez la console pour les détails');
+        
+      } catch (error) {
+        console.error('❌ Erreur debug:', error);
+        alert('Erreur debug: ' + error.message);
+      }
+    }}
+    size="sm"
+    className="bg-yellow-50 border-yellow-200 text-yellow-700"
   >
-    {[...Array(5)].map((_, i) => {
-      const year = getCurrentYear(yearType) - 2 + i;
-      return (
-        <option key={year} value={year}>
-          {yearType === YEAR_TYPES.SCHOOL ? `${year}-${year + 1}` : year}
-          {year === getCurrentYear(yearType) ? ' (actuel)' : ''}
-        </option>
-      );
-    })}
-  </select>
-</div>
+    🔍 Debug 2024-2025
+  </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => exportPlannedHoursToCSV(yearlyPlanning, selectedYear, yearType)}
+                className="ml-2"
+              >
+                📊 Exporter Planning
+              </Button>
+
+              <Button 
+                variant="outline"
+                onClick={() => setShowYearTypeModal(true)}
+                size="sm"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Type d'année
+              </Button>
+
+              {renderYearSelector()}
+            </div>
           </div>
+
+{/* ✅ AJOUTER : Message de statut de synchronisation */}
+{syncStatus && (
+  <div className={`mb-4 p-4 rounded-lg border ${
+    syncStatus.type === 'success' 
+      ? 'bg-green-50 border-green-200 text-green-800' 
+      : 'bg-red-50 border-red-200 text-red-800'
+  }`}>
+    <div className="flex items-center">
+      <span className="mr-2">
+        {syncStatus.type === 'success' ? '✅' : '❌'}
+      </span>
+      <span className="font-medium">{syncStatus.message}</span>
+    </div>
+    
+    {/* ✅ CORRIGER : Vérifications multiples pour éviter l'erreur */}
+    {syncStatus.details && 
+     syncStatus.type === 'success' && 
+     Array.isArray(syncStatus.details) && 
+     syncStatus.details.length > 0 && (
+      <div className="mt-2 text-sm">
+        <details>
+          <summary className="cursor-pointer hover:underline">
+            Voir le détail ({syncStatus.details.length} périodes)
+          </summary>
+          <div className="mt-2 space-y-1">
+            {syncStatus.details.slice(0, 10).map((result, idx) => (
+              <div key={idx} className="text-xs bg-white p-2 rounded border">
+                {/* ✅ CORRIGER : Gestion défensive des propriétés */}
+                {(result?.status === 'created' || result?.action === 'created') ? '🆕' : '🔄'} 
+                {result?.data?.period_name || result?.period_name || result?.title || 'Période inconnue'} - 
+                Zone {result?.data?.zone || result?.zone || '?'}
+                <span className="text-gray-500 ml-2">
+                  ({result?.data?.start_date ? new Date(result.data.start_date).toLocaleDateString('fr-FR') : '?'} → 
+                   {result?.data?.end_date ? new Date(result.data.end_date).toLocaleDateString('fr-FR') : '?'})
+                </span>
+              </div>
+            ))}
+            {syncStatus.details.length > 10 && (
+              <div className="text-xs text-gray-500">
+                ... et {syncStatus.details.length - 10} autres périodes
+              </div>
+            )}
+          </div>
+        </details>
+      </div>
+    )}
+    
+    {/* ✅ AJOUTER : Message si pas de détails ou détails vides */}
+    {syncStatus.type === 'success' && 
+     (!syncStatus.details || !Array.isArray(syncStatus.details) || syncStatus.details.length === 0) && (
+      <div className="mt-2 text-sm text-green-600">
+        Synchronisation terminée. Rechargez la page pour voir les nouvelles vacances.
+      </div>
+    )}
+  </div>
+)}
+
 
           {/* Statistiques en ligne */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -386,13 +609,11 @@ useEffect(() => {
                 {getMonthlyPlannedHours()}h
               </p>
             </div>
-
           </div>
-
         </div>
       </Card>
 
-      {/* CALENDRIER - Version Tailwind UI intégrée */}
+      {/* CALENDRIER */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
@@ -519,7 +740,7 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* En-têtes des jours - HORIZONTAL FORCÉ */}
+        {/* En-têtes des jours */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(7, 1fr)',
@@ -546,7 +767,7 @@ useEffect(() => {
           ))}
         </div>
 
-        {/* GRILLE DES JOURS - CSS INLINE COMPLET */}
+        {/* GRILLE DES JOURS */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(7, 1fr)',
@@ -565,18 +786,19 @@ useEffect(() => {
                 display: 'flex',
                 flexDirection: 'column',
                 border: dayData.isToday ? '2px solid #3b82f6' : 'none',
+                boxShadow: dayData.isVacation ? 'inset 0 0 0 2px #fbbf24' : 'none',
                 transition: 'background-color 0.2s ease',
                 overflow: 'hidden',
                 maxHeight: '120px',
               }}
               onClick={() => handleDateClick(dayData)}
-  onMouseEnter={e => {
-    if (dayData.isCurrentMonth) e.currentTarget.style.backgroundColor = '#eff6ff';
-  }}
-  onMouseLeave={e => {
-    if (dayData.isCurrentMonth) e.currentTarget.style.backgroundColor = 'white';
-    else e.currentTarget.style.backgroundColor = '#f9fafb';
-  }}
+              onMouseEnter={e => {
+                if (dayData.isCurrentMonth) e.currentTarget.style.backgroundColor = '#eff6ff';
+              }}
+              onMouseLeave={e => {
+                if (dayData.isCurrentMonth) e.currentTarget.style.backgroundColor = 'white';
+                else e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
             >
               {/* Numéro du jour */}
               <div style={{
@@ -600,10 +822,39 @@ useEffect(() => {
                 }}>
                   {dayData.day}
                 </span>
+         
+                {/* Indicateur vacances */}
+                {dayData.isVacation && (
+                  <span style={{
+                    fontSize: '12px',
+                    backgroundColor: '#fbbf24',
+                    color: 'white',
+                    padding: '2px 4px',
+                    borderRadius: '4px',
+                    fontWeight: '500'
+                  }}>
+                    🏖️
+                  </span>
+                )}
               </div>
-              
-              {/* Planifications */}
+
               <div style={{ flex: 1 }}>
+                {/* Info vacances (en premier) */}
+                {dayData.isVacation && (
+                  <div style={{
+                    fontSize: '10px',
+                    color: '#f59e0b',
+                    marginBottom: '4px',
+                    fontWeight: '500',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {dayData.vacationInfo?.title?.replace(' - Zone B', '') || 'Vacances scolaires'}
+                  </div>
+                )}
+
+                {/* Planifications */}
                 {dayData.planning?.planned_hours > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -676,53 +927,50 @@ useEffect(() => {
           onSave={handleSavePlanning}
         />
       )}
-      {/* Modal pour les paramètres */}
-{showYearTypeModal && (
-  <Modal
-    isOpen={showYearTypeModal}
-    onClose={() => {
-      // ✅ COPIER la logique de PlanningModal qui fonctionne
-      setTimeout(() => {
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
-        document.body.classList.remove('modal-open');
-        
-        // Supprimer tous les overlays orphelins
-        const overlays = document.querySelectorAll('[class*="bg-gray-900"][class*="bg-opacity"]');
-        overlays.forEach(overlay => {
-          if (overlay.parentNode) {
-            overlay.parentNode.removeChild(overlay);
-          }
-        });
-      }, 50);
-      
-      setShowYearTypeModal(false);
-    }}
-    title="Paramètres du calendrier"
-    size="lg"
-  >
-    <YearTypeSelector 
-      onClose={() => {
-        // ✅ MÊME nettoyage ici
-        setTimeout(() => {
-          document.body.style.overflow = '';
-          document.body.style.paddingRight = '';
-          document.body.classList.remove('modal-open');
-          
-          const overlays = document.querySelectorAll('[class*="bg-gray-900"][class*="bg-opacity"]');
-          overlays.forEach(overlay => {
-            if (overlay.parentNode) {
-              overlay.parentNode.removeChild(overlay);
-            }
-          });
-        }, 50);
-        
-        setShowYearTypeModal(false);
-      }} 
-    />
-  </Modal>
-)}
 
+      {/* Modal pour les paramètres */}
+      {showYearTypeModal && (
+        <Modal
+          isOpen={showYearTypeModal}
+          onClose={() => {
+            setTimeout(() => {
+              document.body.style.overflow = '';
+              document.body.style.paddingRight = '';
+              document.body.classList.remove('modal-open');
+              
+              const overlays = document.querySelectorAll('[class*="bg-gray-900"][class*="bg-opacity"]');
+              overlays.forEach(overlay => {
+                if (overlay.parentNode) {
+                  overlay.parentNode.removeChild(overlay);
+                }
+              });
+            }, 50);
+            
+            setShowYearTypeModal(false);
+          }}
+          title="Paramètres du calendrier"
+          size="lg"
+        >
+          <YearTypeSelector 
+            onClose={() => {
+              setTimeout(() => {
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+                document.body.classList.remove('modal-open');
+                
+                const overlays = document.querySelectorAll('[class*="bg-gray-900"][class*="bg-opacity"]');
+                overlays.forEach(overlay => {
+                  if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                  }
+                });
+              }, 50);
+              
+              setShowYearTypeModal(false);
+            }} 
+          />
+        </Modal>
+      )}
     </div>
   );
 };

@@ -553,7 +553,7 @@ router
 // Route pour synchroniser les données de vacances depuis l'API gouvernementale
 router
     .route('/sync')
-    .post(protect, authorize('admin'), schoolVacationController.syncVacationsFromAPI);
+    .post(protect, authorize('admin','director'), schoolVacationController.syncVacationsFromAPI);
 
 /**
  * @swagger
@@ -602,7 +602,7 @@ router
 // Route pour synchronisation automatique (années courante et suivante)
 router
     .route('/sync-auto')
-    .post(protect, authorize('admin'), schoolVacationController.syncCurrentAndNextYear);
+    .post(protect, authorize('admin','director'), schoolVacationController.syncCurrentAndNextYear);
 
 /**
  * @swagger
@@ -655,7 +655,6 @@ router
 router
     .route('/check')
     .get(protect, schoolVacationController.checkIfDateIsVacation);
-
 /**
  * @swagger
  * /school-vacations/zone/{zone}:
