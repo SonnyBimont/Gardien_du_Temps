@@ -58,7 +58,41 @@ const YearlyPlanningRoadmap = ({ onBack }) => {
 
   // ✅ CORRIGER : Hook useVacations appelé au bon endroit (niveau composant)
   const { startDate, endDate } = getYearBounds(selectedYear, yearType);
-  const { isVacationDay, getVacationInfo, loading: vacationLoading, error: vacationError } = useVacations(startDate, endDate, 'B');
+  
+  const [selectedZone, setSelectedZone] = useState('B');
+  const { fetchVacations, selectedZone: storeZone, setZone, availableZones } = useSchoolVacationStore();
+  
+  // ✅ MODIFIER : Hook useVacations avec la zone sélectionnée
+  const { isVacationDay, getVacationInfo, loading: vacationLoading, error: vacationError } = useVacations(startDate, endDate, selectedZone);
+  
+  // ✅ NOUVEAU : Gestionnaire de changement de zone
+  const handleZoneChange = async (newZone) => {
+    console.log('🗺️ Changement de zone:', newZone);
+    setSelectedZone(newZone);
+    setZone(newZone);
+    
+    // Recharger les vacances pour la nouvelle zone
+    await fetchVacations(startDate, endDate, newZone);
+  };
+  
+  // ✅ NOUVEAU : Sélecteur de zone à ajouter dans la UI
+  const renderZoneSelector = () => (
+    <div className="flex items-center space-x-3">
+      <label className="text-sm font-medium text-gray-700">
+        Zone scolaire :
+      </label>
+      <select
+        value={selectedZone}
+        onChange={(e) => handleZoneChange(e.target.value)}
+        className="border border-gray-300 rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-orange-500"
+      >
+        <option value="">Toutes les zones</option>
+        {availableZones.map(zone => (
+          <option key={zone} value={zone}>Zone {zone}</option>
+        ))}
+      </select>
+    </div>
+  );
 
   const { fetchVacations: fetchVacationsFromStore } = useSchoolVacationStore();
 
@@ -445,6 +479,13 @@ const syncVacationsFromAPI = async () => {
                   ← Retour
                 </Button>
               )}
+                            <Button 
+                variant="outline" 
+                onClick={() => exportPlannedHoursToCSV(yearlyPlanning, selectedYear, yearType)}
+                className="ml-2"
+              >
+                📊 Exporter Planning
+              </Button>
   <Button 
     variant="outline"
     onClick={syncVacationsFromAPI}
@@ -463,7 +504,7 @@ const syncVacationsFromAPI = async () => {
       </>
     )}
   </Button>
-  {/* ✅ NOUVEAU : Bouton de debug pour 2024-2025 */}
+  {/* ✅ NOUVEAU : Bouton de debug pour 2024-2025
   <Button 
     variant="outline"
     onClick={async () => {
@@ -496,14 +537,7 @@ const syncVacationsFromAPI = async () => {
     className="bg-yellow-50 border-yellow-200 text-yellow-700"
   >
     🔍 Debug 2024-2025
-  </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => exportPlannedHoursToCSV(yearlyPlanning, selectedYear, yearType)}
-                className="ml-2"
-              >
-                📊 Exporter Planning
-              </Button>
+  </Button> */}
 
               <Button 
                 variant="outline"
@@ -513,6 +547,7 @@ const syncVacationsFromAPI = async () => {
                 <Settings className="w-4 h-4 mr-2" />
                 Type d'année
               </Button>
+              {renderZoneSelector()}
 
               {renderYearSelector()}
             </div>
@@ -850,7 +885,12 @@ const syncVacationsFromAPI = async () => {
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
                   }}>
-                    {dayData.vacationInfo?.title?.replace(' - Zone B', '') || 'Vacances scolaires'}
+      🏖️ {dayData.vacationInfo?.title?.replace(` - Zone ${selectedZone}`, '') || 'Vacances'}
+    {!selectedZone && dayData.vacationInfo?.extendedProps?.zone && (
+      <span style={{ fontSize: '9px', marginLeft: '4px', opacity: 0.8 }}>
+        (Zone {dayData.vacationInfo.extendedProps.zone})
+      </span>
+    )}
                   </div>
                 )}
 
