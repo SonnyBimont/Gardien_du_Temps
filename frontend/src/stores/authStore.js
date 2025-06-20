@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import api from '../services/api';
+import { useTimeStore } from './timeStore';
 
 export const useAuthStore = create(
   persist(
@@ -13,7 +14,7 @@ export const useAuthStore = create(
       error: null,
 
 // Connexion
-      login: async (credentials) => {
+  login: async (credentials) => {
   set({ loading: true, error: null });
   try {
     const response = await api.post('/auth/login', credentials);
@@ -44,23 +45,47 @@ export const useAuthStore = create(
       },
 
 // Déconnexion
-      logout: () => {
-        // Nettoyer le stockage local
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        
-        // Réinitialiser l'état
-        set({ 
-          user: null, 
-          token: null, 
-          isAuthenticated: false, 
-          error: null,
-          loading: false
-        });
-        
-        // Rediriger vers la page de connexion
-        window.location.href = '/login';
-      },
+  logout: async () => {
+    try {
+      await api.post('/auth/logout');
+      
+      // ✅ NOUVEAU : Nettoyer TOUS les stores lors de la déconnexion
+      const timeStore = useTimeStore.getState();
+      timeStore.reset(); // Nettoyer le timeStore
+      
+      // Nettoyer le localStorage
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      
+      // Nettoyer l'authStore
+      set({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        loading: false,
+        error: null
+      });
+
+      console.log('✅ Déconnexion et nettoyage des stores réussis');
+    } catch (error) {
+      console.error('❌ Erreur lors de la déconnexion:', error);
+      
+      // ✅ FORCER le nettoyage même en cas d'erreur API
+      const timeStore = useTimeStore.getState();
+      timeStore.reset();
+      
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      
+      set({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        loading: false,
+        error: null
+      });
+    }
+  },
       
 // Vérification de l'authentification
       checkAuth: async () => {

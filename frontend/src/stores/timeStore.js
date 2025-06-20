@@ -477,21 +477,42 @@ exportTeamData: async (format = 'csv', filters = {}) => {
   // Actions utilitaires
   clearError: () => set({ error: null }),
 
-  reset: () => set({
-    todayEntries: [],
-    timeHistory: [],
-    processedHistory: [],
-    monthlyReport: {},
-    stats: {},
-    weeklyStats: {},
-    monthlyStats: {},
-    loading: false,
-    error: null,
-    lastUpdate: null,
-    _processedCache: null,
-    _cacheKey: null,
-    _cacheTime: 0
-  })
+  reset: () => {
+    console.log('🧹 Nettoyage complet du timeStore');
+    set({
+      todayEntries: [],
+      timeHistory: [],
+      processedHistory: [],
+      monthlyReport: {},
+      stats: {},
+      weeklyStats: {},
+      monthlyStats: {},
+      teamSummary: [],
+      loading: false,
+      teamLoading: false,
+      error: null,
+      lastUpdate: null,
+      _processedCache: null,
+      _cacheKey: null,
+      _cacheTime: 0
+    });
+  },
+
+  // Réinitialiser pour un nouvel utilisateur
+  initializeForUser: async (userId) => {
+    console.log('🔄 Initialisation timeStore pour utilisateur:', userId);
+    
+    // Nettoyer d'abord
+    get().reset();
+    
+    // Charger les données du nouvel utilisateur
+    try {
+      await get().fetchTodayEntries(userId);
+      console.log('✅ Données chargées pour le nouvel utilisateur');
+    } catch (error) {
+      console.error('❌ Erreur chargement données utilisateur:', error);
+    }
+  },
 
 }));
 

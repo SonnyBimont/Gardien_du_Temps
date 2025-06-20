@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import Button from './Button';
 import Card from './Card';
+import QuickTimeTrackingIcons from './QuickTimeTrackingIcons';
 
 
 const Layout = ({ children, title, sidebar, breadcrumbs, actions }) => {
@@ -195,6 +196,11 @@ const Layout = ({ children, title, sidebar, breadcrumbs, actions }) => {
                   Gardien du Temps
                 </h1>
               </button>
+                            {user && (
+                <div className="ml-8">
+                  <QuickTimeTrackingIcons />
+                </div>
+              )}
             </div>
             
             {/* Actions du header */}
