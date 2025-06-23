@@ -1,0 +1,636 @@
+=== FRONTEND IMPORTS/EXPORTS ===
+../frontend/src/reportWebVitals.js:export default reportWebVitals;
+../frontend/src/components/timetracking/TimeTracker.jsx:import React, { useEffect, useState } from 'react';
+../frontend/src/components/timetracking/TimeTracker.jsx:import { Clock, Play, Pause, Square, Coffee, CheckCircle, AlertTriangle } from 'lucide-react';
+../frontend/src/components/timetracking/TimeTracker.jsx:import { useTimeStore } from '../../stores/timeStore';
+../frontend/src/components/timetracking/TimeTracker.jsx:import { getTodayStatus, formatTime, calculateCurrentWorkingTime } from '../../utils/timeCalculations';
+../frontend/src/components/timetracking/TimeTracker.jsx:import Button from '../common/Button';
+../frontend/src/components/timetracking/TimeTracker.jsx:import Card from '../common/Card';
+../frontend/src/components/timetracking/TimeTracker.jsx:export default TimeTracker;
+../frontend/src/components/timetracking/TimeTable.jsx:import React, { useState, useEffect } from 'react';
+../frontend/src/components/timetracking/TimeTable.jsx:import { useTimeStore } from '../../stores/timeStore';
+../frontend/src/components/timetracking/TimeTable.jsx:import { useAuthStore } from '../../stores/authStore';
+../frontend/src/components/timetracking/TimeTable.jsx:import { calculateTotalHours, formatDate, formatHours } from '../../utils/timeCalculations';
+../frontend/src/components/timetracking/TimeTable.jsx:import Card from '../common/Card';
+../frontend/src/components/timetracking/TimeTable.jsx:import Button from '../common/Button';
+../frontend/src/components/timetracking/TimeTable.jsx:import Input from '../common/Input';
+../frontend/src/components/timetracking/TimeTable.jsx:export default TimeTable;
+../frontend/src/components/auth/LoginForm.jsx:import React, { useState, useEffect } from 'react';
+../frontend/src/components/auth/LoginForm.jsx:import { useNavigate } from 'react-router-dom';
+../frontend/src/components/auth/LoginForm.jsx:import { useAuthStore } from '../../stores/authStore';
+../frontend/src/components/auth/LoginForm.jsx:import { LogIn, Eye, EyeOff, Shield } from 'lucide-react';
+../frontend/src/components/auth/LoginForm.jsx:import Input from '../common/Input';
+../frontend/src/components/auth/LoginForm.jsx:import Button from '../common/Button';
+../frontend/src/components/auth/LoginForm.jsx:import Card from '../common/Card';
+../frontend/src/components/auth/LoginForm.jsx:import LoadingSpinner from '../common/LoadingSpinner';
+../frontend/src/components/auth/LoginForm.jsx:export default LoginForm;
+../frontend/src/components/common/Modal.jsx:import React, { useEffect, useRef } from 'react';
+../frontend/src/components/common/Modal.jsx:import { X } from 'lucide-react';
+../frontend/src/components/common/Modal.jsx:import Button from './Button';
+../frontend/src/components/common/Modal.jsx:export const ConfirmModal = ({
+../frontend/src/components/common/Modal.jsx:export const AlertModal = ({
+../frontend/src/components/common/Modal.jsx:export const useModal = (initialState = false) => {
+../frontend/src/components/common/Modal.jsx:export default Modal;
+../frontend/src/components/common/QuickTimeTrackingIcons.jsx:import React, { useState } from 'react';
+../frontend/src/components/common/QuickTimeTrackingIcons.jsx:import { Clock, Coffee, LogOut } from 'lucide-react';
+../frontend/src/components/common/QuickTimeTrackingIcons.jsx:import { useTimeStore } from '../../stores/timeStore';
+../frontend/src/components/common/QuickTimeTrackingIcons.jsx:import { useAuthStore } from '../../stores/authStore';
+../frontend/src/components/common/QuickTimeTrackingIcons.jsx:export default QuickTimeTrackingIcons;
+../frontend/src/components/common/LoadingSpinner.jsx:import React from 'react';
+../frontend/src/components/common/LoadingSpinner.jsx:export default LoadingSpinner;
+../frontend/src/components/common/Input.jsx:import React, { forwardRef, useState } from 'react';
+../frontend/src/components/common/Input.jsx:import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
+../frontend/src/components/common/Input.jsx:export const TextArea = forwardRef(({ 
+../frontend/src/components/common/Input.jsx:export const Select = forwardRef(({ 
+../frontend/src/components/common/Input.jsx:export default Input;
+../frontend/src/components/common/Button.jsx:import React, { forwardRef } from 'react';
+../frontend/src/components/common/Button.jsx:import { Loader2 } from 'lucide-react';
+../frontend/src/components/common/Button.jsx:export const IconButton = forwardRef(({ 
+../frontend/src/components/common/Button.jsx:export const ButtonGroup = ({ children, className = '', ...props }) => {
+../frontend/src/components/common/Button.jsx:export default Button;
+../frontend/src/components/common/Card.jsx:import React, { forwardRef } from 'react';
+../frontend/src/components/common/Card.jsx:export const CardHeader = ({ children, className = '', ...props }) => (
+../frontend/src/components/common/Card.jsx:export const CardBody = ({ children, className = '', padding = true, ...props }) => (
+../frontend/src/components/common/Card.jsx:export const CardFooter = ({ children, className = '', ...props }) => (
+../frontend/src/components/common/Card.jsx:export const StatsCard = ({ title, value, change, icon, trend = 'neutral', ...props }) => {
+../frontend/src/components/common/Card.jsx:export default Card;
+../frontend/src/components/common/VacationTester.jsx:import React, { useState } from 'react';
+../frontend/src/components/common/VacationTester.jsx:import { useSchoolVacationStore } from '../../stores/schoolVacationStore';
+../frontend/src/components/common/VacationTester.jsx:import Button from './Button';
+../frontend/src/components/common/VacationTester.jsx:import Card from './Card';
+../frontend/src/components/common/VacationTester.jsx:export default VacationTester;
+../frontend/src/components/common/UserSettings.jsx:import React from 'react';
+../frontend/src/components/common/UserSettings.jsx:import { useNavigate } from 'react-router-dom';
+../frontend/src/components/common/UserSettings.jsx:import { ArrowLeft } from 'lucide-react';
+../frontend/src/components/common/UserSettings.jsx:import Layout from './Layout';
+../frontend/src/components/common/UserSettings.jsx:import Card from './Card';
+../frontend/src/components/common/UserSettings.jsx:import Button from './Button';
+../frontend/src/components/common/UserSettings.jsx:import YearTypeSelector from './YearTypeSelector';
+../frontend/src/components/common/UserSettings.jsx:export default UserSettings;
+../frontend/src/components/common/StatsCard.jsx:import React from 'react';
+../frontend/src/components/common/StatsCard.jsx:import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+../frontend/src/components/common/StatsCard.jsx:export default StatsCard;
+../frontend/src/components/common/YearTypeSelector.jsx:import React, { useState, useEffect } from 'react';
+../frontend/src/components/common/YearTypeSelector.jsx:import { Calendar, GraduationCap, Check } from 'lucide-react';
+../frontend/src/components/common/YearTypeSelector.jsx:import { useAuthStore } from '../../stores/authStore';
+../frontend/src/components/common/YearTypeSelector.jsx:import Button from './Button';
+../frontend/src/components/common/YearTypeSelector.jsx:export default YearTypeSelector;
+../frontend/src/components/common/PlanningModal.jsx:import React, { useState, useEffect } from 'react';
+../frontend/src/components/common/PlanningModal.jsx:import { Calendar } from 'lucide-react';
+../frontend/src/components/common/PlanningModal.jsx:import Modal from './Modal';
+../frontend/src/components/common/PlanningModal.jsx:import Input from './Input';
+../frontend/src/components/common/PlanningModal.jsx:import Button from './Button';
+../frontend/src/components/common/PlanningModal.jsx:export default PlanningModal;
+../frontend/src/components/common/Layout.jsx:import React, { useState, useEffect } from 'react';
+../frontend/src/components/common/Layout.jsx:import { LogOut, User, Clock, Menu, X, Bell, Settings, ChevronDown } from 'lucide-react';
+../frontend/src/components/common/Layout.jsx:import { useNavigate, useLocation } from 'react-router-dom';
+../frontend/src/components/common/Layout.jsx:import { useAuthStore } from '../../stores/authStore';
+../frontend/src/components/common/Layout.jsx:import Button from './Button';
+../frontend/src/components/common/Layout.jsx:import Card from './Card';
+../frontend/src/components/common/Layout.jsx:import QuickTimeTrackingIcons from '../common/QuickTimeTrackingIcons';
+../frontend/src/components/common/Layout.jsx:export const SidebarContent = ({ children, className = '' }) => (
+../frontend/src/components/common/Layout.jsx:export const NavItem = ({ 
+../frontend/src/components/common/Layout.jsx:export default Layout;
+../frontend/src/components/common/RealizedHoursRoadmap.jsx:import React, { useState, useEffect, useMemo } from "react";
+../frontend/src/components/common/RealizedHoursRoadmap.jsx:import { Calendar, Target, BarChart3, Clock, CheckCircle } from "lucide-react";
+../frontend/src/components/common/RealizedHoursRoadmap.jsx:import { useTimeStore } from "../../stores/timeStore";
+../frontend/src/components/common/RealizedHoursRoadmap.jsx:import { useAuthStore } from "../../stores/authStore";
+../frontend/src/components/common/RealizedHoursRoadmap.jsx:import { usePlanningStore } from "../../stores/planningStore";
+../frontend/src/components/common/RealizedHoursRoadmap.jsx:import { calculateTotalHours, formatHours } from "../../utils/timeCalculations";
+../frontend/src/components/common/RealizedHoursRoadmap.jsx:import {exportRHReport } from "../../utils/exportCSV";
+../frontend/src/components/common/RealizedHoursRoadmap.jsx:import Card from "../common/Card";
+../frontend/src/components/common/RealizedHoursRoadmap.jsx:import Button from "../common/Button";
+../frontend/src/components/common/RealizedHoursRoadmap.jsx:import api from "../../services/api";
+../frontend/src/components/common/RealizedHoursRoadmap.jsx:    onClick={() => exportRHReport(realizedHours, yearlyPlanning, selectedYear, user)}
+../frontend/src/components/common/RealizedHoursRoadmap.jsx:export default RealizedHoursRoadmap;
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:import React, { useState, useEffect } from 'react';
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:import { useAuthStore } from '../../stores/authStore';
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:import { usePlanningStore } from '../../stores/planningStore';
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:import { useProjectStore } from '../../stores/projectStore';
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:import { useVacations } from '../../hooks/useVacations';
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:import api from '../../services/api';
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:import Card from './Card';
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:import Button from './Button';
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:import Modal from './Modal';
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:import PlanningModal from './PlanningModal';
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:import YearTypeSelector from './YearTypeSelector';
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:import {useSchoolVacationStore} from '../../stores/schoolVacationStore';
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:import { exportPlannedHoursToCSV } from '../../utils/exportCSV';
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:                onClick={() => exportPlannedHoursToCSV(yearlyPlanning, selectedYear, yearType)}
+../frontend/src/components/common/YearlyPlanningRoadmap.jsx:export default YearlyPlanningRoadmap;
+../frontend/src/components/forms/EditUserForm.jsx:import React, { useState, useEffect } from 'react';
+../frontend/src/components/forms/EditUserForm.jsx:import { useAdminStore } from '../../stores/adminStore';
+../frontend/src/components/forms/EditUserForm.jsx:import { Eye, EyeOff, User, Save, X } from 'lucide-react';
+../frontend/src/components/forms/EditUserForm.jsx:import Input from '../common/Input';
+../frontend/src/components/forms/EditUserForm.jsx:import Button from '../common/Button';
+../frontend/src/components/forms/EditUserForm.jsx:import Card from '../common/Card';
+../frontend/src/components/forms/EditUserForm.jsx:export default EditUserForm;
+../frontend/src/components/forms/CreateTaskForm.jsx:import React, { useState, useEffect } from 'react';
+../frontend/src/components/forms/CreateTaskForm.jsx:import { CheckSquare, Calendar, Clock, User, AlertCircle } from 'lucide-react';
+../frontend/src/components/forms/CreateTaskForm.jsx:import { useProjectStore } from '../../stores/projectStore';
+../frontend/src/components/forms/CreateTaskForm.jsx:import { useAdminStore } from '../../stores/adminStore';
+../frontend/src/components/forms/CreateTaskForm.jsx:import Input, { TextArea, Select } from '../common/Input';
+../frontend/src/components/forms/CreateTaskForm.jsx:import Button from '../common/Button';
+../frontend/src/components/forms/CreateTaskForm.jsx:import Card from '../common/Card';
+../frontend/src/components/forms/CreateTaskForm.jsx:export default CreateTaskForm;
+../frontend/src/components/forms/CreateUserForm.jsx:import React, { useState, useEffect } from 'react';
+../frontend/src/components/forms/CreateUserForm.jsx:import { User, Mail, Lock, Building, Shield, AlertCircle, Eye, EyeOff, Calendar, Clock, X } from 'lucide-react';
+../frontend/src/components/forms/CreateUserForm.jsx:import { useAdminStore } from '../../stores/adminStore';
+../frontend/src/components/forms/CreateUserForm.jsx:export default CreateUserForm;
+../frontend/src/components/forms/CreateStructureForm.jsx:import React, { useState } from 'react';
+../frontend/src/components/forms/CreateStructureForm.jsx:import { useAdminStore } from '../../stores/adminStore';
+../frontend/src/components/forms/CreateStructureForm.jsx:import { X, Building2 } from 'lucide-react';
+../frontend/src/components/forms/CreateStructureForm.jsx:export default CreateStructureForm;
+../frontend/src/components/forms/CreateProjectForm.jsx:import React, { useState, useEffect } from 'react';
+../frontend/src/components/forms/CreateProjectForm.jsx:import { Calendar, Users, Target, AlertCircle, CheckCircle } from 'lucide-react';
+../frontend/src/components/forms/CreateProjectForm.jsx:import { useProjectStore } from '../../stores/projectStore';
+../frontend/src/components/forms/CreateProjectForm.jsx:import { useAdminStore } from '../../stores/adminStore';
+../frontend/src/components/forms/CreateProjectForm.jsx:import { useAuthStore } from '../../stores/authStore';
+../frontend/src/components/forms/CreateProjectForm.jsx:import Input, { TextArea, Select } from '../common/Input';
+../frontend/src/components/forms/CreateProjectForm.jsx:import Button from '../common/Button';
+../frontend/src/components/forms/CreateProjectForm.jsx:import Card from '../common/Card';
+../frontend/src/components/forms/CreateProjectForm.jsx:export default CreateProjectForm;
+../frontend/src/components/dashboard/AnimatorDashboard.jsx:import React, { useState, useEffect } from 'react';
+../frontend/src/components/dashboard/AnimatorDashboard.jsx:import { useAuthStore } from '../../stores/authStore';
+../frontend/src/components/dashboard/AnimatorDashboard.jsx:import { useTimeStore } from '../../stores/timeStore';
+../frontend/src/components/dashboard/AnimatorDashboard.jsx:import Card from '../common/Card';
+../frontend/src/components/dashboard/AnimatorDashboard.jsx:import StatsCard from '../common/StatsCard';
+../frontend/src/components/dashboard/AnimatorDashboard.jsx:export default AnimatorDashboard;
+../frontend/src/components/dashboard/AdminDashboard.jsx:import React, { useState, useEffect, useCallback } from 'react';
+../frontend/src/components/dashboard/AdminDashboard.jsx:import { useAuthStore } from '../../stores/authStore';
+../frontend/src/components/dashboard/AdminDashboard.jsx:import { useAdminStore } from '../../stores/adminStore';
+../frontend/src/components/dashboard/AdminDashboard.jsx:import Modal from '../common/Modal';
+../frontend/src/components/dashboard/AdminDashboard.jsx:import Card from '../common/Card';
+../frontend/src/components/dashboard/AdminDashboard.jsx:import Button from '../common/Button';
+../frontend/src/components/dashboard/AdminDashboard.jsx:import Input from '../common/Input';
+../frontend/src/components/dashboard/AdminDashboard.jsx:import StatsCard from '../common/StatsCard';
+../frontend/src/components/dashboard/AdminDashboard.jsx:import CreateUserForm from '../forms/CreateUserForm';
+../frontend/src/components/dashboard/AdminDashboard.jsx:import CreateStructureForm from '../forms/CreateStructureForm';
+../frontend/src/components/dashboard/AdminDashboard.jsx:import { calculateDateRange, getPeriodLabel } from '../../utils/timeCalculations';
+../frontend/src/components/dashboard/AdminDashboard.jsx:export default AdminDashboard;
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import React, { useState, useEffect, useCallback } from 'react';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import { calculateTotalHours, formatTime, calculatePeriodDates, getPerformanceStatus, getMostProductiveDay, getConsistencyRating, calculateVariance, getWorkDayStatus } from '../../utils/timeCalculations';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import { useAuthStore } from '../../stores/authStore';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import { useAdminStore } from '../../stores/adminStore';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import { useTimeStore } from '../../stores/timeStore';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import Card from '../common/Card';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import StatsCard from '../common/StatsCard';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import Button from '../common/Button';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import Input from '../common/Input';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import Modal from '../common/Modal';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import YearlyPlanningRoadmap from '../common/YearlyPlanningRoadmap';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import RealizedHoursRoadmap from '../common/RealizedHoursRoadmap'; 
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import YearTypeSelector from '../common/YearTypeSelector'; 
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import CreateUserForm from '../forms/CreateUserForm';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import EditUserForm from '../forms/EditUserForm';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import CreateProjectForm from '../forms/CreateProjectForm';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import VacationTester from '../common/VacationTester';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:import QuickTimeTrackingIcons from '../common/QuickTimeTrackingIcons';
+../frontend/src/components/dashboard/DirectorDashboard.jsx:  const exportTeamData = async () => {
+../frontend/src/components/dashboard/DirectorDashboard.jsx:      if (useTimeStore.getState().exportTeamData) {
+../frontend/src/components/dashboard/DirectorDashboard.jsx:        await useTimeStore.getState().exportTeamData('csv', {
+../frontend/src/components/dashboard/DirectorDashboard.jsx:      console.error('Erreur lors de l\'export:', error);
+../frontend/src/components/dashboard/DirectorDashboard.jsx:          <Button variant="outline" onClick={exportTeamData}>
+../frontend/src/components/dashboard/DirectorDashboard.jsx:export default DirectorDashboard;
+../frontend/src/services/api.js:import axios from 'axios';
+../frontend/src/services/api.js:export default api;
+../frontend/src/stores/schoolVacationStore.js:import { create } from 'zustand';
+../frontend/src/stores/schoolVacationStore.js:import api from '../services/api';
+../frontend/src/stores/schoolVacationStore.js:export const useSchoolVacationStore = create((set, get) => ({
+../frontend/src/stores/timeStore.js:import { create } from 'zustand';
+../frontend/src/stores/timeStore.js:import api from '../services/api';
+../frontend/src/stores/timeStore.js:export const useTimeStore = create((set, get) => ({
+../frontend/src/stores/timeStore.js:// Fonction d'export des données d'équipe
+../frontend/src/stores/timeStore.js:exportTeamData: async (format = 'csv', filters = {}) => {
+../frontend/src/stores/timeStore.js:    const response = await api.get(`/time-tracking/team-export?${params}`, {
+../frontend/src/stores/projectStore.js:import { create } from 'zustand';
+../frontend/src/stores/projectStore.js:import { persist, createJSONStorage } from 'zustand/middleware';
+../frontend/src/stores/projectStore.js:import api from '../services/api';
+../frontend/src/stores/projectStore.js:export const useProjectStore = create(
+../frontend/src/stores/adminStore.js:import { create } from 'zustand';
+../frontend/src/stores/adminStore.js:import api from '../services/api';
+../frontend/src/stores/adminStore.js:export const useAdminStore = create((set, get) => ({
+../frontend/src/stores/adminStore.js:  // Fonction pour exporter les utilisateurs (inchangée)
+../frontend/src/stores/adminStore.js:  exportUsers: async (format = 'csv') => {
+../frontend/src/stores/adminStore.js:      const response = await api.get(`/users/export?format=${format}`, {
+../frontend/src/stores/adminStore.js:      link.setAttribute('download', `users_export.${format}`);
+../frontend/src/stores/adminStore.js:      const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de l\'export';
+../frontend/src/stores/planningStore.js:import { create } from 'zustand';
+../frontend/src/stores/planningStore.js:import api from '../services/api';
+../frontend/src/stores/planningStore.js:import { getYearBounds, YEAR_TYPES } from '../utils/dateUtils'; 
+../frontend/src/stores/planningStore.js:export const usePlanningStore = create((set, get) => ({
+../frontend/src/stores/authStore.js:import { create } from 'zustand';
+../frontend/src/stores/authStore.js:import { persist, createJSONStorage } from 'zustand/middleware';
+../frontend/src/stores/authStore.js:import api from '../services/api';
+../frontend/src/stores/authStore.js:export const useAuthStore = create(
+../frontend/src/hooks/useVacations.js:import { useState, useEffect } from 'react';
+../frontend/src/hooks/useVacations.js:import { useSchoolVacationStore } from '../stores/schoolVacationStore';
+../frontend/src/hooks/useVacations.js:export const useVacations = (startDate, endDate, zone = null) => { // ✅ null = toutes les zones
+../frontend/src/App.js:import React, { useEffect, useState } from 'react';
+../frontend/src/App.js:import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+../frontend/src/App.js:import { useAuthStore } from './stores/authStore';
+../frontend/src/App.js:import LoginPage from './pages/LoginPage';
+../frontend/src/App.js:import DashboardPage from './pages/DashboardPage';
+../frontend/src/App.js:import Layout from './components/common/Layout';
+../frontend/src/App.js:export default App;
+../frontend/src/App.test.js:import { render, screen } from '@testing-library/react';
+../frontend/src/App.test.js:import App from './App';
+../frontend/src/index.js:import React from 'react';
+../frontend/src/index.js:import ReactDOM from 'react-dom/client';
+../frontend/src/index.js:import App from './App';
+../frontend/src/pages/LoginPage.jsx:import React, { useEffect } from 'react';
+../frontend/src/pages/LoginPage.jsx:import { useNavigate } from 'react-router-dom';
+../frontend/src/pages/LoginPage.jsx:import { Clock, Shield, Users, Target } from 'lucide-react';
+../frontend/src/pages/LoginPage.jsx:import { useAuthStore } from '../stores/authStore';
+../frontend/src/pages/LoginPage.jsx:import LoginForm from '../components/auth/LoginForm';
+../frontend/src/pages/LoginPage.jsx:export default LoginPage;
+../frontend/src/pages/DashboardPage.jsx:import React, { useEffect, useState } from 'react';
+../frontend/src/pages/DashboardPage.jsx:import { useAuthStore } from '../stores/authStore';
+../frontend/src/pages/DashboardPage.jsx:import { useTimeStore } from '../stores/timeStore';
+../frontend/src/pages/DashboardPage.jsx:import { AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+../frontend/src/pages/DashboardPage.jsx:import AdminDashboard from '../components/dashboard/AdminDashboard';
+../frontend/src/pages/DashboardPage.jsx:import DirectorDashboard from '../components/dashboard/DirectorDashboard';
+../frontend/src/pages/DashboardPage.jsx:import AnimatorDashboard from '../components/dashboard/AnimatorDashboard';
+../frontend/src/pages/DashboardPage.jsx:export default DashboardPage;
+../frontend/src/utils/exportCSV.js:import { YEAR_TYPES, getYearByType } from './dateUtils';
+../frontend/src/utils/exportCSV.js:export const exportRealizedHoursToCSV = (realizedHours, yearlyPlanning, selectedYear, yearType = YEAR_TYPES.CIVIL) => {
+../frontend/src/utils/exportCSV.js:export const exportPlannedHoursToCSV = (yearlyPlanning, selectedYear, yearType = YEAR_TYPES.CIVIL) => {
+../frontend/src/utils/exportCSV.js:export const exportRHReport = (realizedHours, yearlyPlanning, selectedYear, user) => {
+../frontend/src/utils/timeCalculations.js:import { fr } from 'date-fns/locale';
+../frontend/src/utils/timeCalculations.js:export const getCurrentWeekRange = () => {
+../frontend/src/utils/timeCalculations.js:export const getCurrentMonthRange = () => {
+../frontend/src/utils/timeCalculations.js:export const getCurrentYearRange = () => {
+../frontend/src/utils/timeCalculations.js:export const getPreviousWeekRange = () => {
+../frontend/src/utils/timeCalculations.js:export const getPreviousMonthRange = () => {
+../frontend/src/utils/timeCalculations.js:export const calculateDateRange = (period) => {
+../frontend/src/utils/timeCalculations.js:export const calculatePeriodObjectiveStandard = (period, weeklyHours, annualHours = null) => {
+../frontend/src/utils/timeCalculations.js:export const getPeriodLabel = (period, dateRange = null) => {
+../frontend/src/utils/timeCalculations.js:export const calculateTotalHours = (entries) => {
+../frontend/src/utils/timeCalculations.js:export const calculateWorkingHours = (entries) => {
+../frontend/src/utils/timeCalculations.js:export const calculateTotalHoursOptimized = (entries, options = {}) => {
+../frontend/src/utils/timeCalculations.js:export const groupEntriesByDate = (entries) => {
+../frontend/src/utils/timeCalculations.js:export const formatTime = (dateTime) => {
+../frontend/src/utils/timeCalculations.js:export const formatDate = (dateString) => {
+../frontend/src/utils/timeCalculations.js:export const formatDateShort = (dateString) => {
+../frontend/src/utils/timeCalculations.js:export const formatDayName = (dateString) => {
+../frontend/src/utils/timeCalculations.js:export const formatHours = (hours) => {
+../frontend/src/utils/timeCalculations.js:export const formatMinutesToHours = (minutes) => {
+../frontend/src/utils/timeCalculations.js:export const getTodayStatus = (entries) => {
+../frontend/src/utils/timeCalculations.js:export const getWorkDayStatus = (arrival, departure, breakStart, breakEnd) => {
+../frontend/src/utils/timeCalculations.js:export const calculateWeeklyStats = (entries) => {
+../frontend/src/utils/timeCalculations.js:export const calculateMonthlyStats = (entries) => {
+../frontend/src/utils/timeCalculations.js:export const calculateCurrentWorkingTime = (todayEntries) => {
+../frontend/src/utils/timeCalculations.js:export const getExpectedHours = (date = new Date()) => {
+../frontend/src/utils/timeCalculations.js:export const calculateOvertime = (workedHours, expectedHours = 7) => {
+../frontend/src/utils/timeCalculations.js:export const isWorkingDay = (date) => {
+../frontend/src/utils/timeCalculations.js:export const validateTimeEntry = (type, currentStatus) => {
+../frontend/src/utils/timeCalculations.js:export const exportTimeEntries = (entries, format = 'csv') => {
+../frontend/src/utils/timeCalculations.js:export const debugTimeEntry = (entry) => {
+../frontend/src/utils/timeCalculations.js:export const calculateDayBreakTime = (dayEntries) => {
+../frontend/src/utils/timeCalculations.js:export const analyzeWorkPatterns = (entries) => {
+../frontend/src/utils/timeCalculations.js:export const generateProductivityReport = (entries, expectedHoursPerDay = 7) => {
+../frontend/src/utils/dateUtils.js:export const YEAR_TYPES = {
+../frontend/src/utils/dateUtils.js:export const DEFAULT_YEAR_TYPE = YEAR_TYPES.SCHOOL;
+../frontend/src/utils/dateUtils.js:export const getSchoolYear = (date) => {
+../frontend/src/utils/dateUtils.js:export const getCivilYear = (date) => {
+../frontend/src/utils/dateUtils.js:export const getYearByType = (date, yearType = DEFAULT_YEAR_TYPE) => {
+../frontend/src/utils/dateUtils.js:export const getYearBounds = (year, yearType = DEFAULT_YEAR_TYPE) => {
+../frontend/src/utils/dateUtils.js:export const filterByYearType = (entries, year, yearType = DEFAULT_YEAR_TYPE, dateField = 'date') => {
+../frontend/src/utils/dateUtils.js:export const getYearOptions = (yearType = DEFAULT_YEAR_TYPE, nbYears = 5) => {
+../frontend/src/utils/dateUtils.js:export const isDateInYear = (date, year, yearType = DEFAULT_YEAR_TYPE) => {
+../frontend/src/utils/dateUtils.js:export const formatYearDisplay = (year, yearType = DEFAULT_YEAR_TYPE) => {
+../frontend/src/utils/dateUtils.js:export const getCurrentYear = (yearType = DEFAULT_YEAR_TYPE) => {
+../frontend/src/utils/dateUtils.js:export const debugCurrentSchoolYear = () => {
+../frontend/src/config/constants.js:export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+../frontend/src/config/constants.js:export const API_ENDPOINTS = {
+
+=== BACKEND IMPORTS/EXPORTS ===
+../backend/src/validators/userValidator.js:const { body, validationResult } = require('express-validator');
+../backend/src/validators/userValidator.js:exports.validateUser = [
+../backend/src/middlewares/auth.js:const jwt = require('jsonwebtoken');
+../backend/src/middlewares/auth.js:const config = require('../config/config');
+../backend/src/middlewares/auth.js:const { User } = require('../models');
+../backend/src/middlewares/auth.js:exports.protect = async (req, res, next) => {
+../backend/src/middlewares/auth.js:exports.authorize = (...roles) => {
+../backend/src/services/scheduleService.js:const cron = require('node-cron');
+../backend/src/services/scheduleService.js:const axios = require('axios');
+../backend/src/services/scheduleService.js:const { School_Vacations } = require('../models');
+../backend/src/services/scheduleService.js:const config = require('../config/config');
+../backend/src/services/scheduleService.js:module.exports = {
+../backend/src/routes/authRoutes.js:const express = require('express');
+../backend/src/routes/authRoutes.js:const authController = require('../controllers/authController');
+../backend/src/routes/authRoutes.js:const { protect } = require('../middlewares/auth');
+../backend/src/routes/authRoutes.js: *       required:
+../backend/src/routes/authRoutes.js: *       required: true
+../backend/src/routes/authRoutes.js:module.exports = router;
+../backend/src/routes/timeTrackingRoutes.js:const express = require('express');
+../backend/src/routes/timeTrackingRoutes.js:const timeTrackingController = require('../controllers/timeTrackingController');
+../backend/src/routes/timeTrackingRoutes.js:const { protect, authorize } = require('../middlewares/auth');
+../backend/src/routes/timeTrackingRoutes.js: *       required:
+../backend/src/routes/timeTrackingRoutes.js: *       required:
+../backend/src/routes/timeTrackingRoutes.js: *       required: true
+../backend/src/routes/timeTrackingRoutes.js: *         required: true
+../backend/src/routes/timeTrackingRoutes.js: *         required: true
+../backend/src/routes/timeTrackingRoutes.js: *       required: true
+../backend/src/routes/timeTrackingRoutes.js: *             required:
+../backend/src/routes/timeTrackingRoutes.js: *       required: false
+../backend/src/routes/timeTrackingRoutes.js: *       required: false
+../backend/src/routes/timeTrackingRoutes.js: *       required: false
+../backend/src/routes/timeTrackingRoutes.js: *       required: false
+../backend/src/routes/timeTrackingRoutes.js: *         required: true
+../backend/src/routes/timeTrackingRoutes.js: *         required: true
+../backend/src/routes/timeTrackingRoutes.js: *         required: true
+../backend/src/routes/timeTrackingRoutes.js: *       required: true
+../backend/src/routes/timeTrackingRoutes.js: *         required: true
+../backend/src/routes/timeTrackingRoutes.js:module.exports = router;
+../backend/src/routes/schoolVacationRoutes.js:const express = require('express');
+../backend/src/routes/schoolVacationRoutes.js:const schoolVacationController = require('../controllers/schoolVacationController');
+../backend/src/routes/schoolVacationRoutes.js:const { protect, authorize } = require('../middlewares/auth');
+../backend/src/routes/schoolVacationRoutes.js: *       required:
+../backend/src/routes/schoolVacationRoutes.js: *       required:
+../backend/src/routes/schoolVacationRoutes.js: *       required:
+../backend/src/routes/schoolVacationRoutes.js: *       required: true
+../backend/src/routes/schoolVacationRoutes.js: *       required: true
+../backend/src/routes/schoolVacationRoutes.js: *         required: true
+../backend/src/routes/schoolVacationRoutes.js: *         required: true
+../backend/src/routes/schoolVacationRoutes.js: *         required: true
+../backend/src/routes/schoolVacationRoutes.js: *         required: true
+../backend/src/routes/schoolVacationRoutes.js: *         required: true
+../backend/src/routes/schoolVacationRoutes.js: *       required: true
+../backend/src/routes/schoolVacationRoutes.js: *         required: true
+../backend/src/routes/schoolVacationRoutes.js:module.exports = router;
+../backend/src/routes/projectRoutes.js:const express = require('express');
+../backend/src/routes/projectRoutes.js:const projectController = require('../controllers/projectController');
+../backend/src/routes/projectRoutes.js:const { protect, authorize } = require('../middlewares/auth');
+../backend/src/routes/projectRoutes.js: *       required:
+../backend/src/routes/projectRoutes.js: *       required:
+../backend/src/routes/projectRoutes.js: *       required: true
+../backend/src/routes/projectRoutes.js: *         required: true
+../backend/src/routes/projectRoutes.js: *         required: true
+../backend/src/routes/projectRoutes.js: *       required: true
+../backend/src/routes/projectRoutes.js: *         required: true
+../backend/src/routes/projectRoutes.js: *         required: true
+../backend/src/routes/projectRoutes.js:module.exports = router;
+../backend/src/routes/taskRoutes.js:const express = require('express');
+../backend/src/routes/taskRoutes.js:const taskController = require('../controllers/taskController');
+../backend/src/routes/taskRoutes.js:const { protect, authorize } = require('../middlewares/auth');
+../backend/src/routes/taskRoutes.js: *       required:
+../backend/src/routes/taskRoutes.js: *       required:
+../backend/src/routes/taskRoutes.js: *       required: true
+../backend/src/routes/taskRoutes.js: *         required: true
+../backend/src/routes/taskRoutes.js: *         required: true
+../backend/src/routes/taskRoutes.js: *       required: true
+../backend/src/routes/taskRoutes.js: *         required: true
+../backend/src/routes/taskRoutes.js: *         required: true
+../backend/src/routes/taskRoutes.js: *         required: true
+../backend/src/routes/taskRoutes.js:module.exports = router;
+../backend/src/routes/activityLogRoutes.js:const express = require('express');
+../backend/src/routes/activityLogRoutes.js:const activityLogController = require('../controllers/activityLogController');
+../backend/src/routes/activityLogRoutes.js:const { protect, authorize } = require('../middlewares/auth');
+../backend/src/routes/activityLogRoutes.js: *       required:
+../backend/src/routes/activityLogRoutes.js: *       required:
+../backend/src/routes/activityLogRoutes.js: *       required: true
+../backend/src/routes/activityLogRoutes.js: *         required: true
+../backend/src/routes/activityLogRoutes.js: *         required: true
+../backend/src/routes/activityLogRoutes.js: *         required: true
+../backend/src/routes/activityLogRoutes.js: *         required: true
+../backend/src/routes/activityLogRoutes.js: *         required: true
+../backend/src/routes/activityLogRoutes.js:module.exports = router;
+../backend/src/routes/hourPlanningRoutes.js:const express = require('express');
+../backend/src/routes/hourPlanningRoutes.js:const hourPlanningController = require('../controllers/hourPlanningController');
+../backend/src/routes/hourPlanningRoutes.js:const { protect } = require('../middlewares/auth');
+../backend/src/routes/hourPlanningRoutes.js:module.exports = router;
+../backend/src/routes/index.js:const express = require('express');
+../backend/src/routes/index.js:const authRoutes = require('./authRoutes');
+../backend/src/routes/index.js:const userRoutes = require('./userRoutes');
+../backend/src/routes/index.js:const structureRoutes = require('./structureRoutes');
+../backend/src/routes/index.js:const projectRoutes = require('./projectRoutes');
+../backend/src/routes/index.js:const taskRoutes = require('./taskRoutes');
+../backend/src/routes/index.js:const timeTrackingRoutes = require('./timeTrackingRoutes');
+../backend/src/routes/index.js:const plannedScheduleRoutes = require('./plannedScheduleRoutes');
+../backend/src/routes/index.js:const hourPlanningRoutes = require('./hourPlanningRoutes');
+../backend/src/routes/index.js:const schoolVacationRoutes = require('./schoolVacationRoutes');
+../backend/src/routes/index.js:const activityLogRoutes = require('./activityLogRoutes');
+../backend/src/routes/index.js:module.exports = router;
+../backend/src/routes/userRoutes.js:const express = require('express');
+../backend/src/routes/userRoutes.js:const userController = require('../controllers/userController');
+../backend/src/routes/userRoutes.js:const { protect, authorize } = require('../middlewares/auth');
+../backend/src/routes/userRoutes.js: *       required:
+../backend/src/routes/userRoutes.js: *       required:
+../backend/src/routes/userRoutes.js: *       required: true
+../backend/src/routes/userRoutes.js: *         required: true
+../backend/src/routes/userRoutes.js: *         required: true
+../backend/src/routes/userRoutes.js: *       required: true
+../backend/src/routes/userRoutes.js: *         required: true
+../backend/src/routes/userRoutes.js:module.exports = router;
+../backend/src/routes/plannedScheduleRoutes.js:const express = require('express');
+../backend/src/routes/plannedScheduleRoutes.js:const plannedScheduleController = require('../controllers/plannedScheduleController');
+../backend/src/routes/plannedScheduleRoutes.js:const { protect, authorize } = require('../middlewares/auth');
+../backend/src/routes/plannedScheduleRoutes.js: *       required:
+../backend/src/routes/plannedScheduleRoutes.js: *       required:
+../backend/src/routes/plannedScheduleRoutes.js: *       required: true
+../backend/src/routes/plannedScheduleRoutes.js: *         required: true
+../backend/src/routes/plannedScheduleRoutes.js: *         required: true
+../backend/src/routes/plannedScheduleRoutes.js: *         required: true
+../backend/src/routes/plannedScheduleRoutes.js: *         required: true
+../backend/src/routes/plannedScheduleRoutes.js: *         required: true
+../backend/src/routes/plannedScheduleRoutes.js: *       required: true
+../backend/src/routes/plannedScheduleRoutes.js: *         required: true
+../backend/src/routes/plannedScheduleRoutes.js:module.exports = router;
+../backend/src/routes/structureRoutes.js:const express = require('express');
+../backend/src/routes/structureRoutes.js:const structureController = require('../controllers/structureController');
+../backend/src/routes/structureRoutes.js:const { protect, authorize } = require('../middlewares/auth');
+../backend/src/routes/structureRoutes.js: *       required:
+../backend/src/routes/structureRoutes.js: *       required:
+../backend/src/routes/structureRoutes.js: *       required: true
+../backend/src/routes/structureRoutes.js: *         required: true
+../backend/src/routes/structureRoutes.js: *         required: true
+../backend/src/routes/structureRoutes.js: *       required: true
+../backend/src/routes/structureRoutes.js: *         required: true
+../backend/src/routes/structureRoutes.js:module.exports = router;
+../backend/src/tests/integration/routes/authRoutes.test.js:const request = require('supertest');
+../backend/src/tests/integration/routes/authRoutes.test.js:const app = require('../../../app');
+../backend/src/tests/unit/example.test.js:const { test, expect } = require('@jest/globals');
+../backend/src/tests/unit/controllers/authController.test.js:const authController = require('../../../controllers/authController');
+../backend/src/tests/unit/controllers/authController.test.js:		expect(res.json).toHaveBeenCalledWith({ error: 'Username is required' });
+../backend/src/tests/unit/utils/formatDate.test.js:const formatDate = require('../../../utils/formatDate');
+../backend/src/controllers/userController.js:const { User, Structure, TimeTracking, Task, ActivityLog } = require('../models');
+../backend/src/controllers/userController.js:const bcrypt = require('bcryptjs');
+../backend/src/controllers/userController.js:const { Op } = require('sequelize');
+../backend/src/controllers/userController.js:exports.getUsers = async (req, res) => {
+../backend/src/controllers/userController.js:exports.getUserById = async (req, res) => {
+../backend/src/controllers/userController.js:exports.createUser = async (req, res) => {
+../backend/src/controllers/userController.js:exports.updateUser = async (req, res) => {
+../backend/src/controllers/userController.js:exports.deleteUser = async (req, res) => {
+../backend/src/controllers/userController.js:exports.restoreUser = async (req, res) => {
+../backend/src/controllers/userController.js:exports.toggleUserStatus = async (req, res) => {
+../backend/src/controllers/userController.js:exports.updateProfile = async (req, res) => {
+../backend/src/controllers/userController.js:exports.getStats = async (req, res) => {
+../backend/src/controllers/userController.js:exports.getDashboardStats = async (req, res) => {
+../backend/src/controllers/userController.js:exports.getRecentActivity = async (req, res) => {
+../backend/src/controllers/userController.js:exports.getSystemHealth = async (req, res) => {
+../backend/src/controllers/userController.js:exports.getAuditLogs = async (req, res) => {
+../backend/src/controllers/userController.js:exports.getStatsWithFixedPeriods = async (req, res) => {
+../backend/src/controllers/userController.js:exports.getDashboardStatsWithFixedPeriods = async (req, res) => {
+../backend/src/controllers/userController.js:exports.getRecentActivityWithPeriod = async (req, res) => {
+../backend/src/controllers/activityLogController.js:const { Activity_Log, User } = require('../models');
+../backend/src/controllers/activityLogController.js:const { Op } = require('sequelize');
+../backend/src/controllers/activityLogController.js:exports.getAllLogs = async (req, res) => {
+../backend/src/controllers/activityLogController.js:exports.getLogById = async (req, res) => {
+../backend/src/controllers/activityLogController.js:exports.createLog = async (req, res) => {
+../backend/src/controllers/activityLogController.js:exports.deleteLog = async (req, res) => {
+../backend/src/controllers/activityLogController.js:exports.getLogsByUser = async (req, res) => {
+../backend/src/controllers/activityLogController.js:exports.getLogsByDateRange = async (req, res) => {
+../backend/src/controllers/activityLogController.js:exports.searchLogs = async (req, res) => {
+../backend/src/controllers/taskController.js:const { Task, Project, User, User_Task } = require('../models');
+../backend/src/controllers/taskController.js:exports.getTasks = async (req, res) => {
+../backend/src/controllers/taskController.js:exports.getTaskById = async (req, res) => {
+../backend/src/controllers/taskController.js:exports.createTask = async (req, res) => {
+../backend/src/controllers/taskController.js:exports.updateTask = async (req, res) => {
+../backend/src/controllers/taskController.js:exports.deleteTask = async (req, res) => {
+../backend/src/controllers/taskController.js:exports.getTasksByProject = async (req, res) => {
+../backend/src/controllers/taskController.js:exports.getTasksByUser = async (req, res) => {
+../backend/src/controllers/taskController.js:exports.getTasksByAnimator = async (req, res) => {
+../backend/src/controllers/taskController.js:          required: false
+../backend/src/controllers/taskController.js:exports.markTaskAsCompleted = async (req, res) => {
+../backend/src/controllers/authController.js:const jwt = require('jsonwebtoken');
+../backend/src/controllers/authController.js:const bcryptjs = require('bcryptjs');
+../backend/src/controllers/authController.js:const { User } = require('../models');
+../backend/src/controllers/authController.js:const config = require('../config/config');
+../backend/src/controllers/authController.js:exports.login = async (req, res) => {
+../backend/src/controllers/authController.js:exports.logout = async (req, res) => {
+../backend/src/controllers/authController.js:exports.getMe = async (req, res) => {
+../backend/src/controllers/authController.js:                model: require('../models').Structure,
+../backend/src/controllers/authController.js:exports.refreshToken = async (req, res) => {
+../backend/src/controllers/projectController.js:const { Project, Task, User } = require('../models');
+../backend/src/controllers/projectController.js:exports.getProjects = async (req, res) => {
+../backend/src/controllers/projectController.js:exports.getProjectById = async (req, res) => {
+../backend/src/controllers/projectController.js:exports.createProject = async (req, res) => {
+../backend/src/controllers/projectController.js:exports.updateProject = async (req, res) => {
+../backend/src/controllers/projectController.js:exports.deleteProject = async (req, res) => {
+../backend/src/controllers/projectController.js:exports.getProjectsByStructure = async (req, res) => {
+../backend/src/controllers/projectController.js:exports.getProjectsByDirector = async (req, res) => {
+../backend/src/controllers/projectController.js:exports.assignTaskToAnimator = async (req, res) => {
+../backend/src/controllers/plannedScheduleController.js:const { Planned_Schedule, User } = require('../models');
+../backend/src/controllers/plannedScheduleController.js:const { Op } = require('sequelize');
+../backend/src/controllers/plannedScheduleController.js:exports.getAllSchedules = async (req, res) => {
+../backend/src/controllers/plannedScheduleController.js:exports.getScheduleById = async (req, res) => {
+../backend/src/controllers/plannedScheduleController.js:exports.createSchedule = async (req, res) => {
+../backend/src/controllers/plannedScheduleController.js:exports.updateSchedule = async (req, res) => {
+../backend/src/controllers/plannedScheduleController.js:exports.deleteSchedule = async (req, res) => {
+../backend/src/controllers/plannedScheduleController.js:exports.getSchedulesByUser = async (req, res) => {
+../backend/src/controllers/plannedScheduleController.js:exports.getSchedulesByDateRange = async (req, res) => {
+../backend/src/controllers/plannedScheduleController.js:exports.getScheduleTemplates = async (req, res) => {
+../backend/src/controllers/plannedScheduleController.js:exports.getYearBounds = (year, yearType = 'civil') => {
+../backend/src/controllers/plannedScheduleController.js:exports.getYearlyPlanning = async (req, res) => {
+../backend/src/controllers/structureController.js:const { Structure, User } = require('../models');
+../backend/src/controllers/structureController.js:exports.getStructures = async (req, res) => {
+../backend/src/controllers/structureController.js:exports.getStructureById = async (req, res) => {
+../backend/src/controllers/structureController.js:exports.createStructure = async (req, res) => {
+../backend/src/controllers/structureController.js:exports.updateStructure = async (req, res) => {
+../backend/src/controllers/structureController.js:exports.deleteStructure = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:const { Time_Tracking, User, Task} = require('../models');
+../backend/src/controllers/timeTrackingController.js:const { Op } = require('sequelize');
+../backend/src/controllers/timeTrackingController.js:exports.getAllTimeEntries = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:exports.getTimeEntryById = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:exports.createTimeEntry = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:exports.updateTimeEntry = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:exports.deleteTimeEntry = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:exports.getTimeEntriesByUser = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:exports.getTimeEntriesByDateRange = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:exports.getTimeEntriesRange = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:exports.getTodayEntries = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:exports.quickTimeEntry = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:exports.getTimeStats = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:        const db = require('../models');
+../backend/src/controllers/timeTrackingController.js:exports.getMonthlyReport = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:exports.getTeamSummary = async (req, res) => {
+../backend/src/controllers/timeTrackingController.js:exports.getSchoolYear = (date) => {
+../backend/src/controllers/timeTrackingController.js:exports.getYearBounds = (year, yearType = 'civil') => {
+../backend/src/controllers/schoolVacationController.js:const { School_Vacations } = require('../models');
+../backend/src/controllers/schoolVacationController.js:const { Op } = require('sequelize');
+../backend/src/controllers/schoolVacationController.js:const axios = require('axios');
+../backend/src/controllers/schoolVacationController.js:exports.getAllVacations = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:exports.getVacationById = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:exports.createVacation = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:exports.updateVacation = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:exports.deleteVacation = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:exports.getVacationsByZone = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:exports.getVacationsBySchoolYear = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:exports.syncVacationsFromAPI = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:exports.getAvailableAcademies = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:exports.getAvailableSchoolYears = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:exports.getVacationsCalendar = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:exports.syncCurrentAndNextYear = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:        return await exports.syncVacationsFromAPI(req, res);
+../backend/src/controllers/schoolVacationController.js:exports.checkIfDateIsVacation = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:exports.getRawVacationData = async (req, res) => {
+../backend/src/controllers/schoolVacationController.js:exports.getVacationsInGovernmentFormat = async (req, res) => {
+../backend/src/controllers/hourPlanningController.js:const { Hour_Planning, Project, User } = require('../models');
+../backend/src/controllers/hourPlanningController.js:const { Op } = require('sequelize');
+../backend/src/controllers/hourPlanningController.js:exports.getYearlyPlanning = async (req, res) => {
+../backend/src/controllers/hourPlanningController.js:exports.upsertPlanning = async (req, res) => {
+../backend/src/migrations/20250616135309-add--assigned-to-to-project.js:module.exports = {
+../backend/src/migrations/20250613073337-create-hour-planning.js:module.exports = {
+../backend/src/migrations/20250606141433-add-structure-contact-fields.js:module.exports = {
+../backend/src/migrations/20250513143622-create-planned-schedules.js:module.exports = {
+../backend/src/migrations/20250513134855-create-structures.js:module.exports = {
+../backend/src/migrations/20250521085206-add-task-id-to-time-trackings.js:module.exports = {
+../backend/src/migrations/20250513142358-create-users.js:module.exports = {
+../backend/src/migrations/20250513143131-create-school-vacations.js:module.exports = {
+../backend/src/migrations/20250513143356-create-tasks.js:module.exports = {
+../backend/src/migrations/20250513143233-create-projects.js:module.exports = {
+../backend/src/migrations/20250513143709-create-activity-logs.js:module.exports = {
+../backend/src/migrations/20250618122138-add-year-type-to-users.js:module.exports = {
+../backend/src/migrations/20250513143545-create-time-trackings.js:module.exports = {
+../backend/src/migrations/20250513143511-create-user-tasks.js:module.exports = {
+../backend/src/app.js:const express = require('express');
+../backend/src/app.js:const cors = require('cors');
+../backend/src/app.js:const helmet = require('helmet');
+../backend/src/app.js:const morgan = require('morgan');
+../backend/src/app.js:const debug = require('debug')('gardien:server');
+../backend/src/app.js:const config = require('./config/config');
+../backend/src/app.js:const { sequelize } = require('./models');
+../backend/src/app.js:const { setupScheduledJobs } = require('./services/scheduleService');
+../backend/src/app.js:const routes = require('./routes');
+../backend/src/app.js:const swaggerConfig = require('./config/swagger');
+../backend/src/config/swagger.js:const swaggerJsDoc = require('swagger-jsdoc');
+../backend/src/config/swagger.js:const swaggerUi = require('swagger-ui-express');
+../backend/src/config/swagger.js:module.exports = {
+../backend/src/config/sequelize-cli-config.js:const config = require('./config');
+../backend/src/config/sequelize-cli-config.js:module.exports = {
+../backend/src/config/config.js:const path = require('path');
+../backend/src/config/config.js:require('dotenv').config({ path: '../../.env' });
+../backend/src/config/config.js:module.exports = config;
+../backend/src/config/database.js:const { Sequelize } = require('sequelize');
+../backend/src/config/database.js:const config = require('./config');
+../backend/src/config/database.js:const debug = require('debug')('gardien:database');
+../backend/src/config/database.js:    const { Structure, User, School_Vacations } = require('../models');
+../backend/src/config/database.js:module.exports = {
+../backend/src/seeders/20250513143951-demo-users.js:const bcryptjs = require('bcryptjs');
+../backend/src/seeders/20250513143951-demo-users.js:module.exports = {
+../backend/src/seeders/20250513144918-demo-user-tasks.js:module.exports = {
+../backend/src/seeders/20250513144000-demo-tasks.js:module.exports = {
+../backend/src/seeders/20250513145135-demo-activity-logs.js:module.exports = {
+../backend/src/seeders/20250513145031-demo-planned-schedules.js:module.exports = {
+../backend/src/seeders/20250513144954-demo-time-trackings.js:module.exports = {
+../backend/src/seeders/20250513143950-demo-structures.js:module.exports = {
+../backend/src/seeders/20250513144000-demo-school-vacations.js:module.exports = {
+../backend/src/seeders/20250513144000-demo-projects.js:module.exports = {
+../backend/src/models/Task.js:module.exports = (sequelize, DataTypes) => {
+../backend/src/models/Activity_Logs.js:module.exports = (sequelize, DataTypes) => {
+../backend/src/models/Structure.js:module.exports = (sequelize, DataTypes) => {
+../backend/src/models/Project.js:module.exports = (sequelize, DataTypes) => {
+../backend/src/models/Time_Tracking.js:module.exports = (sequelize, DataTypes) => {
+../backend/src/models/User.js:module.exports = (sequelize, DataTypes) => {
+../backend/src/models/index.js:const fs = require('fs');                  // Module pour interagir avec le système de fichiers
+../backend/src/models/index.js:const path = require('path');              // Module pour manipuler les chemins de fichiers
+../backend/src/models/index.js:const Sequelize = require('sequelize');    // ORM pour interagir avec la base de données
+../backend/src/models/index.js:const config = require('../config/config'); // Configuration de l'application
+../backend/src/models/index.js:const debug = require('debug')('gardien:models'); // Utilitaire de débogage avec namespace 'gardien:models'
+../backend/src/models/index.js:    const model = require(modelPath)(sequelize, Sequelize.DataTypes);
+../backend/src/models/index.js:module.exports = db;
+../backend/src/models/User_Task.js:module.exports = (sequelize, DataTypes) => {
+../backend/src/models/Planned_Shedule.js:module.exports = (sequelize, DataTypes) => {
+../backend/src/models/School_Vacations.js:module.exports = (sequelize, DataTypes) => {
+../backend/src/models/Hour_Planning.js:module.exports = (sequelize, DataTypes) => {
