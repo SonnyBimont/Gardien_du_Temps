@@ -130,110 +130,167 @@ exports.getVacationsBySchoolYear = async (req, res) => {
 };
 
 
-// API pour synchroniser les vacances scolaires 
 // Synchroniser les vacances scolaires depuis l'API du gouvernement
 exports.syncVacationsFromAPI = async (req, res) => {
-    try {
-        const { zones, schoolYears } = req.body;
-
-        // Valider les paramètres
-        if (!zones || !zones.length || !schoolYears || !schoolYears.length) {
-            return res.status(400).json({
-                message: 'Veuillez fournir au moins une zone (A, B, C) et une année scolaire (format: YYYY-YYYY)'
-            });
+  try {
+    const { zones = ['A', 'B', 'C'], schoolYears = ['2024-2025'], forceSync = false } = req.body;
+    
+    console.log('🔄 Début synchronisation forcée:', { zones, schoolYears, forceSync });
+    
+    const results = [];
+    const errors = [];
+    
+    // ✅ FORCER : Supprimer TOUTES les anciennes données
+    if (forceSync) {
+      console.log('🗑️ Suppression forcée de toutes les anciennes vacances...');
+      const deletedCount = await School_Vacations.destroy({
+        where: {
+          zone: { [Op.in]: zones },
+          school_year: { [Op.in]: schoolYears }
         }
-
-        // Récupérer les données pour chaque zone et année
-        const results = [];
-        const errors = [];
-
-        for (const zone of zones) {
-            for (const schoolYear of schoolYears) {
-                try {
-                    // Format de l'API : exemple pour 2023-2024, zone A
-                    // biome-ignore lint/style/useTemplate: <explanation>
-                                        const apiUrl = `https://data.education.gouv.fr/api/records/1.0/search/`
-                        + `?dataset=fr-en-calendrier-scolaire`
-                        + `&q=`
-                        + `&rows=100`
-                        + `&facet=description&facet=population&facet=start_date&facet=end_date&facet=zones&facet=annee_scolaire`
-                        + `&refine.zones=Zone+${zone}`
-                        + `&refine.annee_scolaire=${schoolYear}`
-                        + `&refine.population=Élèves`;
-
-                    // Si une académie est spécifiée, l'ajouter
-                    if (req.body.location) {
-                        apiUrl += `&refine.location=${encodeURIComponent(req.body.location)}`;
-                    }
-
-                    const response = await axios.get(apiUrl);
-                    const records = response.data.records;
-
-                    if (records && records.length > 0) {
-                        // Traiter et enregistrer chaque période de vacances
-                        for (const record of records) {
-                            const fields = record.fields;
-
-                            // Ne traiter que les vacances (pas les jours fériés)
-                            if (fields.population === "Élèves") {
-                                const vacationData = {
-                                    zone: zone,
-                                    period_name: fields.description,
-                                    start_date: new Date(fields.start_date),
-                                    end_date: new Date(fields.end_date),
-                                    school_year: schoolYear,
-                                };
-
-                                // Vérifier si cette période existe déjà
-                                const existingVacation = await School_Vacations.findOne({
-                                    where: {
-                                        zone: vacationData.zone,
-                                        period_name: vacationData.period_name,
-                                        school_year: vacationData.school_year
-                                    }
-                                });
-
-                                if (existingVacation) {
-                                    // Mettre à jour si existe déjà
-                                    await existingVacation.update(vacationData);
-                                    results.push({
-                                        status: 'updated',
-                                        data: existingVacation
-                                    });
-                                } else {
-                                    // Créer nouvelle entrée
-                                    const newVacation = await School_Vacations.create(vacationData);
-                                    results.push({
-                                        status: 'created',
-                                        data: newVacation
-                                    });
-                                }
-                            }
-                        }
-                    } else {
-                        errors.push(`Aucune donnée trouvée pour la zone ${zone}, année scolaire ${schoolYear}`);
-                    }
-                } catch (error) {
-                    errors.push(`Erreur pour zone ${zone}, année ${schoolYear}: ${error.message}`);
-                }
-            }
-        }
-
-        res.status(200).json({
-            success: true,
-            message: 'Synchronisation des vacances scolaires terminée',
-            results: {
-                created: results.filter(r => r.status === 'created').length,
-                updated: results.filter(r => r.status === 'updated').length
-            },
-            errors: errors.length > 0 ? errors : null
-        });
-    } catch (error) {
-        res.status(500).json({
-            message: 'Erreur lors de la synchronisation des vacances scolaires',
-            error: error.message
-        });
+      });
+      console.log(`🗑️ ${deletedCount} anciennes vacances supprimées`);
     }
+    
+    // ✅ BOUCLE sur chaque zone ET année
+    for (const zone of zones) {
+      for (const schoolYear of schoolYears) {
+        try {
+          console.log(`📡 Récupération zone ${zone}, année ${schoolYear}...`);
+          
+          // ✅ URL corrigée avec plus de résultats
+          const apiUrl = `https://data.education.gouv.fr/api/records/1.0/search/`
+            + `?dataset=fr-en-calendrier-scolaire`
+            + `&q=`
+            + `&rows=200` // ✅ Plus de résultats
+            + `&facet=description&facet=population&facet=start_date&facet=end_date&facet=zones&facet=annee_scolaire`
+            + `&refine.zones=Zone+${zone}`
+            + `&refine.annee_scolaire=${schoolYear}`
+
+          console.log(`📡 URL: ${apiUrl}`);
+          
+          const response = await axios.get(apiUrl, {
+            timeout: 60000, // 1 minute
+            headers: {
+              'User-Agent': 'Gardien-du-Temps/1.0',
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (!response.data || !response.data.records) {
+            console.warn(`⚠️ Réponse API vide pour zone ${zone}`);
+            continue;
+          }
+          
+          const records = response.data.records;
+          console.log(`📊 ${records.length} records reçus de l'API pour zone ${zone}`);
+          
+          if (records.length === 0) {
+            console.warn(`⚠️ Aucun record pour zone ${zone}, année ${schoolYear}`);
+            continue;
+          }
+          
+          // ✅ TRAITER chaque record
+          for (const record of records) {
+            const fields = record.fields;
+    
+   if (!fields || !fields.description || !fields.start_date || !fields.end_date) {
+    console.warn('⚠️ Record incomplet ignoré:', fields);
+    continue;
+  }
+  
+  const population = fields.population;           
+
+  if (population && population === "Enseignants") {
+    console.log(`ℹ️ Ignoré (enseignants seulement):`, fields.description);
+    continue;
+  }
+            
+            // ✅ VÉRIFIER que c'est pour les élèves
+  if (population !== "Élèves" && population !== "-" && population != null && population !== "") {
+    console.log(`ℹ️ Ignoré (population inconnue: ${population}):`, fields.description);
+    continue;
+  }
+            
+  // ✅ NOUVEAU : Vérifier que c'est bien la bonne zone
+  const recordZones = fields.zones || '';
+  if (!recordZones.includes(`Zone ${zone}`)) {
+    console.log(`ℹ️ Ignoré (zone: ${recordZones}, attendu: Zone ${zone}):`, fields.description);
+    continue;
+  }
+
+            // ✅ CRÉER l'objet vacance
+            const vacationData = {
+              zone: zone,
+              period_name: fields.description,
+              start_date: new Date(fields.start_date),
+              end_date: new Date(fields.end_date),
+              school_year: schoolYear,
+            };
+            
+            // ✅ CRÉER directement (pas de vérification doublon si forceSync)
+            try {
+              const newVacation = await School_Vacations.create(vacationData);
+              console.log(`✅ CRÉÉ: ${fields.description} (${fields.start_date} → ${fields.end_date})`);
+              results.push({
+                status: 'created',
+                data: newVacation,
+                zone: zone,
+                period: fields.description
+              });
+            } catch (createError) {
+              console.error(`❌ Erreur création ${fields.description}:`, createError.message);
+              errors.push({
+                zone,
+                schoolYear,
+                period: fields.description,
+                error: createError.message
+              });
+            }
+          }
+          
+        } catch (apiError) {
+          console.error(`❌ Erreur API zone ${zone}, année ${schoolYear}:`, apiError.message);
+          errors.push({
+            zone,
+            schoolYear,
+            error: `API Error: ${apiError.message}`
+          });
+        }
+      }
+    }
+    
+    // ✅ RÉSUMÉ final
+    const summary = {
+      total_processed: results.length,
+      created: results.filter(r => r.status === 'created').length,
+      errors: errors.length
+    };
+    
+    console.log(`🎉 Synchronisation terminée:`, summary);
+    console.log(`📋 Détails:`, results.map(r => `${r.zone}: ${r.period}`));
+    
+    if (errors.length > 0) {
+      console.error(`❌ Erreurs:`, errors);
+    }
+    
+    res.json({
+      success: true,
+      message: `Synchronisation terminée: ${summary.created} vacances créées`,
+      results: summary,
+      errors: errors.length > 0 ? errors : null,
+      details: results
+    });
+
+  } catch (globalError) {
+    console.error('❌ Erreur globale synchronisation:', globalError);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la synchronisation des vacances scolaires',
+      error: globalError.message,
+      stack: process.env.NODE_ENV === 'development' ? globalError.stack : undefined
+    });
+  }
 };
 
 // Récupérer les académies disponibles
@@ -296,20 +353,37 @@ exports.getVacationsCalendar = async (req, res) => {
         });
 
         // Formater pour l'affichage calendrier
-        const calendarData = vacations.map(vacation => ({
-            id: vacation.id,
-            title: `${vacation.period_name} - Zone ${vacation.zone}`,
-            start: vacation.start_date,
-            end: new Date(new Date(vacation.end_date).getTime() + 86400000), // +1 jour pour inclusion
-            backgroundColor: getColorForZone(vacation.zone),
-            borderColor: getColorForZone(vacation.zone),
-            textColor: '#ffffff',
-            allDay: true,
-            extendedProps: {
-                zone: vacation.zone,
-                schoolYear: vacation.school_year
-            }
-        }));
+        const calendarData = vacations.map(vacation => {
+            // Les dates dans la DB sont les VRAIES dates de début/fin des vacances
+            const startDate = new Date(vacation.start_date);
+            
+            // ✅ CORRECTION : Pour le calendrier, on veut que la fin soit INCLUSIVE
+            // Donc on GARDE la date de fin telle quelle (pas +1 jour)
+            const endDate = new Date(vacation.end_date);
+            
+            // ✅ POUR FullCalendar, il faut AJOUTER 1 jour seulement pour l'affichage
+            // car FullCalendar traite la date de fin comme exclusive
+            const fullCalendarEndDate = new Date(endDate);
+            fullCalendarEndDate.setDate(fullCalendarEndDate.getDate() + 1);
+
+            return {
+                id: vacation.id,
+                title: `${vacation.period_name} - Zone ${vacation.zone}`,
+                start: startDate.toISOString().split('T')[0], // Format YYYY-MM-DD
+                end: fullCalendarEndDate.toISOString().split('T')[0], // Format YYYY-MM-DD + 1 jour pour FullCalendar
+                backgroundColor: getColorForZone(vacation.zone),
+                borderColor: getColorForZone(vacation.zone),
+                textColor: '#ffffff',
+                allDay: true,
+                extendedProps: {
+                    zone: vacation.zone,
+                    schoolYear: vacation.school_year,
+                    // ✅ AJOUTER : Les vraies dates pour les vérifications
+                    realStartDate: vacation.start_date,
+                    realEndDate: vacation.end_date
+                }
+            };
+        });
 
         res.status(200).json({
             success: true,

@@ -154,33 +154,29 @@ export const formatYearDisplay = (year, yearType = DEFAULT_YEAR_TYPE) => {
  */
 export const getCurrentYear = (yearType = DEFAULT_YEAR_TYPE) => {
   const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
   
-  switch (yearType) {
-    case YEAR_TYPES.SCHOOL:
-      const month = today.getMonth(); // 0-11
-      const year = today.getFullYear();
-      const schoolYear = month >= 8 ? year : year - 1; // 8 = septembre
-      
-      console.log(`🎓 getCurrentYear SCHOOL:`, {
+  if (yearType === YEAR_TYPES.SCHOOL) {
+    const schoolYear = currentMonth >= 8 ? currentYear : currentYear - 1;
+    
+    // ✅ CORRIGER : Logs conditionnels pour éviter le spam
+    if (Math.random() < 0.001) { // Log seulement 0.1% du temps
+      console.log('🎓 getCurrentYear SCHOOL:', {
         dateActuelle: today.toLocaleDateString('fr-FR'),
-        mois: month + 1,
-        annéeCivile: year,
+        mois: currentMonth,
+        annéeCivile: currentYear,
         annéeScolaire: `${schoolYear}-${schoolYear + 1}`,
         période: `${schoolYear}-09-01 → ${schoolYear + 1}-08-31`
       });
-      return schoolYear;
-      
-    case YEAR_TYPES.CIVIL:
-    default:
-      const civilYear = today.getFullYear();
-      console.log(`📅 getCurrentYear CIVIL:`, {
-        dateActuelle: today.toLocaleDateString('fr-FR'),
-        année: civilYear,
-        période: `${civilYear}-01-01 → ${civilYear}-12-31`
-      });
-      return civilYear;
+    }
+    
+    return schoolYear;
   }
+  
+  return currentYear;
 };
+
 
 { /* Fonction pour debug - affiche l'année scolaire actuelle
  */}

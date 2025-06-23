@@ -37,6 +37,8 @@ import YearTypeSelector from '../common/YearTypeSelector';
 import CreateUserForm from '../forms/CreateUserForm';
 import EditUserForm from '../forms/EditUserForm';
 import CreateProjectForm from '../forms/CreateProjectForm';
+import VacationTester from '../common/VacationTester';
+import QuickTimeTrackingIcons from '../common/QuickTimeTrackingIcons';
 
 
 // ===== CONSTANTES =====
@@ -55,6 +57,7 @@ const PERIOD_OPTIONS = [
 ];
 
 const DirectorDashboard = () => {
+  
   // ===== HOOKS ET STORES =====
   const { user } = useAuthStore();
   const { 
@@ -153,6 +156,7 @@ const DirectorDashboard = () => {
   }, [teamDateRange, activeView, user?.structure_id]);
 
   // ===== FONCTIONS UTILITAIRES =====
+  
   const calculatePeriodDates = (period, customStart = null, customEnd = null) => {
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -735,6 +739,8 @@ const canClockOut = status.arrival && !status.departure;
         </div>
       </Card>
 
+
+
 <Card 
   clickable 
   hoverable 
@@ -964,6 +970,18 @@ const canClockOut = status.arrival && !status.departure;
       )}
     </Card>
   );
+  
+    <>
+      {renderHeader()}
+      <VacationTester />
+      {renderQuickActions()}
+      {renderStatsCards()}
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>{renderAnimatorsList()}</div>
+        <div>{renderRecentActivity()}</div>
+      </div>
+    </>
 
   // Gestion d'équipe
   const renderTeamManagement = () => (

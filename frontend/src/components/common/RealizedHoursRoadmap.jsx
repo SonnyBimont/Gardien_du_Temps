@@ -419,21 +419,21 @@ const loadYearData = async () => {
               <BarChart3 className="w-6 h-6 text-green-600 mx-auto mb-2" />
               <p className="text-sm text-green-600 font-medium">Réalisées</p>
               <p className="text-xl font-bold text-green-900">
-                {totalRealized}h
+                {totalRealized}
               </p>
             </div>
 
             <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
               <Clock className="w-6 h-6 text-orange-600 mx-auto mb-2" />
               <p className="text-sm text-orange-600 font-medium">Restant</p>
-              <p className="text-xl font-bold text-orange-900">{remaining}h</p>
+              <p className="text-xl font-bold text-orange-900">{remaining}</p>
             </div>
 
             <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
               <Calendar className="w-6 h-6 text-purple-600 mx-auto mb-2" />
               <p className="text-sm text-purple-600 font-medium">Ce mois</p>
               <p className="text-xl font-bold text-purple-900">
-                {getMonthlyRealizedHours()}h
+                {getMonthlyRealizedHours()}
               </p>
             </div>
           </div>
