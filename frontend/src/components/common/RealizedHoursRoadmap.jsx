@@ -3,7 +3,7 @@ import { Calendar, Target, BarChart3, Clock, CheckCircle } from "lucide-react";
 import { useTimeStore } from "../../stores/timeStore";
 import { useAuthStore } from "../../stores/authStore";
 import { usePlanningStore } from "../../stores/planningStore";
-import { calculateTotalHours, formatHours } from "../../utils/timeCalculations";
+import { calculateTotalHoursWithMultipleBreaks, formatHours } from "../../utils/timeCalculations";
 import {exportRHReport } from "../../utils/exportCSV";
 import Card from "../common/Card";
 import Button from "../common/Button";
@@ -233,7 +233,7 @@ const loadYearData = async () => {
   try {
     console.log('🔄 Chargement données année:', { selectedYear, yearType });
     
-    // ✅ CORRECTION : Calculer les bornes selon le type d'année
+    // Calculer les bornes selon le type d'année
     const { startDate, endDate } = getYearBounds(selectedYear, yearType);
     console.log('📅 Période de chargement:', { startDate, endDate });
     
@@ -243,11 +243,11 @@ const loadYearData = async () => {
       const entries = response.data.data || [];
       console.log(`📊 Données reçues: ${entries.length} entrées`);
       
-      const processedData = calculateTotalHours(entries);
+      const processedData = calculateTotalHoursWithMultipleBreaks(entries);
       const yearlyData = {};
       let totalRealizedYear = 0;
 
-      // ✅ CORRECTION : Ne pas re-filtrer, les données sont déjà filtrées par l'API
+      // Ne pas re-filtrer, les données sont déjà filtrées par l'API
       processedData.forEach(day => {
         yearlyData[day.date] = {
           workingHours: day.workingHours,

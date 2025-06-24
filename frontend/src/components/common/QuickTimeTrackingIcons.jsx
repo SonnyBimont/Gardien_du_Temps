@@ -1,171 +1,78 @@
+// ✅ MODIFIER : frontend/src/components/common/QuickTimeTrackingIcons.jsx
 import React, { useState } from 'react';
 import { Clock, Coffee, LogOut } from 'lucide-react';
-import { useTimeStore } from '../../stores/timeStore';
+import { useTimeTracking } from '../../hooks/useTimeTracking';
 import { useAuthStore } from '../../stores/authStore';
 
 const QuickTimeTrackingIcons = () => {
   const [feedback, setFeedback] = useState(null);
-  const [actionLoading, setActionLoading] = useState(null);
-  
-  // ✅ UTILISER : Les mêmes stores que DirectorDashboard
-  const { 
-    todayEntries, 
-    fetchTodayEntries,
-    clockIn,
-    clockOut,
-    startBreak,
-    endBreak
-  } = useTimeStore();
-  
   const { user } = useAuthStore();
-
-  // ✅ COPIER : La même logique que DirectorDashboard
-  const myTodayEntries = todayEntries.filter(entry => entry?.user_id === user?.id);
   
-  const getTodayStatusLocal = () => {
-    const status = {
-      arrival: null,
-      departure: null,
-      breakStart: null,
-      breakEnd: null,
-    };
+  // ✅ UTILISER : Le nouveau hook
+  const {
+    actionLoading,
+    canClockIn,
+    canPauseOrResume,
+    canClockOut,
+    handleIntelligentClockAction,
+    handleIntelligentBreakAction,
+    clockOut,
+    getTodayStatus,
+    isOnBreak
+  } = useTimeTracking(user?.id);
 
-    myTodayEntries.forEach(entry => {
-      switch (entry.tracking_type) {
-        case 'arrival':
-          status.arrival = entry;
-          break;
-        case 'departure':
-          status.departure = entry;
-          break;
-        case 'break_start':
-          status.breakStart = entry;
-          break;
-        case 'break_end':
-          status.breakEnd = entry;
-          break;
-        default:
-          break;
-      }
-    });
-
-    return status;
-  };
-
-  const status = getTodayStatusLocal();
-
-  // ✅ COPIER : Les mêmes fonctions utilitaires que DirectorDashboard
-  const getPauses = (entries) => {
-    const pauses = [];
-    let currentBreakStart = null;
-
-    entries
-      .filter(e => e.tracking_type === 'break_start' || e.tracking_type === 'break_end')
-      .sort((a, b) => new Date(a.date_time) - new Date(b.date_time))
-      .forEach(entry => {
-        if (entry.tracking_type === 'break_start') {
-          currentBreakStart = entry;
-        } else if (entry.tracking_type === 'break_end' && currentBreakStart) {
-          pauses.push({ start: currentBreakStart, end: entry });
-          currentBreakStart = null;
-        }
-      });
-
-    if (currentBreakStart) {
-      pauses.push({ start: currentBreakStart, end: null });
-    }
-
-    return pauses;
-  };
-
-  const isOnBreak = (entries) => {
-    const pauses = getPauses(entries);
-    return pauses.length > 0 && pauses[pauses.length - 1].end === null;
-  };
-
-  // ✅ COPIER : Les mêmes conditions que DirectorDashboard
-  const canClockIn = !status.arrival && !status.departure;
-  const canPauseOrResume = status.arrival && !status.departure;
-  const canClockOut = status.arrival && !status.departure;
-
-  // ✅ COPIER : La même fonction handleClockAction que DirectorDashboard
-  const handleClockAction = async (action) => {
-    if (actionLoading) return;
-    setActionLoading(action);
-    
-    try {
-      let result;
-      switch (action) {
-        case 'arrival':
-          result = await clockIn();
-          break;
-        case 'departure':
-          result = await clockOut();
-          break;
-        case 'break_start':
-          result = await startBreak();
-          break;
-        case 'break_end':
-          result = await endBreak();
-          break;
-        default:
-          throw new Error('Action non reconnue');
-      }
-
-      await fetchTodayEntries();
-      if (user?.id) {
-        // Optionnel : rafraîchir d'autres données si nécessaire
-      }
-      
-      // Feedback selon l'action
-      const messages = {
-        arrival: '✅ Arrivée enregistrée',
-        departure: '✅ Départ enregistré',
-        break_start: '☕ Pause commencée',
-        break_end: '🔄 Pause terminée'
-      };
-      
-      showFeedback(messages[action], 'success');
-      
-    } catch (error) {
-      console.error(`❌ Erreur lors du pointage ${action}:`, error);
-      showFeedback('❌ Erreur lors du pointage', 'error');
-    } finally {
-      setActionLoading(null);
-    }
-  };
+  // Ne pas afficher si pas directeur
+  if (user?.role !== 'director') {
+    return null;
+  }
 
   const showFeedback = (message, type = 'success') => {
     setFeedback({ message, type });
     setTimeout(() => setFeedback(null), 2000);
   };
 
-  // ✅ MÊME LOGIQUE : Que les boutons de DirectorDashboard
-  const handleClockClick = () => {
-    if (canClockIn) {
-      handleClockAction('arrival');
-    } else if (canClockOut) {
-      handleClockAction('departure');
+  // ✅ SIMPLIFIER : Gestionnaires avec le hook
+  const handleClockClick = async () => {
+    try {
+      const result = await handleIntelligentClockAction();
+      if (result.success) {
+        const status = getTodayStatus();
+        const message = !status.arrival ? '✅ Arrivée enregistrée' : '✅ Départ enregistré';
+        showFeedback(message, 'success');
+      } else {
+        showFeedback(`❌ ${result.error}`, 'error');
+      }
+    } catch (error) {
+      showFeedback('❌ Erreur lors du pointage', 'error');
     }
   };
 
-  const handleBreakClick = () => {
-    if (canPauseOrResume) {
-      const action = isOnBreak(myTodayEntries) ? 'break_end' : 'break_start';
-      handleClockAction(action);
+  const handleBreakClick = async () => {
+    try {
+      const result = await handleIntelligentBreakAction();
+      if (result.success) {
+        const message = isOnBreak() ? '🔄 Pause terminée' : '☕ Pause commencée';
+        showFeedback(message, 'success');
+      } else {
+        showFeedback(`❌ ${result.error}`, 'error');
+      }
+    } catch (error) {
+      showFeedback('❌ Erreur gestion pause', 'error');
     }
   };
 
-  const handleDirectClockOut = () => {
-    if (canClockOut) {
-      handleClockAction('departure');
+  const handleDirectClockOut = async () => {
+    try {
+      const result = await clockOut();
+      if (result.success) {
+        showFeedback('✅ Départ enregistré', 'success');
+      } else {
+        showFeedback(`❌ ${result.error}`, 'error');
+      }
+    } catch (error) {
+      showFeedback('❌ Erreur pointage sortie', 'error');
     }
   };
-
-  // ✅ NE PAS AFFICHER si pas directeur
-  if (user?.role !== 'director') {
-    return null;
-  }
 
   const iconClass = `
     w-8 h-8 p-1.5 rounded-lg cursor-pointer transition-all duration-200 
@@ -174,6 +81,14 @@ const QuickTimeTrackingIcons = () => {
 
   return (
     <div className="flex items-center space-x-2 relative">
+      {/* Debug en mode développement */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="text-xs text-gray-500 mr-2">
+          {canClockIn ? '🟢' : canClockOut ? '🔴' : '⚪'} 
+          {isOnBreak() ? '☕' : ''} 
+        </div>
+      )}
+      
       {/* Icône Clock - Arrivée/Départ intelligent */}
       <div
         onClick={!actionLoading && (canClockIn || canClockOut) ? handleClockClick : undefined}
@@ -206,9 +121,9 @@ const QuickTimeTrackingIcons = () => {
         }`}
         title={
           actionLoading ? 'En cours...' :
-          !status.arrival ? 'Pointez d\'abord votre arrivée'
-          : status.departure ? 'Journée terminée'
-          : isOnBreak(myTodayEntries) ? 'Terminer la pause'
+          !getTodayStatus().arrival ? 'Pointez d\'abord votre arrivée'
+          : getTodayStatus().departure ? 'Journée terminée'
+          : isOnBreak() ? 'Terminer la pause'
           : 'Commencer une pause'
         }
       >
@@ -226,15 +141,15 @@ const QuickTimeTrackingIcons = () => {
         }`}
         title={
           actionLoading ? 'En cours...' :
-          !status.arrival ? 'Pointez d\'abord votre arrivée'
-          : status.departure ? 'Départ déjà enregistré'
+          !getTodayStatus().arrival ? 'Pointez d\'abord votre arrivée'
+          : getTodayStatus().departure ? 'Départ déjà enregistré'
           : 'Pointage Départ'
         }
       >
         <LogOut className="w-full h-full" />
       </div>
 
-      {/* Feedback */}
+      {/* Feedback toast */}
       {feedback && (
         <div className={`
           absolute top-12 right-0 z-50 px-3 py-2 rounded-lg shadow-lg text-sm font-medium

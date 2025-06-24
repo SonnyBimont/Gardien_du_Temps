@@ -189,63 +189,62 @@ export const getPeriodLabel = (period, dateRange = null) => {
 
 // Calcul des heures totales avec données structurées
 export const calculateTotalHours = (entries) => {
-  const grouped = groupEntriesByDate(entries);
+  // Grouper par jour
+  const dayGroups = entries.reduce((groups, entry) => {
+    const date = entry.date_time.split('T')[0];
+    if (!groups[date]) groups[date] = [];
+    groups[date].push(entry);
+    return groups;
+  }, {});
+
+  return Object.entries(dayGroups).map(([date, dayEntries]) => {
+    const arrival = dayEntries.find(e => e.tracking_type === 'arrival');
+    const departure = dayEntries.find(e => e.tracking_type === 'departure');
   
-  return Object.entries(grouped)
-    .sort(([a], [b]) => new Date(b) - new Date(a)) // Trier par date décroissante
-    .map(([date, dayEntries]) => {
-      const arrival = dayEntries.find(e => e.tracking_type === 'arrival');
-      const departure = dayEntries.find(e => e.tracking_type === 'departure');
-      const breakStart = dayEntries.find(e => e.tracking_type === 'break_start');
-      const breakEnd = dayEntries.find(e => e.tracking_type === 'break_end');
+    // Soustraire TOUTES les pauses (pas juste une)
+    const breakStarts = dayEntries.filter(e => e.tracking_type === 'break_start');
+    const breakEnds = dayEntries.filter(e => e.tracking_type === 'break_end');
+    
+    let workingHours = 0;
+    let breakHours = 0;
+    
+    if (arrival && departure) {
+      const start = new Date(arrival.date_time);
+      const end = new Date(departure.date_time);
+      let totalMinutes = (end - start) / (1000 * 60);
       
-      let totalMinutes = 0;
-      let breakMinutes = 0;
-      let workingMinutes = 0;
       
-      // Calculer le temps total présent
-      if (arrival && departure) {
-        const arrivalTime = new Date(arrival.date_time);
-        const departureTime = new Date(departure.date_time);
-        totalMinutes = differenceInMinutes(departureTime, arrivalTime);
-        workingMinutes = totalMinutes;
-        
-        // Soustraire les pauses
-        if (breakStart && breakEnd) {
-          const breakStartTime = new Date(breakStart.date_time);
-          const breakEndTime = new Date(breakEnd.date_time);
-          breakMinutes = differenceInMinutes(breakEndTime, breakStartTime);
-          workingMinutes = totalMinutes - breakMinutes;
-        }
+      // Associer les pauses par paires
+      for (let i = 0; i < Math.min(breakStarts.length, breakEnds.length); i++) {
+        const breakStart = new Date(breakStarts[i].date_time);
+        const breakEnd = new Date(breakEnds[i].date_time);
+        const breakDuration = (breakEnd - breakStart) / (1000 * 60);
+        totalMinutes -= breakDuration;
+        breakHours += breakDuration / 60;
       }
       
-      const totalHours = Math.round(totalMinutes / 60 * 100) / 100;
-      const workingHours = Math.round(workingMinutes / 60 * 100) / 100;
-      const breakHours = Math.round(breakMinutes / 60 * 100) / 100;
-      
-      return {
-        date,
-        formattedDate: formatDate(date),
-        dayName: formatDayName(date),
-        arrival: arrival ? formatTime(arrival.date_time) : null,
-        breakStart: breakStart ? formatTime(breakStart.date_time) : null,
-        breakEnd: breakEnd ? formatTime(breakEnd.date_time) : null,
-        departure: departure ? formatTime(departure.date_time) : null,
-        totalMinutes,
-        workingMinutes,
-        breakMinutes,
-        totalHours: totalHours > 0 ? totalHours : 0,
-        workingHours: workingHours > 0 ? workingHours : 0,
-        breakHours: breakHours > 0 ? breakHours : 0,
-        formattedTotalHours: formatHours(totalHours),
-        formattedWorkingHours: formatHours(workingHours),
-        formattedBreakHours: formatHours(breakHours),
-        isComplete: !!(arrival && departure),
-        isIncomplete: !!(arrival && !departure),
-        status: getWorkDayStatus(arrival, departure, breakStart, breakEnd)
-      };
-    });
+      workingHours = Math.max(0, totalMinutes / 60);
+    }
+    
+    return {
+      date,
+      workingHours: Math.round(workingHours * 100) / 100,
+      breakHours: Math.round(breakHours * 100) / 100,
+      arrival: arrival ? formatTime(arrival.date_time) : null,
+      departure: departure ? formatTime(departure.date_time) : null,
+      breakStart: breakStarts[0] ? formatTime(breakStarts[0].date_time) : null,
+      breakEnd: breakEnds[0] ? formatTime(breakEnds[0].date_time) : null,
+      isComplete: !!(arrival && departure),
+      status: arrival && departure ? 'complete' : arrival ? 'in_progress' : 'absent',
+      formattedWorkingHours: formatHours(workingHours),
+      dayName: formatDayName(date),
+      formattedDate: formatDate(date)
+    };
+  }).sort((a, b) => new Date(b.date) - new Date(a.date));
 };
+
+// Export de la même fonction avec un nom différent pour compatibilité
+export const calculateTotalHoursWithMultipleBreaks = calculateTotalHours;
 
 // compatibilité avec le timeStore
 export const calculateWorkingHours = (entries) => {

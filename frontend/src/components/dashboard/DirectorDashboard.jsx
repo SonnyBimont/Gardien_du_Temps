@@ -22,7 +22,12 @@ import {
   Timer,
   BarChart3
 } from 'lucide-react';
+import { PERIOD_OPTIONS, TRACKING_TYPES } from '../../constants/timeTracking';
+import { USER_ROLES } from '../../constants/user';
+import { logger } from '../../utils/logger';
 import { calculateTotalHours, formatTime, calculatePeriodDates, getPerformanceStatus, getMostProductiveDay, getConsistencyRating, calculateVariance, getWorkDayStatus } from '../../utils/timeCalculations';
+import { useTimeTracking } from '../../hooks/useTimeTracking';
+import { useTeamManagement } from '../../hooks/useTeamManagement';
 import { useAuthStore } from '../../stores/authStore';
 import { useAdminStore } from '../../stores/adminStore';
 import { useTimeStore } from '../../stores/timeStore';
@@ -40,25 +45,9 @@ import CreateProjectForm from '../forms/CreateProjectForm';
 import VacationTester from '../common/VacationTester';
 import QuickTimeTrackingIcons from '../common/QuickTimeTrackingIcons';
 
-
-// ===== CONSTANTES =====
-const PERIOD_OPTIONS = [
-  { value: 'current_week', label: 'Semaine en cours', description: 'Du lundi au dimanche' },
-  { value: 'current_month', label: 'Mois en cours', description: 'Du 1er au dernier jour' },
-  { value: 'current_quarter', label: 'Trimestre en cours', description: 'Trimestre actuel' },
-  { value: 'current_year', label: 'Année en cours', description: 'De janvier à décembre' },
-  { value: 'previous_week', label: 'Semaine précédente', description: 'La semaine passée' },
-  { value: 'previous_month', label: 'Mois précédent', description: 'Le mois passé' },
-  { value: 'previous_quarter', label: 'Trimestre précédent', description: 'Le trimestre passé' },
-  { value: 'previous_year', label: 'Année précédente', description: 'L\'année passée' },
-  { value: 'last_30_days', label: '30 derniers jours', description: 'Période glissante' },
-  { value: 'last_90_days', label: '90 derniers jours', description: 'Période glissante' },
-  { value: 'custom', label: 'Période personnalisée', description: 'Choisir les dates' }
-];
-
 const DirectorDashboard = () => {
-  
-  // ===== HOOKS ET STORES =====
+    
+  // ===== STORES =====
   const { user } = useAuthStore();
   const { 
     users = [], 
@@ -99,8 +88,6 @@ const DirectorDashboard = () => {
   // États pour la gestion d'équipe
   const [selectedAnimator, setSelectedAnimator] = useState('all');
   const [teamDateRange, setTeamDateRange] = useState('current_month');
-  const [actionLoading, setActionLoading] = useState(null);
-  const [teamData, setTeamData] = useState([]);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showCreateAnimatorModal, setShowCreateAnimatorModal] = useState(false);
@@ -119,6 +106,188 @@ const DirectorDashboard = () => {
     new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   );
 
+    const myStructureAnimators = users.filter(u => 
+    u && u.role === USER_ROLES.ANIMATOR && u.structure_id === user.structure_id
+  );
+  const myStructure = structures.find(s => s && s.id === user.structure_id);
+
+  // ===== HOOKS & LOAD =====
+    // logique de pointage par le hook useTimeTracking
+  const {
+    myTodayEntries,
+    actionLoading,
+    getTodayStatus,
+    getPauses,
+    isOnBreak,
+    canClockIn,
+    canPauseOrResume,
+    canClockOut,
+    handleClockAction,
+    error: timeTrackingError
+  } = useTimeTracking(user?.id);
+
+  // données du hook au lieu des calculs locaux
+  const status = getTodayStatus();
+
+  // logique de gestion d'équipe par le hook useTeamManagement
+  const {
+    loading: teamLoading,
+    error: teamError,
+    selectedPeriod,
+    changePeriod,
+    refreshTeamData,
+    formatMinutes,
+  } = useTeamManagement(user?.structure_id);
+
+  const handleTeamDataLoad = useCallback(async () => {
+  // Utiliser directement le hook pour charger les données
+  const result = await refreshTeamData();
+  
+  // Si le hook ne retourne pas les bonnes données, utiliser la logique existante
+  if (!result || result.length === 0) {
+    // Fallback vers la logique complète existante si nécessaire
+    return await loadTeamDataFallback();
+  }
+  
+  return result;
+}, [refreshTeamData]);
+
+const loadTeamDataFallback = useCallback(async () => {
+  if (!user?.structure_id) return [];
+  
+  try {
+    logger.log('🔄 Chargement données équipe (fallback) pour structure:', user.structure_id);
+    
+    const result = await fetchTeamSummary(teamDateRange, user.structure_id);
+    logger.log('📊 Réponse API team-summary (fallback):', result);
+    
+    if (result.success && result.data) {
+      const apiData = result.data;
+      logger.log('📋 Données API reçues (fallback):', apiData);
+      
+      const usersFromAPI = apiData.users || [];
+      logger.log('👥 Utilisateurs depuis API (fallback):', usersFromAPI);
+      
+      const workDataMap = new Map();
+      usersFromAPI.forEach(userData => {
+        workDataMap.set(userData.user.id, userData);
+      });
+      
+      logger.log('🗺️ Map des données de travail (fallback):', workDataMap);
+      
+      const allAnimatorsData = myStructureAnimators.map(animator => {
+        const workData = workDataMap.get(animator.id);
+        
+        if (workData) {
+          logger.log(`✅ Données trouvées pour ${animator.first_name} (fallback):`, workData);
+          
+          return {
+            id: animator.id,
+            first_name: animator.first_name,
+            last_name: animator.last_name,
+            email: animator.email,
+            weekly_hours: animator.weekly_hours || 35,
+            annual_hours: animator.annual_hours,
+            active: animator.active,
+            
+            totalHours: Math.round((workData.totalHours || 0) * 100) / 100,
+            periodObjective: Math.round((workData.periodObjective || 0) * 100) / 100,
+            hoursDifference: Math.round((workData.hoursDifference || 0) * 100) / 100,
+            daysWorked: workData.daysWorked || 0,
+            
+            performance: workData.periodObjective > 0 
+              ? Math.round((workData.totalHours / workData.periodObjective) * 100) 
+              : 0
+          };
+        } else {
+          logger.log(`⚠️ Pas de données pour ${animator.first_name}, calcul par défaut (fallback)`);
+          
+          const weeklyHours = animator.weekly_hours || 35;
+          const annualHours = animator.annual_hours;
+          const periodObjective = calculatePeriodObjective(teamDateRange, weeklyHours, annualHours);
+          
+          return {
+            id: animator.id,
+            first_name: animator.first_name,
+            last_name: animator.last_name,
+            email: animator.email,
+            weekly_hours: weeklyHours,
+            annual_hours: annualHours,
+            active: animator.active,
+            
+            totalHours: 0,
+            periodObjective: periodObjective,
+            hoursDifference: -periodObjective,
+            daysWorked: 0,
+            performance: 0
+          };
+        }
+      });
+      
+      logger.log('📋 Tableau final avec tous les animateurs (fallback):', allAnimatorsData);
+      window.currentTeamData = allAnimatorsData;
+      return allAnimatorsData;
+      
+    } else {
+      logger.warn('⚠️ API team-summary: pas de données ou échec (fallback)');
+      throw new Error('Pas de données reçues de l\'API');
+    }
+  } catch (error) {
+    logger.error('❌ Erreur chargement équipe (fallback):', error);
+    
+    const fallbackData = myStructureAnimators.map(animator => {
+      const weeklyHours = animator.weekly_hours || 35;
+      const annualHours = animator.annual_hours;
+      const periodObjective = calculatePeriodObjective(teamDateRange, weeklyHours, annualHours);
+      
+      return {
+        id: animator.id,
+        first_name: animator.first_name,
+        last_name: animator.last_name,
+        email: animator.email,
+        weekly_hours: weeklyHours,
+        annual_hours: annualHours,
+        active: animator.active,
+        
+        totalHours: 0,
+        periodObjective: periodObjective,
+        hoursDifference: -periodObjective,
+        daysWorked: 0,
+        performance: 0
+      };
+    });
+    
+    logger.log('🔄 Fallback avec données par défaut (fallback):', fallbackData);
+    window.currentTeamData = fallbackData;
+    return fallbackData;
+  }
+}, [user?.structure_id, teamDateRange, myStructureAnimators, fetchTeamSummary]);
+
+// ===== CHARGEMENT DES DONNÉES =====
+const loadData = useCallback(async () => {
+  try {
+    if (fetchUsers) await fetchUsers();
+    if (fetchStructures) await fetchStructures();
+    if (fetchTodayEntries) await fetchTodayEntries();
+    if (user?.id) {
+      await fetchTimeHistory(30, user.id);
+      await fetchMonthlyReport(null, null, user.id);
+    }
+  } catch (error) {
+    logger.error('Erreur lors du chargement des données:', error);
+  }
+}, [fetchUsers, fetchStructures, fetchTodayEntries, fetchTimeHistory, fetchMonthlyReport, user?.id]);
+
+const handleAnimatorCreated = useCallback(async () => {
+    setShowCreateAnimatorModal(false);
+    await loadData();
+    if (activeView === 'team') {
+      await handleTeamDataLoad();
+    }
+  }, [loadData, activeView, handleTeamDataLoad]);
+
+  const teamData = window.currentTeamData || [];
+
   // ===== EFFETS =====
   useEffect(() => {
     const timer = setInterval(() => {
@@ -126,21 +295,6 @@ const DirectorDashboard = () => {
     }, 60000);
     return () => clearInterval(timer);
   }, []);
-
-  // Chargement des données
-  const loadData = useCallback(async () => {
-    try {
-      if (fetchUsers) await fetchUsers();
-      if (fetchStructures) await fetchStructures();
-      if (fetchTodayEntries) await fetchTodayEntries();
-      if (user?.id) {
-        await fetchTimeHistory(30, user.id);
-        await fetchMonthlyReport(null, null, user.id);
-      }
-    } catch (error) {
-      console.error('Erreur lors du chargement des données:', error);
-    }
-  }, [fetchUsers, fetchStructures, fetchTodayEntries, fetchTimeHistory, fetchMonthlyReport, user?.id]);
 
   useEffect(() => {
     if (user?.id) {
@@ -150,10 +304,10 @@ const DirectorDashboard = () => {
 
   // Charger les données d'équipe au changement de période
   useEffect(() => {
-    if (activeView === 'team') {
-      loadTeamData();
-    }
-  }, [teamDateRange, activeView, user?.structure_id]);
+  if (activeView === 'team') {
+    handleTeamDataLoad(); 
+  }
+}, [teamDateRange, activeView, user?.structure_id, handleTeamDataLoad]);
 
   // ===== FONCTIONS UTILITAIRES =====
   
@@ -314,37 +468,6 @@ const calculatePeriodObjective = (period, weeklyHours, annualHours) => {
 
 // ===== FONCTIONS UTILITAIRES POUR PAUSES MULTIPLES =====
 
-// Récupère toutes les paires de pauses (début/fin) pour la journée
-const getPauses = (entries) => {
-  const pauses = [];
-  let currentBreakStart = null;
-
-  entries
-    .filter(e => e.tracking_type === 'break_start' || e.tracking_type === 'break_end')
-    .sort((a, b) => new Date(a.date_time) - new Date(b.date_time))
-    .forEach(entry => {
-      if (entry.tracking_type === 'break_start') {
-        currentBreakStart = entry;
-      } else if (entry.tracking_type === 'break_end' && currentBreakStart) {
-        pauses.push({ start: currentBreakStart, end: entry });
-        currentBreakStart = null;
-      }
-    });
-
-  // Si une pause a commencé mais pas terminée
-  if (currentBreakStart) {
-    pauses.push({ start: currentBreakStart, end: null });
-  }
-
-  return pauses;
-};
-
-// Détermine si une pause est en cours (dernier break_start sans break_end)
-const isOnBreak = (entries) => {
-  const pauses = getPauses(entries);
-  return pauses.length > 0 && pauses[pauses.length - 1].end === null;
-};
-
 // Calcule le temps travaillé hors pauses (toutes les pauses)
 const getWorkedTimeWithMultipleBreaks = () => {
   if (status.arrival && status.departure) {
@@ -380,172 +503,6 @@ const getWorkedTimeWithMultipleBreaks = () => {
     loadData();
   };
 
-  const handleAnimatorCreated = useCallback(async () => {
-    setShowCreateAnimatorModal(false);
-    await loadData();
-    if (activeView === 'team') {
-      await loadTeamData();
-    }
-  }, [loadData, activeView]);
-
- 
-const loadTeamData = async () => {
-  if (!user?.structure_id) return;
-  
-  try {
-    console.log('🔄 Chargement données équipe pour structure:', user.structure_id);
-    
-    const result = await fetchTeamSummary(teamDateRange, user.structure_id);
-    console.log('📊 Réponse API team-summary:', result);
-    
-    if (result.success && result.data) {
-      const apiData = result.data;
-      console.log('📋 Données API reçues:', apiData);
-      
-      // ✅ CORRECTION: Récupérer les données utilisateurs depuis la bonne structure
-      const usersFromAPI = apiData.users || [];
-      console.log('👥 Utilisateurs depuis API:', usersFromAPI);
-      
-      // Créer un map des données de travail par user ID
-      const workDataMap = new Map();
-      usersFromAPI.forEach(userData => {
-        workDataMap.set(userData.user.id, userData);
-      });
-      
-      console.log('🗺️ Map des données de travail:', workDataMap);
-      
-      // ✅ FUSIONNER avec tous les animateurs de la structure
-      const allAnimatorsData = myStructureAnimators.map(animator => {
-        const workData = workDataMap.get(animator.id);
-        
-        if (workData) {
-          // ✅ Animateur avec données de pointage - utiliser la structure API correcte
-          console.log(`✅ Données trouvées pour ${animator.first_name}:`, workData);
-          
-          return {
-            // Données utilisateur (depuis myStructureAnimators pour avoir tous les champs)
-            id: animator.id,
-            first_name: animator.first_name,
-            last_name: animator.last_name,
-            email: animator.email,
-            weekly_hours: animator.weekly_hours || 35,
-            annual_hours: animator.annual_hours,
-            active: animator.active,
-            
-            // Données de travail (depuis l'API)
-            totalHours: Math.round((workData.totalHours || 0) * 100) / 100,
-            periodObjective: Math.round((workData.periodObjective || 0) * 100) / 100,
-            hoursDifference: Math.round((workData.hoursDifference || 0) * 100) / 100,
-            daysWorked: workData.daysWorked || 0,
-            
-            // Calcul du pourcentage de performance
-            performance: workData.periodObjective > 0 
-              ? Math.round((workData.totalHours / workData.periodObjective) * 100) 
-              : 0
-          };
-        } else {
-          // ✅ Animateur sans données de pointage - calculer l'objectif par défaut
-          console.log(`⚠️ Pas de données pour ${animator.first_name}, calcul par défaut`);
-          
-          const weeklyHours = animator.weekly_hours || 35;
-          const annualHours = animator.annual_hours;
-          
-          // Calculer l'objectif basé sur la période sélectionnée
-          const periodObjective = calculatePeriodObjective(teamDateRange, weeklyHours, annualHours);
-          
-          return {
-            id: animator.id,
-            first_name: animator.first_name,
-            last_name: animator.last_name,
-            email: animator.email,
-            weekly_hours: weeklyHours,
-            annual_hours: annualHours,
-            active: animator.active,
-            
-            totalHours: 0,
-            periodObjective: periodObjective,
-            hoursDifference: -periodObjective, // Tout l'objectif reste à faire
-            daysWorked: 0,
-            performance: 0
-          };
-        }
-      });
-      
-      console.log('📋 Tableau final avec tous les animateurs:', allAnimatorsData);
-      setTeamData(allAnimatorsData);
-      
-    } else {
-      console.warn('⚠️ API team-summary: pas de données ou échec');
-      throw new Error('Pas de données reçues de l\'API');
-    }
-  } catch (error) {
-    console.error('❌ Erreur chargement équipe:', error);
-    
-    // ✅ FALLBACK: Afficher tous les animateurs avec des valeurs par défaut
-    const fallbackData = myStructureAnimators.map(animator => {
-      const weeklyHours = animator.weekly_hours || 35;
-      const annualHours = animator.annual_hours;
-
-      const periodObjective = calculatePeriodObjective(teamDateRange, weeklyHours, annualHours); // Par défaut mensuel
-      
-      return {
-        id: animator.id,
-        first_name: animator.first_name,
-        last_name: animator.last_name,
-        email: animator.email,
-        weekly_hours: weeklyHours,
-        annual_hours: annualHours,
-        active: animator.active,
-        
-        totalHours: 0,
-        periodObjective: periodObjective,
-        hoursDifference: -periodObjective,
-        daysWorked: 0,
-        performance: 0
-      };
-    });
-    
-    console.log('🔄 Fallback avec données par défaut:', fallbackData);
-    setTeamData(fallbackData);
-  }
-};
-
-  const handleClockAction = async (action) => {
-    if (actionLoading) return;
-    setActionLoading(action);
-    
-    try {
-      let result;
-      switch (action) {
-        case 'arrival':
-          result = await clockIn();
-          break;
-        case 'departure':
-          result = await clockOut();
-          break;
-        case 'break_start':
-          result = await startBreak();
-          break;
-        case 'break_end':
-          result = await endBreak();
-          break;
-        default:
-          throw new Error('Action non reconnue');
-      }
-
-      await fetchTodayEntries();
-      if (user?.id) {
-        await fetchTimeHistory(30, user.id);
-        await fetchMonthlyReport(null, null, user.id);
-      }
-      
-    } catch (error) {
-      console.error(`❌ Erreur lors du pointage ${action}:`, error);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   const exportTeamData = async () => {
     try {
       if (useTimeStore.getState().exportTeamData) {
@@ -555,10 +512,10 @@ const loadTeamData = async () => {
           userId: selectedAnimator !== 'all' ? selectedAnimator : null
         });
       } else {
-        console.log('Export des données d\'équipe...');
+        logger.log('Export des données d\'équipe...');
       }
     } catch (error) {
-      console.error('Erreur lors de l\'export:', error);
+      logger.error('Erreur lors de l\'export:', error);
     }
   };
 
@@ -574,44 +531,7 @@ const loadTeamData = async () => {
     );
   }
 
-  const myStructureAnimators = users.filter(u => 
-    u && u.role === 'animator' && u.structure_id === user.structure_id
-  );
-  const myStructure = structures.find(s => s && s.id === user.structure_id);
-  
-  const myTodayEntries = todayEntries.filter(entry => entry?.user_id === user?.id);
-  
-  const getTodayStatusLocal = () => {
-    const status = {
-      arrival: null,
-      departure: null,
-      breakStart: null,
-      breakEnd: null,
-    };
 
-    myTodayEntries.forEach(entry => {
-      switch (entry.tracking_type) {
-        case 'arrival':
-          status.arrival = entry;
-          break;
-        case 'departure':
-          status.departure = entry;
-          break;
-        case 'break_start':
-          status.breakStart = entry;
-          break;
-        case 'break_end':
-          status.breakEnd = entry;
-          break;
-        default:
-          break;
-      }
-    });
-
-    return status;
-  };
-
-  const status = getTodayStatusLocal();
 
   const filteredAnimators = myStructureAnimators.filter(animator => {
     const matchesSearch = 
@@ -632,24 +552,6 @@ const loadTeamData = async () => {
     .slice(0, recentActivityLimit)
     .sort((a, b) => new Date(b.date_time) - new Date(a.date_time));
 
-  // Formatage du temps
-  const getWorkedTime = () => {
-    if (status.arrival && status.departure) {
-      const start = new Date(status.arrival.date_time);
-      const end = new Date(status.departure.date_time);
-      let totalMinutes = (end - start) / (1000 * 60);
-      if (status.breakStart && status.breakEnd) {
-        const breakStart = new Date(status.breakStart.date_time);
-        const breakEnd = new Date(status.breakEnd.date_time);
-        totalMinutes -= (breakEnd - breakStart) / (1000 * 60);
-      }
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = Math.round(totalMinutes % 60);
-      return `${hours}h${minutes.toString().padStart(2, '0')}`;
-    }
-    return '--h--';
-  };
-
   const getWeeklyWorkedTime = () => {
     if (weeklyStats && weeklyStats.formattedTotalHours) {
       return weeklyStats.formattedTotalHours;
@@ -663,11 +565,6 @@ const loadTeamData = async () => {
     }
     return '--h--';
   };
-
-  // Statut de pointage
-const canClockIn = !status.arrival && !status.departure;
-const canPauseOrResume = status.arrival && !status.departure;
-const canClockOut = status.arrival && !status.departure;
 
   // ===== COMPOSANTS DE RENDU =====
   const renderHeader = () => (
@@ -865,11 +762,11 @@ const canClockOut = status.arrival && !status.departure;
       e.stopPropagation();
       try {
         await toggleUserStatus(animator.id, !animator.active);
-        console.log(`✅ Statut animateur ${animator.id} modifié`);
+        logger.log(`✅ Statut animateur ${animator.id} modifié`);
         // Recharger les données
         await loadData();
       } catch (error) {
-        console.error('❌ Erreur toggle status:', error);
+        logger.error('❌ Erreur toggle status:', error);
       }
     }}
     variant={animator.active ? "success" : "danger"}
@@ -1131,10 +1028,10 @@ const canClockOut = status.arrival && !status.departure;
                       onClick={async () => {
                         try {
                           await toggleUserStatus(member.id, !member.active);
-                          console.log(`✅ Statut animateur ${member.id} modifié`);
-                          await loadTeamData();
+                          logger.log(`✅ Statut animateur ${member.id} modifié`);
+                          await handleTeamDataLoad();
                         } catch (error) {
-                          console.error('❌ Erreur toggle status:', error);
+                          logger.error('❌ Erreur toggle status:', error);
                         }
                       }}
                       variant={member.active ? "success" : "danger"}
@@ -1369,12 +1266,12 @@ const renderDirectorTimeTracking = () => (
 
     {/* Panel statistiques quotidiennes */}
     <div className="space-y-4">
-      <StatsCard
-        title="Aujourd'hui"
-        value={getWorkedTime() === '--h--' ? '0h00' : getWorkedTime()}
-        trend="neutral"
-        icon={<Clock className="w-5 h-5" />}
-      />
+<StatsCard
+  title="Aujourd'hui"
+  value={getWorkedTimeWithMultipleBreaks() === '--h--' ? '0h00' : getWorkedTimeWithMultipleBreaks()} 
+  trend="neutral"
+  icon={<Clock className="w-5 h-5" />}
+/>
       <StatsCard
         title="Cette semaine"
         value={getWeeklyWorkedTime()}
@@ -1461,28 +1358,28 @@ const handleAnimatorSelection = async (animatorId) => {
         setSelectedAnimatorStats(stats);
       }
     } catch (error) {
-      console.error('Erreur chargement stats animateur:', error);
+      logger.error('Erreur chargement stats animateur:', error);
     } finally {
       setAnimatorStatsLoading(false);
     }
   };
 
 const calculateComprehensiveStats = (entries, animator, period, dateRange) => {
-  console.log('🔄 Calcul des stats complètes...');
-  console.log('📊 Entrées reçues:', entries.length);
-  console.log('📋 Première entrée:', entries[0]);
+  logger.log('🔄 Calcul des stats complètes...');
+  logger.log('📊 Entrées reçues:', entries.length);
+  logger.log('📋 Première entrée:', entries[0]);
   
   if (!entries || entries.length === 0) {
-    console.log('⚠️ Aucune entrée, retour stats vides');
+    logger.log('⚠️ Aucune entrée, retour stats vides');
     return createEmptyStats(animator, period, dateRange);
   }
 
   const processedDays = calculateTotalHours(entries);
-  console.log('📈 Jours traités:', processedDays.length);
-  console.log('📊 Premier jour traité:', processedDays[0]);
+  logger.log('📈 Jours traités:', processedDays.length);
+  logger.log('📊 Premier jour traité:', processedDays[0]);
   
   if (processedDays.length === 0) {
-    console.log('⚠️ Aucun jour traité');
+    logger.log('⚠️ Aucun jour traité');
     return createEmptyStats(animator, period, dateRange);
   }
 
@@ -1517,8 +1414,8 @@ const calculateComprehensiveStats = (entries, animator, period, dateRange) => {
   // ✅ SIMPLE : Utiliser directement processedDays
   const workingDays = processedDays;
   
-  console.log('✅ Working days créés:', workingDays.length);
-  console.log('📊 Premier working day:', workingDays[0]);
+  logger.log('✅ Working days créés:', workingDays.length);
+  logger.log('📊 Premier working day:', workingDays[0]);
   
   // Calculs de patterns (version simple)
   const arrivalTimes = workingDays
@@ -1573,8 +1470,8 @@ const calculateComprehensiveStats = (entries, animator, period, dateRange) => {
     lastUpdate: new Date().toISOString()
   };
   
-  console.log('✅ Stats complètes calculées:', result);
-  console.log('📊 Working days dans result:', result.workingDays.length);
+  logger.log('✅ Stats complètes calculées:', result);
+  logger.log('📊 Working days dans result:', result.workingDays.length);
   return result;
 };
 
