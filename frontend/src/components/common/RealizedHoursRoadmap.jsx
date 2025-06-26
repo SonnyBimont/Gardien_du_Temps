@@ -1,32 +1,34 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Calendar, Target, BarChart3, Clock, CheckCircle } from "lucide-react";
 import { useTimeStore } from "../../stores/timeStore";
 import { useAuthStore } from "../../stores/authStore";
 import { usePlanningStore } from "../../stores/planningStore";
-import { calculateTotalHoursWithMultipleBreaks, formatHours } from "../../utils/timeCalculations";
-import {exportRHReport } from "../../utils/exportCSV";
-import Card from "../common/Card";
-import Button from "../common/Button";
+import { calculateTotalHours } from "../../utils/time/calculations";
+import { formatHours } from "../../utils/time/formatters";
 import api from "../../services/api";
 import { 
   YEAR_TYPES, 
-  getYearByType, 
   getYearBounds, 
-  filterByYearType, 
   getCurrentYear 
 } from '../../utils/dateUtils';
 
-// Composant pour afficher le calendrier des heures réalisées
+// ✅ IMPORTS CORRIGÉS
+import Card from '../common/Card';
+import StatsCards from '../calendar/StatsCards';
+import CalendarNavigation from '../calendar/CalendarNavigation';
+import CalendarGrid from '../calendar/CalendarGrid';
+import { getCalendarGrid, navigateMonth, goToToday } from '../../utils/calendar/calendarUtils';
+import { getDisplayMonth } from '../../utils/calendar/yearUtils';
+import { getMonthlyRealizedHours } from '../../utils/stats/monthlyCalculations';
+
 const RealizedHoursRoadmap = ({ onBack }) => {
+  // ===== HOOKS EXTERNES =====
   const { user } = useAuthStore();
   const { fetchTimeHistory, timeHistory, loading } = useTimeStore();
   const { yearlyPlanning, fetchYearlyPlanning } = usePlanningStore();
   
-  // Récupérer d'abord le yearType, puis initialiser selectedYear
+  // ===== ÉTAT LOCAL =====
   const yearType = user?.year_type || YEAR_TYPES.CIVIL;
-  const [selectedYear, setSelectedYear] = useState(() => getCurrentYear(yearType)); // ✅ Fonction callback
-
-  // Même logique d'initialisation du mois
+  const [selectedYear, setSelectedYear] = useState(() => getCurrentYear(yearType));
   const [currentMonth, setCurrentMonth] = useState(() => {
     const today = new Date();
     const todayMonth = today.getMonth();
@@ -36,7 +38,7 @@ const RealizedHoursRoadmap = ({ onBack }) => {
       if (selectedYear === currentSchoolYear) {
         return todayMonth;
       } else {
-        return 8; // septembre
+        return 8;
       }
     }    
     return todayMonth;
@@ -44,210 +46,69 @@ const RealizedHoursRoadmap = ({ onBack }) => {
 
   const [realizedHours, setRealizedHours] = useState({});
 
-  // Mêmes fonctions utilitaires que dans YearlyPlanningRoadmap
-  const getMonthBounds = (year, yearType) => {
-    if (yearType === YEAR_TYPES.SCHOOL) {
-      return {
-        startMonth: 8, // septembre
-        endMonth: 7,   // août de l'année suivante
-        startYear: year,
-        endYear: year + 1
-      };
-    } else {
-      return {
-        startMonth: 0, // janvier
-        endMonth: 11,  // décembre
-        startYear: year,
-        endYear: year
-      };
+  // ===== DONNÉES CALCULÉES =====
+  const calendarDays = getCalendarGrid(selectedYear, currentMonth, realizedHours, yearlyPlanning, yearType);
+  const monthlyHours = getMonthlyRealizedHours(realizedHours, currentMonth, selectedYear, yearType);
+  
+  const handleNavigateMonth = (direction) => {
+    navigateMonth(direction, currentMonth, setCurrentMonth, selectedYear, yearType);
+  };
+
+  const handleGoToToday = () => {
+    goToToday(yearType, selectedYear, setSelectedYear, setCurrentMonth);
+  };
+
+  const displayMonth = getDisplayMonth(currentMonth, selectedYear, yearType);
+
+  // ===== CALCULS POUR STATISTIQUES ANNUELLES =====
+  const annualObjective = user?.annual_hours || 1607;
+  const totalRealizedDecimal = realizedHours.totalRealizedYear || 0;
+  const totalRealized = formatHours(totalRealizedDecimal);
+  const remainingDecimal = Math.max(0, annualObjective - totalRealizedDecimal);
+  const remaining = formatHours(remainingDecimal);
+
+  // ===== FONCTION DE COULEUR SELON LES HEURES =====
+  const getHoursColor = (hours) => {
+    if (!hours || hours === 0) return "#f3f4f6";
+    if (hours >= 8) return "#10B981";
+    if (hours >= 6) return "#F59E0B";
+    if (hours >= 3) return "#EF4444";
+    return "#8B5CF6";
+  };
+
+  // ===== EFFETS DE CHARGEMENT DES DONNÉES =====
+  useEffect(() => {
+    if (user?.id) {
+      loadYearData();
     }
-  };
+  }, [selectedYear, yearType, user?.id]);
 
-  // Fonction pour obtenir l'année d'affichage du calendrier
-  const getCalendarYear = (month) => {
-    if (yearType === YEAR_TYPES.SCHOOL) {
-      // En mode scolaire, si on est de septembre à décembre : année N
-      // Si on est de janvier à août : année N+1
-      return month >= 8 ? selectedYear : selectedYear + 1;
-    } else {
-      // Mode civil : toujours l'année sélectionnée
-      return selectedYear;
+  useEffect(() => {
+    if (user?.id && selectedYear && yearType) {
+      const { startDate, endDate } = getYearBounds(selectedYear, yearType);
+      fetchYearlyPlanning(user.id, startDate, endDate);
     }
-  };
-
-  const getDisplayMonth = () => {
-    const year = getCalendarYear(currentMonth);
-    return `${monthNames[currentMonth]} ${year}`;
-  };
-
-  // Génère une grille plate de 42 jours (6 semaines × 7 jours)
-  const getCalendarGrid = (year, month) => {
-    const calendarYear = getCalendarYear(month);
-    
-    const firstDayOfMonth = new Date(calendarYear, month, 1);
-    const startDay = (firstDayOfMonth.getDay() + 6) % 7; // Lundi=0
-
-    const gridStart = new Date(calendarYear, month, 1 - startDay);
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(
-      today.getMonth() + 1
-    ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
-    return Array.from({ length: 42 }, (_, i) => {
-      const date = new Date(gridStart);
-      date.setDate(gridStart.getDate() + i);
-
-      const dateStr = `${date.getFullYear()}-${String(
-        date.getMonth() + 1
-      ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-      const dayData = realizedHours[dateStr];
-
-      const planning = yearlyPlanning.planning?.find(
-        (p) => p.plan_date === dateStr
-      );
-
-      return {
-        date,
-        dateStr,
-        day: date.getDate(),
-        isCurrentMonth: date.getMonth() === month,
-        isToday: dateStr === todayStr,
-        realized: dayData,
-        planning: planning,
-      };
-    });
-  };
-
-  // Navigation entre les mois
-  const navigateMonth = (direction) => {
-    setCurrentMonth(prev => {
-      const bounds = getMonthBounds(selectedYear, yearType);
-      
-      if (yearType === YEAR_TYPES.SCHOOL) {
-        if (direction === 'prev') {
-          if (prev === bounds.startMonth) {
-            return bounds.endMonth;
-          } else if (prev === 0) {
-            return 11;
-          } else {
-            return prev - 1;
-          }
-        } else {
-          if (prev === bounds.endMonth) {
-            return bounds.startMonth;
-          } else if (prev === 11) {
-            return 0;
-          } else {
-            return prev + 1;
-          }
-        }
-      } else {
-        if (direction === 'prev') {
-          return prev === 0 ? 11 : prev - 1;
-        } else {
-          return prev === 11 ? 0 : prev + 1;
-        }
-      }
-    });
-  };
-
-  // Aller au mois actuel
-  const goToToday = () => {
-    const today = new Date();
-    const todayMonth = today.getMonth();
-    const todayYear = today.getFullYear();
-    
-    if (yearType === YEAR_TYPES.SCHOOL) {
-      const currentSchoolYear = getCurrentYear(YEAR_TYPES.SCHOOL);
-      if (selectedYear !== currentSchoolYear) {
-        setSelectedYear(currentSchoolYear);
-      }
-    } else {
-      if (selectedYear !== todayYear) {
-        setSelectedYear(todayYear);
-      }
-    }
-    
-    setCurrentMonth(todayMonth);
-  };
-
-  const calendarDays = getCalendarGrid(selectedYear, currentMonth);
-
-  const monthNames = [
-    "Janvier",
-    "Février",
-    "Mars",
-    "Avril",
-    "Mai",
-    "Juin",
-    "Juillet",
-    "Août",
-    "Septembre",
-    "Octobre",
-    "Novembre",
-    "Décembre",
-  ];
-
-  //  Le sélecteur d'année pour afficher le bon format
-const renderYearSelector = () => (
-  <div className="flex items-center space-x-3">
-    <label className="text-sm font-medium text-gray-700">
-      {yearType === YEAR_TYPES.SCHOOL ? 'Année scolaire :' : 'Année :'}
-    </label>
-    <select
-      value={selectedYear}
-      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-      className="border border-gray-300 rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-green-500"
-    >
-      {[...Array(5)].map((_, i) => {
-        const year = getCurrentYear(yearType) - 2 + i;
-        return (
-          <option key={year} value={year}>
-            {yearType === YEAR_TYPES.SCHOOL ? `${year}-${year + 1}` : year}
-            {year === getCurrentYear(yearType) ? ' (actuel)' : ''}
-          </option>
-        );
-      })}
-    </select>
-  </div>
-);
-
-
-useEffect(() => {
-  if (user?.id) {
-    loadYearData();
-  }
-}, [selectedYear, yearType, user?.id]); // yearType dans les dépendances
-
-// useEffect pour charger la planification aussi
-useEffect(() => {
-  if (user?.id && selectedYear && yearType) {
-    const { startDate, endDate } = getYearBounds(selectedYear, yearType);
-    fetchYearlyPlanning(user.id, startDate, endDate);
-  }
-}, [selectedYear, yearType, user?.id, fetchYearlyPlanning]);
+  }, [selectedYear, yearType, user?.id, fetchYearlyPlanning]);
 
 const loadYearData = async () => {
   if (loading) return;
 
   try {
-    console.log('🔄 Chargement données année:', { selectedYear, yearType });
-    
-    // Calculer les bornes selon le type d'année
     const { startDate, endDate } = getYearBounds(selectedYear, yearType);
-    console.log('📅 Période de chargement:', { startDate, endDate });
-    
     const response = await api.get(`/time-tracking/range?startDate=${startDate}&endDate=${endDate}&userId=${user.id}`);
     
     if (response.data.success) {
       const entries = response.data.data || [];
-      console.log(`📊 Données reçues: ${entries.length} entrées`);
+      const processedData = calculateTotalHours(entries);
       
-      const processedData = calculateTotalHoursWithMultipleBreaks(entries);
+      // ✅ DEBUG - Vérifier les données
+      console.log('📊 Données brutes reçues:', entries.length, 'entrées');
+      console.log('📊 Données traitées:', processedData.length, 'jours');
+      console.log('📊 Exemple de jour:', processedData[0]);
+      
       const yearlyData = {};
       let totalRealizedYear = 0;
 
-      // Ne pas re-filtrer, les données sont déjà filtrées par l'API
       processedData.forEach(day => {
         yearlyData[day.date] = {
           workingHours: day.workingHours,
@@ -259,8 +120,8 @@ const loadYearData = async () => {
         };
         totalRealizedYear += day.workingHours;
       });
-
-      console.log(`✅ Données traitées: ${Object.keys(yearlyData).length} jours, ${totalRealizedYear}h total`);
+      
+      console.log('📊 Données finales stockées:', Object.keys(yearlyData).length, 'jours');
       
       setRealizedHours({
         ...yearlyData,
@@ -272,80 +133,7 @@ const loadYearData = async () => {
   }
 };
 
-  // Fonction pour convertir les heures décimales en heures:minutes
-  const formatDecimalHours = (decimalHours) => {
-    if (!decimalHours || decimalHours === 0) return "0h00";
-
-    const hours = Math.floor(decimalHours);
-    const minutes = Math.round((decimalHours - hours) * 60);
-
-    return `${hours}h${minutes.toString().padStart(2, "0")}`;
-  };
-
-  const monthlyStats = useMemo(() => {
-    const monthData = Object.entries(realizedHours)
-      .filter(([date]) => {
-        const d = new Date(date);
-        return (
-          d.getFullYear() === selectedYear && d.getMonth() === currentMonth
-        );
-      })
-      .reduce((acc, [, data]) => acc + (data.workingHours || 0), 0);
-
-    return Math.round(monthData * 100) / 100;
-  }, [realizedHours, selectedYear, currentMonth]);
-
-  // Fonction pour obtenir les heures réalisées du mois sélectionné
-  const getMonthlyRealizedHours = () => {
-    if (!realizedHours || Object.keys(realizedHours).length === 0) {
-      return '0h00';
-    }
-    
-    try {
-      const calendarYear = getCalendarYear(currentMonth);
-      
-      const monthlyTotal = Object.entries(realizedHours)
-        .filter(([date, data]) => {
-          if (!date || !data) return false;
-          
-          const workDate = new Date(date + 'T00:00:00');
-          if (isNaN(workDate.getTime())) return false;
-          
-          return workDate.getFullYear() === calendarYear && workDate.getMonth() === currentMonth;
-        })
-        .reduce((total, [, data]) => {
-          const hours = parseFloat(data.workingHours) || 0;
-          return total + hours;
-        }, 0);
-      
-      return formatDecimalHours(monthlyTotal);
-      
-    } catch (error) {
-      console.error('Erreur calcul heures mensuelles réalisées:', error);
-      return '0h00';
-    }
-  };
-
-  // Calculer les statistiques
-  const annualObjective = user?.annual_hours || 1607;
-  const totalRealizedDecimal = realizedHours.totalRealizedYear || 0;
-  const totalRealized = formatDecimalHours(totalRealizedDecimal);
-  const remainingDecimal = Math.max(0, annualObjective - totalRealizedDecimal);
-  const remaining = formatDecimalHours(remainingDecimal);
-  const completionRate =
-    annualObjective > 0
-      ? Math.round((totalRealized / annualObjective) * 100 * 100) / 100
-      : 0;
-
-  // Obtenir la couleur selon les heures travaillées
-  const getHoursColor = (hours) => {
-    if (!hours || hours === 0) return "#f3f4f6"; // Gris clair
-    if (hours >= 8) return "#10B981"; // Vert - journée complète
-    if (hours >= 6) return "#F59E0B"; // Orange - journée partielle
-    if (hours >= 3) return "#EF4444"; // Rouge - peu d'heures
-    return "#8B5CF6"; // Violet - très peu d'heures
-  };
-
+  // ===== ÉTAT DE CHARGEMENT =====
   if (loading && Object.keys(realizedHours).length === 0) {
     return (
       <Card title="Mes Heures Réalisées">
@@ -357,531 +145,40 @@ const loadYearData = async () => {
     );
   }
 
+  // ===== RENDU PRINCIPAL =====
   return (
     <div className="space-y-6">
-      {/* Statistiques */}
-      <Card className="border-t-4 border-t-green-500">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
-                Mes Heures Réalisées
-              </h2>
-              <p className="text-gray-600 mt-1">
-                Vos heures de travail pointées pour {selectedYear}
-              </p>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              {onBack && (
-                <Button variant="outline" onClick={onBack} className="mr-3">
-                  ← Retour
-                </Button>
-              )}
-
-  <Button 
-    variant="outline" 
-    onClick={() => exportRHReport(realizedHours, yearlyPlanning, selectedYear, user)}
-    className="ml-2"
-  >
-    📊 Exporter CSV
-  </Button>
-
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="border border-gray-300 rounded-lg px-4 py-2 bg-white shadow-sm focus:ring-2 focus:ring-green-500"
-              >
-                {[...Array(5)].map((_, i) => {
-                  const year = new Date().getFullYear() - 2 + i;
-                  return (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          </div>
-
-          {/* Statistiques en ligne */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <Target className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-              <p className="text-sm text-blue-600 font-medium">Objectif</p>
-              <p className="text-xl font-bold text-blue-900">
-                {annualObjective}h
-              </p>
-            </div>
-
-            <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-              <BarChart3 className="w-6 h-6 text-green-600 mx-auto mb-2" />
-              <p className="text-sm text-green-600 font-medium">Réalisées</p>
-              <p className="text-xl font-bold text-green-900">
-                {totalRealized}
-              </p>
-            </div>
-
-            <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
-              <Clock className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-              <p className="text-sm text-orange-600 font-medium">Restant</p>
-              <p className="text-xl font-bold text-orange-900">{remaining}</p>
-            </div>
-
-            <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-              <Calendar className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-              <p className="text-sm text-purple-600 font-medium">Ce mois</p>
-              <p className="text-xl font-bold text-purple-900">
-                {getMonthlyRealizedHours()}
-              </p>
-            </div>
-          </div>
-
-          {/* Légende des couleurs */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">
-              Légende :
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div>
-                <p className="font-medium text-gray-600 mb-2">
-                  Heures réalisées :
-                </p>
-                <div className="space-y-1">
-                  <div className="flex items-center">
-                    <div
-                      className="w-4 h-4 rounded mr-2"
-                      style={{ backgroundColor: "#10B981" }}
-                    ></div>
-                    <span>≥8h - Journée complète</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div
-                      className="w-4 h-4 rounded mr-2"
-                      style={{ backgroundColor: "#F59E0B" }}
-                    ></div>
-                    <span>6-7h - Journée partielle</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div
-                      className="w-4 h-4 rounded mr-2"
-                      style={{ backgroundColor: "#EF4444" }}
-                    ></div>
-                    <span>3-5h - Demi-journée</span>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <p className="font-medium text-gray-600 mb-2">Comparaison :</p>
-                <div className="space-y-1">
-                  <div className="flex items-center">
-                    <span className="mr-2">📅</span>
-                    <span>Heures planifiées</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="mr-2">🎯</span>
-                    <span className="text-green-600">Objectif atteint</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="mr-2">⚠️</span>
-                    <span className="text-orange-600">
-                      En retard sur l'objectif
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* CALENDRIER */}
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: "8px",
-          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
-          overflow: "hidden",
-        }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            borderBottom: "1px solid #e5e7eb",
-            padding: "16px 24px",
-          }}
-        >
-          <h1
-            style={{
-              fontSize: "18px",
-              fontWeight: "600",
-              color: "#111827",
-            }}
-          >
-            {getDisplayMonth()} 
-          </h1>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            {/* Navigation */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                overflow: "hidden",
-                backgroundColor: "white",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => navigateMonth("prev")}
-                style={{
-                  padding: "8px 12px",
-                  backgroundColor: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#6b7280",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                onMouseEnter={(e) =>
-                  (e.target.style.backgroundColor = "#f9fafb")
-                }
-                onMouseLeave={(e) =>
-                  (e.target.style.backgroundColor = "transparent")
-                }
-              >
-                <svg
-                  style={{ width: "16px", height: "16px" }}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-
-              <button
-                type="button"
-                onClick={goToToday}
-                style={{
-                  padding: "8px 16px",
-                  backgroundColor: "transparent",
-                  border: "none",
-                  borderLeft: "1px solid #d1d5db",
-                  borderRight: "1px solid #d1d5db",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  color: "#374151",
-                }}
-                onMouseEnter={(e) =>
-                  (e.target.style.backgroundColor = "#f9fafb")
-                }
-                onMouseLeave={(e) =>
-                  (e.target.style.backgroundColor = "transparent")
-                }
-              >
-                Aujourd'hui
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigateMonth("next")}
-                style={{
-                  padding: "8px 12px",
-                  backgroundColor: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#6b7280",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                onMouseEnter={(e) =>
-                  (e.target.style.backgroundColor = "#f9fafb")
-                }
-                onMouseLeave={(e) =>
-                  (e.target.style.backgroundColor = "transparent")
-                }
-              >
-                <svg
-                  style={{ width: "16px", height: "16px" }}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* En-têtes des jours */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
-            backgroundColor: "#f9fafb",
-            borderBottom: "1px solid #e5e7eb",
-          }}
-        >
-          {[
-            "Lundi",
-            "Mardi",
-            "Mercredi",
-            "Jeudi",
-            "Vendredi",
-            "Samedi",
-            "Dimanche",
-          ].map((day) => (
-            <div
-              key={day}
-              style={{
-                padding: "12px",
-                textAlign: "center",
-                backgroundColor: "white",
-                margin: "1px",
-                fontSize: "12px",
-                fontWeight: "600",
-                color: "#374151",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-              }}
-            >
-              {day.substring(0, 3)}
-            </div>
-          ))}
-        </div>
-
-        {/* GRILLE DES JOURS */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
-            gap: "1px",
-            backgroundColor: "#f3f4f6",
-          }}
-        >
-          {calendarDays.map((dayData, idx) => (
-            <div
-              key={idx}
-              style={{
-                backgroundColor: dayData.isCurrentMonth ? "white" : "#f9fafb",
-                color: dayData.isCurrentMonth ? "#111827" : "#9ca3af",
-                padding: "12px",
-                minHeight: "100px",
-                maxHeight: "140px", 
-                display: "flex",
-                flexDirection: "column",
-                border: dayData.isToday ? "2px solid #10B981" : "none",
-                overflow: "hidden",
-                boxSizing: "border-box",
-              }}
-            >
-              {/* Numéro du jour */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "8px",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    display: dayData.isToday ? "flex" : "block",
-                    alignItems: dayData.isToday ? "center" : "unset",
-                    justifyContent: dayData.isToday ? "center" : "unset",
-                    width: dayData.isToday ? "24px" : "auto",
-                    height: dayData.isToday ? "24px" : "auto",
-                    backgroundColor: dayData.isToday
-                      ? "#10B981"
-                      : "transparent",
-                    color: dayData.isToday ? "white" : "inherit",
-                    borderRadius: dayData.isToday ? "50%" : "0",
-                    fontWeight: dayData.isToday ? "600" : "500",
-                  }}
-                >
-                  {dayData.day}
-                </span>
-              </div>
-
-              {/* Contenu principal */}
-              <div
-                style={{
-                  flex: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "3px",
-                }}
-              >
-                {/* HEURES RÉALISÉES */}
-                {dayData.realized?.workingHours > 0 && (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "8px",
-                        height: "8px",
-                        borderRadius: "50%",
-                        backgroundColor: getHoursColor(
-                          dayData.realized.workingHours
-                        ),
-                        flexShrink: 0,
-                      }}
-                    ></div>
-                    <span
-                      style={{
-                        fontSize: "10px",
-                        fontWeight: "600",
-                        color: "#111827",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {formatHours(dayData.realized.workingHours)}
-                    </span>
-                  </div>
-                )}
-
-                {/* HEURES PLANIFIÉES */}
-                {dayData.planning?.planned_hours > 0 && (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "8px",
-                        height: "8px",
-                        borderRadius: "50%",
-                        backgroundColor: dayData.planning.color || "#3B82F6",
-                        flexShrink: 0,
-                      }}
-                    ></div>
-                    <span
-                      style={{
-                        fontSize: "10px",
-                        fontWeight: "500",
-                        color: "#6B7280",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      📅 {dayData.planning.planned_hours}h
-                    </span>
-                  </div>
-                )}
-
-                {/* COMPARAISON (si les deux existent) */}
-                {dayData.realized?.workingHours > 0 &&
-                  dayData.planning?.planned_hours > 0 && (
-                    <div
-                      style={{
-                        fontSize: "9px",
-                        color:
-                          dayData.realized.workingHours >=
-                            dayData.planning.planned_hours
-                            ? "#10B981"
-                            : "#F59E0B",
-                        fontWeight: "500",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {dayData.realized.workingHours >=
-                        dayData.planning.planned_hours
-                        ? "🎯"
-                        : "⚠️"}
-                      {dayData.realized.workingHours >=
-                        dayData.planning.planned_hours
-                        ? `+${formatDecimalHours(dayData.realized.workingHours - dayData.planning.planned_hours)}`
-                        : `${formatDecimalHours(dayData.realized.workingHours - dayData.planning.planned_hours)}`}
-                    </div>
-                  )}
-
-                {/* Horaires de début/fin (si présents) */}
-                {dayData.realized?.arrival && (
-                  <div
-                    style={{
-                      fontSize: "9px",
-                      color: "#9CA3AF",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {dayData.realized.arrival} →{" "}
-                    {dayData.realized.departure || "En cours"}
-                  </div>
-                )}
-
-                {/* Projet planifié (si présent) */}
-                {dayData.planning?.project && (
-                  <div
-                    style={{
-                      fontSize: "8px",
-                      color: "#9CA3AF",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    📋 {dayData.planning.project.name}
-                  </div>
-                )}
-
-                {/* Si pas de données */}
-                {dayData.isCurrentMonth &&
-                  (!dayData.realized || dayData.realized.workingHours === 0) &&
-                  (!dayData.planning ||
-                    dayData.planning.planned_hours === 0) && (
-                    <div
-                      style={{
-                        fontSize: "9px",
-                        color: "#D1D5DB",
-                        textAlign: "center",
-                        marginTop: "10px",
-                      }}
-                    >
-                      Aucune donnée
-                    </div>
-                  )}
-              </div>
-            </div>
-          ))}
-        </div>
+      <StatsCards 
+        selectedYear={selectedYear}
+        yearType={yearType}
+        onBack={onBack}
+        realizedHours={realizedHours}
+        yearlyPlanning={yearlyPlanning}
+        user={user}
+        setSelectedYear={setSelectedYear}
+        annualObjective={annualObjective}
+        totalRealized={totalRealized}
+        remaining={remaining}
+        getMonthlyRealizedHours={() => monthlyHours}
+      />
+      
+      <div style={{
+        backgroundColor: "white",
+        borderRadius: "8px",
+        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
+        overflow: "hidden",
+      }}>
+        <CalendarNavigation 
+          displayMonth={displayMonth}
+          onNavigateMonth={handleNavigateMonth}
+          onGoToToday={handleGoToToday}
+        />
+        
+        <CalendarGrid 
+          calendarDays={calendarDays}
+          getHoursColor={getHoursColor}
+          yearlyPlanning={yearlyPlanning}
+        />
       </div>
     </div>
   );

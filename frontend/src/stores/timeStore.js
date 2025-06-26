@@ -1,11 +1,14 @@
 // Store pour le suivi du temps
 import { create } from 'zustand';
 import api from '../services/api';
-import { calculateWeeklyStats, 
-  calculateMonthlyStats,
+import { 
   calculateTotalHours, 
-  getTodayStatus,
-} from '../utils/timeCalculations';
+  calculateWorkingHours,
+  calculateWeeklyStats,
+  calculateMonthlyStats ,
+  getTodayStatus
+} from '../utils/time/calculations';
+import { formatHours } from '../utils/time/formatters';
 
 export const useTimeStore = create((set, get) => ({
   todayEntries: [],

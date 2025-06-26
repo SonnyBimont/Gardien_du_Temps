@@ -4,7 +4,7 @@ import { useAuthStore } from '../stores/authStore';
 import { TimeTrackingService } from '../services/timeTrackingService';
 import { TRACKING_TYPES } from '../constants/timeTracking';
 import { logger } from '../utils/logger';
-
+import { calculateTotalHours, getTodayStatus } from '../utils/time/calculations';
 /**
  * Hook pour gérer toute la logique de pointage
  * @param {number|null} userId - ID de l'utilisateur (optionnel, prend l'utilisateur connecté par défaut)

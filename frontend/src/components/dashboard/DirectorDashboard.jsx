@@ -3,11 +3,7 @@ import {
   Users, 
   Clock, 
   Calendar, 
-  TrendingUp, 
   Activity,
-  Building,
-  FileText,
-  Settings,
   Search,
   PlayCircle,
   PauseCircle,
@@ -15,17 +11,24 @@ import {
   MapPin,
   Download,
   Plus,
-  Filter,
   CheckCircle,
   AlertCircle,
   Target,
   Timer,
-  BarChart3
 } from 'lucide-react';
 import { PERIOD_OPTIONS, TRACKING_TYPES } from '../../constants/timeTracking';
 import { USER_ROLES } from '../../constants/user';
 import { logger } from '../../utils/logger';
-import { calculateTotalHours, formatTime, calculatePeriodDates, getPerformanceStatus, getMostProductiveDay, getConsistencyRating, calculateVariance, getWorkDayStatus } from '../../utils/timeCalculations';
+import { 
+  calculateTotalHours, 
+  calculateWeeklyStats,
+  calculateMonthlyStats,
+  getTodayStatus
+} from "../../utils/time/calculations";
+import { 
+  formatTime, 
+  formatHours 
+} from "../../utils/time/formatters";
 import { useTimeTracking } from '../../hooks/useTimeTracking';
 import { useTeamManagement } from '../../hooks/useTeamManagement';
 import { useAuthStore } from '../../stores/authStore';

@@ -5,17 +5,12 @@ import {
   Users, 
   Building2, 
   Activity, 
-  TrendingUp, 
   Search, 
   UserPlus,
   Calendar,
   Eye,
   EyeOff,
-  Filter,
-  Download,
-  RefreshCw,
   MapPin,
-  Shield
 } from 'lucide-react';
 import Modal from '../common/Modal';
 import Card from '../common/Card';

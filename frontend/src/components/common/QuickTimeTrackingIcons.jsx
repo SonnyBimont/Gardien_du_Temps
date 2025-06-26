@@ -1,41 +1,79 @@
-// ✅ MODIFIER : frontend/src/components/common/QuickTimeTrackingIcons.jsx
 import React, { useState } from 'react';
 import { Clock, Coffee, LogOut } from 'lucide-react';
 import { useTimeTracking } from '../../hooks/useTimeTracking';
 import { useAuthStore } from '../../stores/authStore';
 
+/**
+ * Composant d'icônes de pointage rapide pour les directeurs
+ * 
+ * Fonctionnalités :
+ * - Pointage intelligent arrivée/départ (icône horloge)
+ * - Gestion des pauses avec détection automatique (icône café)
+ * - Départ direct sans logique complexe (icône sortie)
+ * - Feedback visuel temporaire (toasts de confirmation)
+ * - Adaptation de l'interface selon l'état du jour
+ * - Restriction d'accès par rôle (directeur uniquement)
+ * 
+ * États gérés :
+ * - Activation/désactivation des boutons selon le contexte
+ * - Couleurs adaptatives (vert=disponible, rouge=départ, orange=pause, gris=indisponible)
+ * - Messages d'aide contextuels (tooltips)
+ */
 const QuickTimeTrackingIcons = () => {
+  // ===== ÉTAT LOCAL =====
+  
+  // Gestion des messages de feedback temporaires (succès/erreur)
   const [feedback, setFeedback] = useState(null);
+  
+  // ===== HOOKS EXTERNES =====
+  
+  // Récupération des données utilisateur depuis le store d'authentification
   const { user } = useAuthStore();
   
-  // ✅ UTILISER : Le nouveau hook
+  // Hook personnalisé de gestion du pointage avec toute la logique métier
   const {
-    actionLoading,
-    canClockIn,
-    canPauseOrResume,
-    canClockOut,
-    handleIntelligentClockAction,
-    handleIntelligentBreakAction,
-    clockOut,
-    getTodayStatus,
-    isOnBreak
+    actionLoading,              // Indique si une action est en cours
+    canClockIn,                // Peut pointer l'arrivée
+    canPauseOrResume,          // Peut gérer les pauses
+    canClockOut,               // Peut pointer le départ
+    handleIntelligentClockAction,  // Gestion intelligente arrivée/départ
+    handleIntelligentBreakAction,  // Gestion intelligente pause/reprise
+    clockOut,                  // Départ direct sans logique
+    getTodayStatus,            // État actuel de la journée
+    isOnBreak                  // Indique si actuellement en pause
   } = useTimeTracking(user?.id);
 
-  // Ne pas afficher si pas directeur
+  // ===== CONTRÔLES D'ACCÈS =====
+  
+  // Restriction d'affichage : seuls les directeurs voient ces icônes
   if (user?.role !== 'director') {
     return null;
   }
 
+  // ===== UTILITAIRES =====
+  
+  /**
+   * Affiche un message de feedback temporaire
+   * @param {string} message - Texte à afficher
+   * @param {string} type - Type de message ('success' ou 'error')
+   */
   const showFeedback = (message, type = 'success') => {
     setFeedback({ message, type });
+    // Auto-suppression après 2 secondes
     setTimeout(() => setFeedback(null), 2000);
   };
 
-  // ✅ SIMPLIFIER : Gestionnaires avec le hook
+  // ===== GESTIONNAIRES D'ÉVÉNEMENTS =====
+  
+  /**
+   * Gestion du clic sur l'icône horloge (Clock)
+   * Logique intelligente : arrivée si pas encore pointée, départ sinon
+   */
   const handleClockClick = async () => {
     try {
       const result = await handleIntelligentClockAction();
       if (result.success) {
+        // Détermination du message selon l'action effectuée
         const status = getTodayStatus();
         const message = !status.arrival ? '✅ Arrivée enregistrée' : '✅ Départ enregistré';
         showFeedback(message, 'success');
@@ -47,10 +85,15 @@ const QuickTimeTrackingIcons = () => {
     }
   };
 
+  /**
+   * Gestion du clic sur l'icône café (Coffee)
+   * Logique intelligente : début de pause si pas en pause, fin de pause sinon
+   */
   const handleBreakClick = async () => {
     try {
       const result = await handleIntelligentBreakAction();
       if (result.success) {
+        // Message adapté selon l'action (début ou fin de pause)
         const message = isOnBreak() ? '🔄 Pause terminée' : '☕ Pause commencée';
         showFeedback(message, 'success');
       } else {
@@ -61,6 +104,10 @@ const QuickTimeTrackingIcons = () => {
     }
   };
 
+  /**
+   * Gestion du clic sur l'icône sortie (LogOut)
+   * Départ direct sans logique complexe - toujours un départ
+   */
   const handleDirectClockOut = async () => {
     try {
       const result = await clockOut();
@@ -74,22 +121,32 @@ const QuickTimeTrackingIcons = () => {
     }
   };
 
+  // ===== STYLES =====
+  
+  // Classes CSS communes pour toutes les icônes (hover, transitions, taille)
   const iconClass = `
     w-8 h-8 p-1.5 rounded-lg cursor-pointer transition-all duration-200 
     hover:scale-110 hover:shadow-lg active:scale-95
   `;
 
+  // ===== RENDU DU COMPOSANT =====
+  
   return (
     <div className="flex items-center space-x-2 relative">
-      {/* Debug en mode développement */}
+      
+      {/* Indicateurs de debug en mode développement */}
       {process.env.NODE_ENV === 'development' && (
         <div className="text-xs text-gray-500 mr-2">
+          {/* Indicateurs visuels de l'état actuel */}
           {canClockIn ? '🟢' : canClockOut ? '🔴' : '⚪'} 
           {isOnBreak() ? '☕' : ''} 
         </div>
       )}
       
-      {/* Icône Clock - Arrivée/Départ intelligent */}
+      {/* 
+        ICÔNE 1 : HORLOGE (Clock) - Pointage intelligent arrivée/départ
+        Couleur : Vert si peut arriver, Rouge si peut partir, Gris si indisponible
+      */}
       <div
         onClick={!actionLoading && (canClockIn || canClockOut) ? handleClockClick : undefined}
         className={`${iconClass} ${
@@ -110,7 +167,11 @@ const QuickTimeTrackingIcons = () => {
         <Clock className="w-full h-full" />
       </div>
 
-      {/* Icône Coffee - Pause/Reprise intelligent */}
+      {/* 
+        ICÔNE 2 : CAFÉ (Coffee) - Gestion intelligente des pauses
+        Couleur : Orange si disponible, Gris si indisponible
+        Logique : Démarre une pause si pas en pause, termine la pause si en pause
+      */}
       <div
         onClick={!actionLoading && canPauseOrResume ? handleBreakClick : undefined}
         className={`${iconClass} ${
@@ -130,7 +191,14 @@ const QuickTimeTrackingIcons = () => {
         <Coffee className="w-full h-full" />
       </div>
 
-      {/* Icône LogOut - Départ direct */}
+      {/* 
+        ICÔNE 3 : SORTIE (LogOut) - Départ direct
+        Couleur : Rouge si disponible, Gris si indisponible
+        Différence avec Clock : Toujours un départ, pas d'intelligence
+        
+        ⚠️  POSSIBLE REDONDANCE : Cette icône fait la même chose que Clock 
+        quand canClockOut est true. Pourrait être simplifié.
+      */}
       <div
         onClick={!actionLoading && canClockOut ? handleDirectClockOut : undefined}
         className={`${iconClass} ${
@@ -149,7 +217,10 @@ const QuickTimeTrackingIcons = () => {
         <LogOut className="w-full h-full" />
       </div>
 
-      {/* Feedback toast */}
+      {/* 
+        FEEDBACK TOAST - Messages temporaires de confirmation/erreur
+        Positionné en absolu au-dessus des icônes
+      */}
       {feedback && (
         <div className={`
           absolute top-12 right-0 z-50 px-3 py-2 rounded-lg shadow-lg text-sm font-medium
@@ -165,3 +236,18 @@ const QuickTimeTrackingIcons = () => {
 };
 
 export default QuickTimeTrackingIcons;
+
+
+// 🔍 ANALYSE DES POSSIBLES REDONDANCES :
+
+// ❓ REDONDANCE POTENTIELLE :
+// - handleClockClick() et handleDirectClockOut() font la même chose quand canClockOut est true
+// - Les deux appellent des fonctions différentes mais avec le même résultat
+// - handleClockClick utilise handleIntelligentClockAction()
+// - handleDirectClockOut utilise clockOut()
+// - Cela pourrait être simplifié en une seule icône
+
+// 💡 SUGGESTIONS D'AMÉLIORATION :
+// 1. Fusionner les icônes Clock et LogOut en une seule icône intelligente
+// 2. Ou garder LogOut comme "départ d'urgence" sans vérifications
+// 3. Ajouter des tests unitaires pour ces interactions complexes
