@@ -10,14 +10,12 @@ import {
   getYearBounds, 
   getCurrentYear 
 } from '../../utils/dateUtils';
-
-// ✅ IMPORTS CORRIGÉS
 import Card from '../common/Card';
 import StatsCards from '../calendar/StatsCards';
 import CalendarNavigation from '../calendar/CalendarNavigation';
 import CalendarGrid from '../calendar/CalendarGrid';
 import { getCalendarGrid, navigateMonth, goToToday } from '../../utils/calendar/calendarUtils';
-import { getDisplayMonth } from '../../utils/calendar/yearUtils';
+import { getDisplayMonth } from '../../utils/calendar/calendarYearUtils';
 import { getMonthlyRealizedHours } from '../../utils/stats/monthlyCalculations';
 
 const RealizedHoursRoadmap = ({ onBack }) => {

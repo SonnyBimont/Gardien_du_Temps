@@ -223,7 +223,7 @@ const CalendarGrid = ({ calendarDays, getHoursColor }) => {
                 </div>
               )}
 
-              {/* ✅ STATUT DU JOUR */}
+              {/* ✅ STATUT DU JOUR
               {dayData.realized?.status && (
                 <div
                   style={{
@@ -236,7 +236,7 @@ const CalendarGrid = ({ calendarDays, getHoursColor }) => {
                 >
                   {dayData.realized.status === 'complete' ? '✅ Complet' : '⏳ Partiel'}
                 </div>
-              )}
+              )} */}
 
               {/* JOUR VIDE */}
               {dayData.isCurrentMonth &&

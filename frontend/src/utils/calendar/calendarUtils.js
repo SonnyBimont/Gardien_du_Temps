@@ -1,5 +1,4 @@
-import { getCalendarYear } from "./calendarYearUtils.js";
-import { getCurrentYear } from "./yearUtils.js";
+import { getCalendarYear, getCurrentYear } from "./calendarYearUtils.js";
 import { YEAR_TYPES } from "./constants.js";
 
 export const getMonthBounds = (year, yearType) => {

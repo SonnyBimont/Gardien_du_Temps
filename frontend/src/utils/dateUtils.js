@@ -177,6 +177,89 @@ export const getCurrentYear = (yearType = DEFAULT_YEAR_TYPE) => {
   return currentYear;
 };
 
+  // Calcule les dates de la période sélectionnée
+export const calculatePeriodDates = (period, customStart = null, customEnd = null) => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentQuarter = Math.floor(currentMonth / 3);
+
+    switch (period) {
+      case 'current_week':
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - now.getDay() + 1);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        return {
+          start: monday.toISOString().split('T')[0],
+          end: sunday.toISOString().split('T')[0],
+          label: 'Semaine en cours'
+        };
+
+      case 'current_month':
+        return {
+          start: new Date(currentYear, currentMonth, 1).toISOString().split('T')[0],
+          end: new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0],
+          label: 'Mois en cours'
+        };
+
+      case 'current_quarter':
+        const quarterStart = new Date(currentYear, currentQuarter * 3, 1);
+        const quarterEnd = new Date(currentYear, (currentQuarter + 1) * 3, 0);
+        return {
+          start: quarterStart.toISOString().split('T')[0],
+          end: quarterEnd.toISOString().split('T')[0],
+          label: 'Trimestre en cours'
+        };
+
+      case 'current_year':
+        return {
+          start: new Date(currentYear, 0, 1).toISOString().split('T')[0],
+          end: new Date(currentYear, 11, 31).toISOString().split('T')[0],
+          label: 'Année en cours'
+        };
+
+      case 'previous_week':
+        const prevWeekMonday = new Date(now);
+        prevWeekMonday.setDate(now.getDate() - now.getDay() - 6);
+        const prevWeekSunday = new Date(prevWeekMonday);
+        prevWeekSunday.setDate(prevWeekMonday.getDate() + 6);
+        return {
+          start: prevWeekMonday.toISOString().split('T')[0],
+          end: prevWeekSunday.toISOString().split('T')[0],
+          label: 'Semaine précédente'
+        };
+
+      case 'previous_month':
+        const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+        return {
+          start: new Date(prevYear, prevMonth, 1).toISOString().split('T')[0],
+          end: new Date(prevYear, prevMonth + 1, 0).toISOString().split('T')[0],
+          label: 'Mois précédent'
+        };
+
+      case 'last_30_days':
+        const thirty = new Date(now);
+        thirty.setDate(now.getDate() - 30);
+        return {
+          start: thirty.toISOString().split('T')[0],
+          end: now.toISOString().split('T')[0],
+          label: '30 derniers jours'
+        };
+
+      case 'custom':
+        return {
+          start: customStart,
+          end: customEnd,
+          label: 'Période personnalisée'
+        };
+
+      default:
+        return calculatePeriodDates('current_month');
+    }
+  };
+
 
 { /* Fonction pour debug - affiche l'année scolaire actuelle
  */}
