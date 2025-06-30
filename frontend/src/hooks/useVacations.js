@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSchoolVacationStore } from '../stores/schoolVacationStore';
 
-export const useVacations = (startDate, endDate, zone = null) => { // ✅ null = toutes les zones
+export const useVacations = (startDate, endDate, zone = null) => { // null = toutes les zones
   const { fetchVacations, isVacationDay, getVacationInfo, loading, error } = useSchoolVacationStore();
   const [initialized, setInitialized] = useState(false);
 

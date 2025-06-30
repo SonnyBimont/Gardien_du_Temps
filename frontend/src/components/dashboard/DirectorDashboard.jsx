@@ -132,8 +132,36 @@ const DirectorDashboard = () => {
     canPauseOrResume,
     canClockOut,
     handleClockAction,
+    handleIntelligentClockAction,        
+    handleIntelligentBreakAction,  
     error: timeTrackingError
   } = useTimeTracking(user?.id);
+
+const handleTimeTrackingAction = async (action) => {
+  try {
+    let result;
+    
+    switch (action) {
+      case 'arrival':
+      case 'departure':
+        result = await handleIntelligentClockAction(); // ✅ FONCTION EXISTANTE
+        break;
+        
+      case 'break_start':
+      case 'break_end':
+        result = await handleIntelligentBreakAction(); // ✅ FONCTION EXISTANTE
+        break;
+        
+      default:
+        throw new Error('Action non reconnue');
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Erreur action pointage:', error);
+    return { success: false, error: error.message };
+  }
+};
 
   // données du hook au lieu des calculs locaux
   const status = getTodayStatus();
@@ -221,8 +249,6 @@ const handleAnimatorCreated = useCallback(async () => {
 
   // ===== FONCTIONS UTILITAIRES =====
   
-
-
 // ===== FONCTIONS UTILITAIRES POUR PAUSES MULTIPLES =====
 
 // Calcule le temps travaillé hors pauses (toutes les pauses)
@@ -454,7 +480,6 @@ const getWorkedTimeWithMultipleBreaks = () => {
     </div>
   );
 
-
   const renderAnimatorsList = () => (
     <Card title="Mes Animateurs" className="h-full">
       <div className="space-y-4">
@@ -668,27 +693,48 @@ const getWorkedTimeWithMultipleBreaks = () => {
   );
 
   // Gestion des horaires personnels du directeur
-  const renderScheduleManagement = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Mes Horaires</h2>
-          <p className="text-gray-600 mt-1">Gestion de votre temps de travail</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" onClick={() => setActiveView('dashboard')}>
-            Retour au tableau de bord
-          </Button>
-        </div>
+const renderScheduleManagement = () => (
+  
+  <div className="space-y-6">
+    <div className="flex items-center justify-between">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900">Mes Horaires</h2>
+        <p className="text-gray-600 mt-1">Gestion de votre temps de travail</p>
       </div>
-
-      {/* Panel de pointage */}
-      {renderDirectorTimeTracking()}
-
-      {/* Historique */}
-      {renderDirectorHistory()}
+      <div className="flex items-center space-x-3">
+        <Button variant="outline" onClick={() => setActiveView('dashboard')}>
+          Retour au tableau de bord
+        </Button>
+      </div>
     </div>
-  );
+
+    {/* Panel de pointage */}
+    {renderDirectorTimeTracking(
+      currentTime,                    // Heure actuelle
+      handleClockAction,              // Fonction de pointage
+      canClockIn,                     // Peut pointer arrivée
+      canClockOut,                    // Peut pointer sortie
+      canPauseOrResume,               // Peut pause/reprendre
+      actionLoading,                  // État de chargement
+      myTodayEntries,                 // Pointages du jour
+      isOnBreak,                      // En pause ou non
+      getPauses,                      // Fonction pauses
+      status,                         // Status du jour (getTodayStatus())
+      getWorkedTimeWithMultipleBreaks, // Fonction temps travaillé
+      getWeeklyWorkedTime,            // Fonction heures semaine
+      getMonthlyWorkedTime,            // Fonction heures mois
+      handleTimeTrackingAction        // Fonction de gestion pointage
+    )}
+
+    {/* Historique */}
+    {renderDirectorHistory(      
+      timeHistory || [],      // Données d'historique avec fallback
+      processedHistory || [], // Données processées avec fallback
+      user?.id,              // ID utilisateur
+      weeklyStats,           // Stats hebdomadaires
+      monthlyStats)}
+  </div>
+);
 
   // Sélection d'animateur avec statistiques
   const handleAnimatorSelection = async (animatorId) => {

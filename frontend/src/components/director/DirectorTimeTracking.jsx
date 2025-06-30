@@ -5,7 +5,8 @@ import { PlayCircle, StopCircle, PauseCircle, Clock, Calendar, Activity } from '
                                        
 
 // Pointage du directeur
-  export const renderDirectorTimeTracking = (  currentTime,
+  export const renderDirectorTimeTracking = (  
+  currentTime,
   handleClockAction,
   canClockIn,
   canClockOut,
@@ -58,7 +59,7 @@ import { PlayCircle, StopCircle, PauseCircle, Clock, Calendar, Activity } from '
 
  {/* Bonton Pause/Reprise          */}
 <button
-  onClick={() => handleClockAction(isOnBreak(myTodayEntries) ? 'break_end' : 'break_start')}
+  onClick={() => handleClockAction(isOnBreak ? 'break_end' : 'break_start')}
   disabled={!canPauseOrResume || (actionLoading === 'break_start' || actionLoading === 'break_end')}
   className={`p-4 rounded-lg border-2 transition-all duration-200 ${
     canPauseOrResume && !actionLoading
@@ -71,7 +72,7 @@ import { PlayCircle, StopCircle, PauseCircle, Clock, Calendar, Activity } from '
     <span className="text-sm font-medium">
       {actionLoading === 'break_start' || actionLoading === 'break_end'
         ? 'En cours...'
-        : isOnBreak(myTodayEntries)
+        : isOnBreak
           ? 'Reprise'
           : 'Pause'
       }
@@ -108,7 +109,7 @@ import { PlayCircle, StopCircle, PauseCircle, Clock, Calendar, Activity } from '
               <div>
                 <span className="text-sm text-gray-500">Arrivée</span>
                 <p className="font-medium">
-                  {status.arrival 
+                  {status?.arrival 
                     ? new Date(status.arrival.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
                     : '--:--'
                   }
@@ -121,7 +122,7 @@ import { PlayCircle, StopCircle, PauseCircle, Clock, Calendar, Activity } from '
               <div>
                 <span className="text-sm text-gray-500">Départ</span>
                 <p className="font-medium">
-                  {status.departure 
+                  {status?.departure 
                     ? new Date(status.departure.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
                     : '--:--'
                   }
@@ -134,7 +135,7 @@ import { PlayCircle, StopCircle, PauseCircle, Clock, Calendar, Activity } from '
               <div>
                 <span className="text-sm text-gray-500">Pause début</span>
                 <p className="font-medium">
-                  {status.breakStart 
+                  {status?.breakStart 
                     ? new Date(status.breakStart.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
                     : '--:--'
                   }
@@ -147,7 +148,7 @@ import { PlayCircle, StopCircle, PauseCircle, Clock, Calendar, Activity } from '
               <div>
                 <span className="text-sm text-gray-500">Pause fin</span>
                 <p className="font-medium">
-                  {status.breakEnd 
+                  {status?.breakEnd 
                     ? new Date(status.breakEnd.date_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
                     : '--:--'
                   }
@@ -190,7 +191,7 @@ import { PlayCircle, StopCircle, PauseCircle, Clock, Calendar, Activity } from '
         </div>
 
         {/* Aide contextuelle */}
-        {!status.arrival && (
+        {!status?.arrival && (
           <div className="p-3 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-700">
               💡 Commencez votre journée en cliquant sur "Arrivée"
