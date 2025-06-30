@@ -386,10 +386,14 @@ exports.updateUser = async (req, res) => {
       annual_hours, 
       is_active, 
       role,
-      year_type // ✅ AJOUTER
+      year_type 
     } = req.body;
 
-    // ✅ AJOUTER : Validation du year_type
+    const currentUser = req.user;                    
+    const userToUpdate = await User.findByPk(id);  
+    const userId = parseInt(id); 
+
+    //  Validation du year_type
     if (year_type && !['civil', 'school'].includes(year_type)) {
       return res.status(400).json({
         success: false,
@@ -413,7 +417,7 @@ exports.updateUser = async (req, res) => {
     if (annual_hours !== undefined) updateData.annual_hours = annual_hours;
     if (is_active !== undefined) updateData.is_active = is_active;
     if (role !== undefined) updateData.role = role;
-    if (year_type !== undefined) updateData.year_type = year_type; // ✅ AJOUTER
+    if (year_type !== undefined) updateData.year_type = year_type; 
 
 
         let canUpdate = false;

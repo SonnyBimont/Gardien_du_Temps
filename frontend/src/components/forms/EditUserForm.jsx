@@ -137,18 +137,15 @@ const handleSubmit = async (e) => {
     // Préparer les données à envoyer
     const updateData = { ...formData };
     
-      // Si contexte directeur, appliquer les contraintes
-      if (isDirectorContext) {
-        // Forcer le rôle à "animator" si spécifié
-        if (fixedRole) {
-          updateData.role = fixedRole;
-        }
-        
-        // Forcer la structure si spécifiée
-        if (fixedStructureId) {
-          updateData.structure_id = fixedStructureId;
-        }
+    // Si contexte directeur, appliquer les contraintes
+    if (isDirectorContext) {
+      if (fixedRole) {
+        updateData.role = fixedRole;
       }
+      if (fixedStructureId) {
+        updateData.structure_id = fixedStructureId;
+      }
+    }
 
     // Ne pas envoyer le mot de passe s'il est vide
     if (!updateData.password || updateData.password.trim() === '') {
@@ -174,15 +171,36 @@ const handleSubmit = async (e) => {
     
     console.log('✅ Résultat:', result);
     
-    if (result.success) {
-      onUserUpdated();
-      onClose();
+    if (result && result.success === true) {
+      onUserUpdated?.();
+      onClose?.();
     } else {
       console.error('❌ Erreur dans la réponse:', result);
+      // ✅ AMÉLIORATION: Message d'erreur plus détaillé
+      setFormErrors({ 
+        general: `Impossible de modifier l'utilisateur. ${result?.error || result?.message || 'Erreur serveur 500 - Contactez l\'administrateur.'}`
+      });
     }
   } catch (error) {
     console.error('❌ Erreur lors de la modification:', error);
     console.error('❌ Détails de l\'erreur:', error.response?.data);
+    
+    // Messages d'erreur plus clairs
+    let errorMessage = 'Erreur serveur lors de la modification.';
+    
+    if (error.response?.status === 500) {
+      errorMessage = 'Erreur interne du serveur (500). Veuillez contacter l\'administrateur technique.';
+    } else if (error.response?.status === 404) {
+      errorMessage = 'Utilisateur non trouvé.';
+    } else if (error.response?.status === 403) {
+      errorMessage = 'Vous n\'avez pas les permissions pour modifier cet utilisateur.';
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    }
+    
+    setFormErrors({ 
+      general: errorMessage
+    });
   }
 };
 
@@ -198,6 +216,21 @@ const handleSubmit = async (e) => {
       </p>
     </div>
 
+  {/* Affichage des erreurs générales */}
+  {formErrors.general && (
+    <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+      <div className="flex">
+        <div className="flex-shrink-0">
+          <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+        </div>
+        <div className="ml-3">
+          <p className="text-sm text-red-600">{formErrors.general}</p>
+        </div>
+      </div>
+    </div>
+  )}
           {/* Informations personnelles */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input

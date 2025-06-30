@@ -1371,7 +1371,7 @@ const renderDirectorTimeTracking = () => (
     <div className="space-y-4">
       <StatsCard
         title="Aujourd'hui"
-        value={getWorkedTime() === '--h--' ? '0h00' : getWorkedTime()}
+        value={getWorkedTimeWithMultipleBreaks() === '--h--' ? '0h00' : getWorkedTimeWithMultipleBreaks()}
         trend="neutral"
         icon={<Clock className="w-5 h-5" />}
       />
@@ -1392,12 +1392,48 @@ const renderDirectorTimeTracking = () => (
 );
 
   // Historique des pointages du directeur
-  const renderDirectorHistory = () => (
-    <Card title="Historique récent">
-      <div className="space-y-3 max-h-64 overflow-y-auto">
-        {processedHistory.slice(0, 10).map((day, index) => (
+const renderDirectorHistory = () => (
+  <Card title="Historique récent">
+    <div className="space-y-3 max-h-64 overflow-y-auto">
+      {processedHistory.slice(0, 10).map((day, index) => {
+        // RECALCULER avec les pauses multiples pour chaque jour
+        const dayEntries = timeHistory.filter(entry => 
+          entry.date_time.startsWith(day.date) && entry.user_id === user?.id
+        );
+        
+        const dayStatus = {
+          arrival: dayEntries.find(e => e.tracking_type === 'arrival'),
+          departure: dayEntries.find(e => e.tracking_type === 'departure')
+        };
+        
+        // CALCULER avec pauses multiples
+        const correctWorkingHours = (() => {
+          if (dayStatus.arrival && dayStatus.departure) {
+            const start = new Date(dayStatus.arrival.date_time);
+            const end = new Date(dayStatus.departure.date_time);
+            let totalMinutes = (end - start) / (1000 * 60);
+
+            // SOUSTRAIRE TOUTES LES PAUSES du jour
+            getPauses(dayEntries).forEach(pause => {
+              if (pause.start && pause.end) {
+                const breakStart = new Date(pause.start.date_time);
+                const breakEnd = new Date(pause.end.date_time);
+                totalMinutes -= (breakEnd - breakStart) / (1000 * 60);
+              }
+            });
+
+            return totalMinutes / 60; // Convertir en heures
+          }
+          return 0;
+        })();
+
+        const formattedCorrectHours = correctWorkingHours > 0 
+          ? `${Math.floor(correctWorkingHours)}h${String(Math.round((correctWorkingHours % 1) * 60)).padStart(2, '0')}`
+          : '0h00';
+
+        return (
           <div key={index} className={`flex justify-between items-center p-3 rounded-lg ${
-            day.workingHours > 0 ? 'bg-green-50' : 'bg-gray-50'
+            correctWorkingHours > 0 ? 'bg-green-50' : 'bg-gray-50'
           }`}>
             <div>
               <p className="font-medium text-gray-900">{day.dayName}</p>
@@ -1405,27 +1441,28 @@ const renderDirectorTimeTracking = () => (
             </div>
             <div className="text-right">
               <p className={`font-semibold ${
-                day.workingHours >= 7 ? 'text-green-600' : 
-                day.workingHours > 0 ? 'text-orange-600' : 'text-gray-400'
+                correctWorkingHours >= 7 ? 'text-green-600' : 
+                correctWorkingHours > 0 ? 'text-orange-600' : 'text-gray-400'
               }`}>
-                {day.formattedWorkingHours}
+                {formattedCorrectHours}
               </p>
               <p className="text-xs text-gray-400">
                 {day.arrival ? `${day.arrival} - ${day.departure || 'En cours'}` : 'Absent'}
               </p>
             </div>
           </div>
-        ))}
-        
-        {processedHistory.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>Aucun historique disponible</p>
-          </div>
-        )}
-      </div>
-    </Card>
-  );
+        );
+      })}
+      
+      {processedHistory.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+          <p>Aucun historique disponible</p>
+        </div>
+      )}
+    </div>
+  </Card>
+);
 
   // Sélection d'animateur avec statistiques
 const handleAnimatorSelection = async (animatorId) => {
