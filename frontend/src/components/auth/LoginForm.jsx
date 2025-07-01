@@ -1,3 +1,28 @@
+/**
+ * COMPOSANT FORMULAIRE DE CONNEXION
+ * 
+ * Formulaire complet d'authentification avec :
+ * - Validation côté client (email, mot de passe)
+ * - Gestion d'état local (credentials, erreurs, loading)
+ * - Fonctionnalités UX (se souvenir, afficher/masquer mot de passe)
+ * - Gestion des erreurs avec auto-nettoyage
+ * - Redirection basée sur les rôles
+ * - Comptes de démonstration (développement)
+ * 
+ * Fonctionnalités :
+ * - Validation temps réel des champs
+ * - "Se souvenir de moi" avec localStorage
+ * - Gestion des touches clavier (Entrée)
+ * - États de chargement avec spinner
+ * - Design responsive avec Tailwind
+ * 
+ * ⚠️ PROBLÈMES DÉTECTÉS :
+ * - Redirection par rôle non fonctionnelle (routes n'existent pas)
+ * - Style inline pour le bouton œil (non cohérent)
+ * - TODO mot de passe oublié non implémenté
+ * - Validation email basique (regex simple)
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';

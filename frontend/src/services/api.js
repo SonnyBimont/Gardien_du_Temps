@@ -1,3 +1,25 @@
+/**
+ * SERVICE API AXIOS - CONFIGURATION CENTRALISÉE
+ * 
+ * Instance Axios configurée pour l'API backend avec :
+ * - Intercepteurs request/response automatiques
+ * - Gestion d'authentification Bearer Token
+ * - Gestion d'erreurs centralisée (401, 500, réseau)
+ * - Logging conditionnel selon l'environnement
+ * - Timeout et headers par défaut
+ * 
+ * Fonctionnalités :
+ * - Auto-injection du token JWT
+ * - Redirection automatique sur erreur 401
+ * - Logs de debug détaillés
+ * - Gestion des erreurs serveur et réseau
+ * 
+ * ⚠️ PROBLÈMES DÉTECTÉS :
+ * - Double logging (dev + général)
+ * - Redirection hardcodée (window.location.href)
+ * - Nettoyage localStorage dans intercepteur (couplage fort)
+ */
+
 // Configuration des services API
 import axios from 'axios';
 

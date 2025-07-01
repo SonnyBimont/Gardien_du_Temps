@@ -1,3 +1,46 @@
+/**
+ * ===== TIME TRACKER COMPONENT - INTERFACE POINTAGE TEMPS RÉEL =====
+ * 
+ * Composant de pointage en temps réel avec interface utilisateur intuitive.
+ * Permet l'enregistrement des heures (arrivée/pause/départ) avec feedback immédiat.
+ * 
+ * FONCTIONNALITÉS PRINCIPALES :
+ * - Pointage temps réel : arrivée, début/fin pause, départ
+ * - Mise à jour automatique de l'heure actuelle
+ * - Validation logique des actions (pas de départ sans arrivée, etc.)
+ * - Notifications temporaires pour feedback utilisateur
+ * - Calcul temps travaillé en cours avec pauses déduites
+ * - Détection automatique du statut actuel (en cours, absent, etc.)
+ * 
+ * LOGIQUE MÉTIER :
+ * - Validation des conditions de pointage selon l'état actuel
+ * - Gestion des pauses multiples avec début/fin
+ * - Calcul temps travaillé excluant les pauses
+ * - Système d'état déterministe pour boutons actifs
+ * 
+ * UX ET DESIGN :
+ * - Interface claire avec boutons colorés et icônes explicites
+ * - Notifications temporaires non intrusives
+ * - Mise à jour temps réel toutes les secondes
+ * - Feedback visuel pour actions en cours
+ * 
+ * ARCHITECTURE :
+ * - Composant fonctionnel avec hooks useState/useEffect
+ * - Intégration timeStore pour persistance données
+ * - Calculs dérivés pour état interface (canRecord)
+ * - Gestion d'erreurs avec affichage utilisateur
+ * 
+ * CODE À FACTORISER :
+ * - Logique quasi-identique aux dashboards (AnimatorDashboard, DirectorDashboard)
+ * - Fonctions getTodayStatus, calculateCurrentWorkingTime répétées
+ * - Interface et logique de pointage dupliquée
+ * 
+ * AMÉLIORATION CRITIQUE :
+ * - Créer hook réutilisable useTimeTracking
+ * - Factoriser interface de pointage en composant séparé
+ * - Centraliser validation logique pointage
+ */
+
 import React, { useEffect, useState } from 'react';
 import { Clock, Play, Pause, Square, Coffee, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useTimeStore } from '../../stores/timeStore';

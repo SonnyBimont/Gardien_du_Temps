@@ -1,3 +1,20 @@
+/**
+ * APPLICATION PRINCIPALE REACT - GARDIEN DU TEMPS FRONTEND
+ * 
+ * Point d'entrée de l'application React avec gestion complète :
+ * - Routage protégé (authentification)
+ * - Pages publiques/privées
+ * - Error Boundary global
+ * - Loading states et splash screen
+ * - Page 404 personnalisée
+ * 
+ * Architecture :
+ * - ProtectedRoute : Routes nécessitant une authentification
+ * - PublicRoute : Routes accessibles sans auth (redirection si connecté)
+ * - ErrorBoundary : Gestion des erreurs React
+ * - Initialisation et vérification auth au démarrage
+ */
+
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';

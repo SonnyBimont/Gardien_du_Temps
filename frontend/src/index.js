@@ -1,3 +1,25 @@
+/**
+ * POINT D'ENTRÉE REACT - CONFIGURATION ET INITIALISATION
+ * 
+ * Fichier de démarrage de l'application avec configuration complète :
+ * - Gestion d'erreurs globale (errors + promises)
+ * - Configuration d'environnement (dev/prod)
+ * - PWA et Service Workers (production)
+ * - Web Vitals pour monitoring performances
+ * - React Axe pour accessibilité (développement)
+ * - Hot Module Replacement
+ * 
+ * Fonctionnalités :
+ * - Error handling avancé avec fallback UI
+ * - Logging conditionnel selon l'environnement
+ * - Optimisations performance automatiques
+ * - Configuration PWA progressive
+ * 
+ * ⚠️ PROBLÈME DÉTECTÉ :
+ * - Import dynamique potentiellement lourd (web-vitals, axe-core)
+ * - Fallback UI en inline styles (non cohérent avec Tailwind)
+ */
+
 // src/index.js
 import React from 'react';
 import ReactDOM from 'react-dom/client';

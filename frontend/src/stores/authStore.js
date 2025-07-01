@@ -1,3 +1,27 @@
+/**
+ * STORE D'AUTHENTIFICATION - ZUSTAND AVEC PERSISTANCE
+ * 
+ * Gestion centralisée de l'état d'authentification avec :
+ * - Persistance localStorage automatique
+ * - Gestion complète du cycle de vie auth (login/logout/check)
+ * - Gestion des erreurs et loading states
+ * - Permissions et rôles utilisateur
+ * - Cache token et données utilisateur
+ * 
+ * Fonctionnalités :
+ * - Login avec gestion des erreurs
+ * - Logout avec nettoyage complet
+ * - Vérification automatique du token
+ * - Mise à jour profil utilisateur
+ * - Helpers de permissions par rôles
+ * 
+ * ⚠️ PROBLÈMES DÉTECTÉS :
+ * - Double stockage (localStorage + Zustand persist)
+ * - Logs de debug en production
+ * - Redirection hardcodée (window.location.href)
+ * - Logique de permissions basique
+ */
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import api from '../services/api';

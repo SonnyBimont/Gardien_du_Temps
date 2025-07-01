@@ -1,3 +1,34 @@
+/**
+ * ===== DIRECTOR DASHBOARD - TABLEAU DE BORD DIRECTEUR =====
+ * 
+ * Tableau de bord complet pour les directeurs avec 3 vues principales :
+ * - Vue dashboard : KPIs, statistiques de temps, activité récente
+ * - Vue équipe : gestion des animateurs, statistiques équipe, comparaisons
+ * - Vue structure : informations et configuration de la structure
+ * 
+ * FONCTIONNALITÉS PRINCIPALES :
+ * - Gestion du pointage personnel (arrivée/départ/pauses multiples)
+ * - Visualisation des statistiques temporelles (journalières, mensuelles, annuelles)
+ * - Gestion d'équipe : création/édition d'animateurs, suivi de performance
+ * - Comparaisons de performance entre périodes et animateurs
+ * - Export de rapports détaillés pour l'équipe
+ * 
+ * PROBLÈMES IDENTIFIÉS :
+ * - Composant très volumineux (2000+ lignes) à refactoriser
+ * - Code dupliqué avec AdminDashboard et AnimatorDashboard
+ * - Calculs de dates répétés (calculatePeriodDates)
+ * - Gestion d'état complexe avec multiples useState
+ * - Loading states non centralisés
+ * - Console.log de debug à supprimer
+ * 
+ * AMÉLIORATIONS SUGGÉRÉES :
+ * - Diviser en sous-composants (TeamManagement, TimeStats, PersonalTracking)
+ * - Utiliser un hook custom pour les calculs de dates
+ * - Centraliser les états avec useReducer
+ * - Créer des composants réutilisables pour les stats
+ * - Factoriser les fonctions utilitaires partagées
+ */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Users, 
@@ -402,7 +433,7 @@ const loadTeamData = async () => {
       const apiData = result.data;
       console.log('📋 Données API reçues:', apiData);
       
-      // ✅ CORRECTION: Récupérer les données utilisateurs depuis la bonne structure
+      // Récupérer les données utilisateurs depuis la bonne structure
       const usersFromAPI = apiData.users || [];
       console.log('👥 Utilisateurs depuis API:', usersFromAPI);
       
@@ -414,12 +445,12 @@ const loadTeamData = async () => {
       
       console.log('🗺️ Map des données de travail:', workDataMap);
       
-      // ✅ FUSIONNER avec tous les animateurs de la structure
+      // FUSIONNER avec tous les animateurs de la structure
       const allAnimatorsData = myStructureAnimators.map(animator => {
         const workData = workDataMap.get(animator.id);
         
         if (workData) {
-          // ✅ Animateur avec données de pointage - utiliser la structure API correcte
+          // Animateur avec données de pointage - utiliser la structure API correcte
           console.log(`✅ Données trouvées pour ${animator.first_name}:`, workData);
           
           return {
@@ -444,7 +475,7 @@ const loadTeamData = async () => {
               : 0
           };
         } else {
-          // ✅ Animateur sans données de pointage - calculer l'objectif par défaut
+          // Animateur sans données de pointage - calculer l'objectif par défaut
           console.log(`⚠️ Pas de données pour ${animator.first_name}, calcul par défaut`);
           
           const weeklyHours = animator.weekly_hours || 35;
@@ -481,7 +512,7 @@ const loadTeamData = async () => {
   } catch (error) {
     console.error('❌ Erreur chargement équipe:', error);
     
-    // ✅ FALLBACK: Afficher tous les animateurs avec des valeurs par défaut
+    // FALLBACK: Afficher tous les animateurs avec des valeurs par défaut
     const fallbackData = myStructureAnimators.map(animator => {
       const weeklyHours = animator.weekly_hours || 35;
       const annualHours = animator.annual_hours;
@@ -1074,7 +1105,6 @@ const canClockOut = status.arrival && !status.departure;
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Heures travaillées</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Objectif</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Différence</th>
-            {/* ✅ SUPPRIMÉ: Colonne Statut */}
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
           </tr>
         </thead>
@@ -1551,7 +1581,7 @@ const calculateComprehensiveStats = (entries, animator, period, dateRange) => {
   const averagePerDay = completeDays > 0 ? totalHours / completeDays : 0;
   const completionRate = periodObjective > 0 ? (totalHours / periodObjective) * 100 : 0;
   
-  // ✅ SIMPLE : Utiliser directement processedDays
+  // Utiliser directement processedDays
   const workingDays = processedDays;
   
   console.log('✅ Working days créés:', workingDays.length);
@@ -1606,7 +1636,7 @@ const calculateComprehensiveStats = (entries, animator, period, dateRange) => {
       mostProductiveDay: workingDays.length > 0 ? (workingDays.reduce((best, day) => day.workingHours > best.workingHours ? day : best, workingDays[0]).dayName || 'Inconnu') : 'Aucun',
       consistency: { label: 'Régulier', color: 'blue' }
     },
-    workingDays: workingDays, // ✅ IMPORTANT: Les données pour le tableau
+    workingDays: workingDays, // Les données pour le tableau
     lastUpdate: new Date().toISOString()
   };
   
@@ -1922,7 +1952,7 @@ const createEmptyStats = (animator, period, dateRange) => {
         return renderScheduleManagement();
       case 'planning':
         return <YearlyPlanningRoadmap onBack={() => setActiveView('dashboard')} />;
-      case 'realized': // ✅ NOUVEAU CAS
+      case 'realized': 
         return <RealizedHoursRoadmap onBack={() => setActiveView('dashboard')} />;
       default:
         return renderDashboard();
@@ -1959,7 +1989,7 @@ const createEmptyStats = (animator, period, dateRange) => {
       document.body.style.overflow = 'unset';
       document.body.classList.remove('modal-open');
     }}
-    size="4xl" // ✅ Même taille que les stats
+    size="4xl" // Même taille que les stats
     title={`Modifier ${selectedUser.first_name} ${selectedUser.last_name}`}
     showCloseButton={true}
     closeOnOverlay={true}

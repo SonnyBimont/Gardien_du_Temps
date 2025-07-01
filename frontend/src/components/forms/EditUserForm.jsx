@@ -176,7 +176,7 @@ const handleSubmit = async (e) => {
       onClose?.();
     } else {
       console.error('❌ Erreur dans la réponse:', result);
-      // ✅ AMÉLIORATION: Message d'erreur plus détaillé
+      // Message d'erreur plus détaillé
       setFormErrors({ 
         general: `Impossible de modifier l'utilisateur. ${result?.error || result?.message || 'Erreur serveur 500 - Contactez l\'administrateur.'}`
       });

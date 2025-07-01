@@ -1,4 +1,44 @@
-// src/components/timetracking/TimeTable.jsx
+/**
+ * ===== TIME TABLE COMPONENT - TABLEAU HISTORIQUE POINTAGES =====
+ * 
+ * Composant de visualisation de l'historique des pointages avec filtres avancés.
+ * Interface tabulaire responsive avec pagination et export de données.
+ * 
+ * FONCTIONNALITÉS PRINCIPALES :
+ * - Affichage historique des pointages (arrivée/pause/départ/total)
+ * - Modes d'affichage : récent, mensuel, personnalisé
+ * - Filtres temporels : 30 derniers jours, mois sélectionné, période custom
+ * - Recherche par date avec filtrage en temps réel
+ * - Pagination configurable (5 ou 10 éléments selon mode compact)
+ * - Statistiques calculées : total heures, moyenne, jours travaillés
+ * - Export CSV des données filtrées
+ * - Mode compact pour intégration dans dashboards
+ * 
+ * DESIGN ET UX :
+ * - Interface responsive avec scroll horizontal sur mobile
+ * - Badges de statut colorés (complet, en cours, absent)
+ * - Pagination intuitive avec navigation
+ * - États vides informatifs avec icônes
+ * - Colonnes conditionnelles selon mode compact
+ * 
+ * ARCHITECTURE :
+ * - Composant fonctionnel avec hooks
+ * - Props flexibles pour différents contextes d'usage
+ * - Calculs optimisés avec traitement des données côté client
+ * - Intégration timeStore pour données et actions
+ * 
+ * BONNES PRATIQUES OBSERVÉES :
+ * - Composant réutilisable avec props configurables
+ * - Gestion d'état local appropriée pour l'UI
+ * - Séparation claire logique métier / présentation
+ * - Loading states et gestion d'erreurs
+ * 
+ * AMÉLIORATIONS MINEURES :
+ * - Key sur index (map) à remplacer par ID unique
+ * - Fonction handleExport à implémenter
+ * - Optimisation re-renders avec useMemo sur calculs coûteux
+ */
+
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, 
@@ -18,6 +58,8 @@ import Card from '../common/Card';
 import Button from '../common/Button';
 import Input from '../common/Input';
 
+
+// Affiche l'historique des pointages avec options de filtrage et export
 const TimeTable = ({ userId = null, showFilters = true, showExport = true, compact = false }) => {
   const { user } = useAuthStore();
   const { timeHistory, fetchTimeHistory, fetchUserEntries, loading } = useTimeStore();
@@ -102,6 +144,8 @@ const TimeTable = ({ userId = null, showFilters = true, showExport = true, compa
     document.body.removeChild(link);
   };
 
+  // Badge de statut
+  // Complet : vert, En cours : bleu, Partiel : orange, Absent
   const getStatusBadge = (day) => {
     if (!day.arrival) {
       return <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">Absent</span>;
@@ -115,6 +159,7 @@ const TimeTable = ({ userId = null, showFilters = true, showExport = true, compa
     return <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-600">Complet</span>;
   };
 
+  // Rendu des filtres
   const renderFilters = () => {
     if (!showFilters) return null;
 
@@ -189,6 +234,7 @@ const TimeTable = ({ userId = null, showFilters = true, showExport = true, compa
     );
   };
 
+  // Rendu des statistiques
   const renderStats = () => {
     if (compact) return null;
 
@@ -227,6 +273,7 @@ const TimeTable = ({ userId = null, showFilters = true, showExport = true, compa
     );
   };
 
+  // Rendu de la pagination
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 

@@ -1,3 +1,29 @@
+/**
+ * ===== LOGIN PAGE - PAGE DE CONNEXION =====
+ * 
+ * Page d'accueil avec formulaire de connexion et présentation de l'application.
+ * Design responsive avec panneau d'informations sur desktop et version simplifiée mobile.
+ * 
+ * FONCTIONNALITÉS :
+ * - Design split-screen avec gradient animé sur desktop
+ * - Présentation des fonctionnalités principales de l'app
+ * - Redirection automatique si déjà connecté
+ * - Interface responsive (mobile/desktop)
+ * - Intégration du composant LoginForm
+ * 
+ * BONNES PRATIQUES OBSERVÉES :
+ * - Redirection automatique des utilisateurs connectés
+ * - Design moderne avec gradients et animations CSS
+ * - Structure responsive bien pensée
+ * - Séparation claire entre présentation et formulaire
+ * - Accessibilité avec descriptions et icônes explicites
+ * 
+ * POINTS D'ATTENTION :
+ * - Texte marketing dupliqué entre mobile et desktop
+ * - Effet de background pourrait être un composant séparé
+ * - Copyright hardcodé (pourrait être dynamique)
+ */
+
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Shield, Users, Target } from 'lucide-react';

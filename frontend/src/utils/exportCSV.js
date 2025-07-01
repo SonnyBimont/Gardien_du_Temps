@@ -11,7 +11,7 @@ export const exportRealizedHoursToCSV = (realizedHours, yearlyPlanning, selected
   const csvData = [];
   csvData.push(['Date', 'Heures Réalisées', 'Heures Planifiées', 'Écart', 'Projet', 'Statut', 'Note/Description']);
 
-  // ✅ CORRECTION : Utiliser getYearByType pour filtrer
+  // Utiliser getYearByType pour filtrer
   Object.entries(realizedHours)
     .filter(([date]) => {
       if (date === 'totalRealizedYear') return false; // Exclure les métadonnées
@@ -39,7 +39,7 @@ export const exportRealizedHoursToCSV = (realizedHours, yearlyPlanning, selected
       ]);
     });
 
-  // ✅ CORRECTION : Calculer les totaux avec le bon type d'année
+  // Calculer les totaux avec le bon type d'année
   const totalRealized = Object.entries(realizedHours)
     .filter(([date, data]) => {
       if (date === 'totalRealizedYear') return false;
@@ -66,7 +66,7 @@ export const exportRealizedHoursToCSV = (realizedHours, yearlyPlanning, selected
     ''
   ]);
 
-  // ✅ CORRECTION : Nom de fichier selon le type d'année
+  // Nom de fichier selon le type d'année
   const csvContent = csvData.map(row => row.join(';')).join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
