@@ -31,3 +31,10 @@ const config = {
 };
 
 module.exports = config;
+
+// Configuration centralisée de l'application
+// - Charge les variables d'environnement depuis .env
+// - Définit les paramètres par défaut pour serveur, BDD et JWT
+// - Configure la pool de connexions PostgreSQL
+// - Utilisé comme source unique de vérité pour toute l'application
+

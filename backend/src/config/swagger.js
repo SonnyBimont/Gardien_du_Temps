@@ -58,3 +58,10 @@ module.exports = {
         customSiteTitle: "Gardien du Temps - Documentation API"
     })
 };
+
+// Configuration de la documentation API Swagger/OpenAPI
+// - Définit les métadonnées de l'API (titre, version, description)
+// - Configure les serveurs (dev/prod)
+// - Paramètre l'authentification JWT Bearer
+// - Génère l'interface Swagger UI pour tester l'API
+// - Scanne automatiquement les routes pour documenter

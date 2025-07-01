@@ -1,4 +1,6 @@
 const express = require('express');
+const { apiLimiter } = require('./middlewares/rateLimiter');
+const logger = require('./utils/logger');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -43,11 +45,20 @@ app.use((req, res, next) => {
     const path = req.originalUrl; // Chemin accédé
 
     console.log(`[${dateISO}] ${method} ${path} - IP: ${clientIP}`);
+    
+    // Log structuré pour production
+    logger.debug('Requête reçue', {
+        method: req.method,
+        url: req.url,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+    });
+
     next();
 });
 
 // Routes
-app.use('/api', routes);
+app.use('/api', apiLimiter, routes);
 
 // Documentation API Swagger - Placez-la après les routes API
 app.use('/api-docs', swaggerConfig.serve, swaggerConfig.setup);
@@ -57,34 +68,57 @@ app.use((req, res) => {
     res.status(404).json({ message: 'Route non trouvée' });
 });
 
-// Middleware de gestion des erreurs
+// Logger middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
+    logger.error('Erreur serveur', {
+        error: err.message,
+        stack: config.nodeEnv === 'development' ? err.stack : undefined,
+        method: req.method,
+        url: req.url,
+        ip: req.ip
+    });
+    
     res.status(err.statusCode || 500).json({
         success: false,
-        error: err.message || 'Erreur serveur'
+        error: config.nodeEnv === 'development' ? err.message : 'Erreur serveur'
     });
 });
 
 // Connexion à la base de données
 const startServer = async () => {
     try {
+        console.log('🔌 Tentative de connexion à la base de données...');
         await sequelize.authenticate();
-        debug('Connexion à la base de données réussie.');
-        console.log('Connexion à la base de données réussie.');
+        console.log('✅ Connexion à la base de données réussie.');
 
         // Démarrer les tâches planifiées après connexion à la DB
         setupScheduledJobs();
 
         app.listen(config.port, () => {
-            debug(`Serveur démarré sur le port ${config.port}`);
-            console.log(`Serveur démarré sur le port ${config.port}`);
-            console.log(`API disponible sur http://localhost:${config.port}/api`);
+            console.log(`🚀 Serveur démarré sur le port ${config.port}`);
+            console.log(`📡 API disponible sur http://localhost:${config.port}/api`);
+            console.log(`📚 Documentation sur http://localhost:${config.port}/api-docs`);
         });
     } catch (error) {
-        debug('Erreur de connexion à la base de données: %O', error);
-        console.error('Impossible de se connecter à la base de données:', error);
+        console.error('❌ Impossible de se connecter à la base de données:', error);
+        console.error('🔧 Vérifiez que PostgreSQL est démarré et configuré');
+        process.exit(1);
     }
 };
 
+// GESTION DES SIGNAUX POUR ARRÊT PROPRE
+process.on('SIGTERM', () => {
+    console.log('🛑 SIGTERM reçu, arrêt du serveur...');
+    sequelize.close();
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.log('🛑 SIGINT reçu, arrêt du serveur...');
+    sequelize.close();
+    process.exit(0);
+});
+
 startServer();
+
+module.exports = app;

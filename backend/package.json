@@ -3,18 +3,18 @@
 	"version": "1.0.0",
 	"main": "app.js",
 	"scripts": {
-    "debug": "DEBUG=gardien:* node src/app.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
-    "db:create": "sequelize-cli db:create",
-    "db:drop": "sequelize-cli db:drop",
-    "db:migrate": "sequelize-cli db:migrate",
-    "db:migrate:undo": "sequelize-cli db:migrate:undo",
-    "db:seed": "sequelize-cli db:seed:all",
-    "db:seed:undo": "sequelize-cli db:seed:undo:all",
-    "db:reset:full": "npm run db:drop && npm run db:create && npm run db:migrate && npm run db:seed",
-    "db:reset": "npm run db:migrate && npm run db:seed"
+		"debug": "DEBUG=gardien:* node src/app.js",
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"start": "node src/app.js",
+		"dev": "nodemon src/app.js",
+		"db:create": "sequelize-cli db:create",
+		"db:drop": "sequelize-cli db:drop",
+		"db:migrate": "sequelize-cli db:migrate",
+		"db:migrate:undo": "sequelize-cli db:migrate:undo",
+		"db:seed": "sequelize-cli db:seed:all",
+		"db:seed:undo": "sequelize-cli db:seed:undo:all",
+		"db:reset:full": "npm run db:drop && npm run db:create && npm run db:migrate && npm run db:seed",
+		"db:reset": "npm run db:migrate && npm run db:seed"
 	},
 	"keywords": [],
 	"author": "",
@@ -28,6 +28,7 @@
 		"debug": "^4.4.0",
 		"dotenv": "^16.5.0",
 		"express": "^5.1.0",
+		"express-rate-limit": "^7.5.1",
 		"express-validator": "^7.2.1",
 		"helmet": "^8.1.0",
 		"joi": "^17.13.3",
@@ -40,7 +41,8 @@
 		"sanitize": "^2.1.2",
 		"sequelize": "^6.37.7",
 		"swagger-jsdoc": "^6.2.8",
-		"swagger-ui-express": "^5.0.1"
+		"swagger-ui-express": "^5.0.1",
+		"winston": "^3.17.0"
 	},
 	"devDependencies": {
 		"jest": "^29.7.0",

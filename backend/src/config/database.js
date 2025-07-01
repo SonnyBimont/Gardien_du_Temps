@@ -107,3 +107,10 @@ module.exports = {
     syncDatabase,
     seedDatabase
 };
+
+// Gestionnaire de connexion et opérations base de données
+// - Initialise l'instance Sequelize avec la config
+// - Fournit testConnection() pour vérifier la connectivité
+// - syncDatabase() pour synchroniser les modèles
+// - seedDatabase() pour créer des données de test en dev
+// - Point d'entrée principal pour toutes les opérations DB
