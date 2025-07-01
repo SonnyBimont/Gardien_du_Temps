@@ -26,3 +26,7 @@ module.exports = {
         dialect: config.database.dialect
     }
 };
+
+// Configuration pour Sequelize CLI (migrations/seeders)
+// - Réutilise config principale pour éviter duplication
+// - Environnements dev/test/prod identiques

@@ -107,3 +107,10 @@ module.exports = {
     syncDatabase,
     seedDatabase
 };
+
+// Gestionnaire connexion et opérations base de données
+// - Instance Sequelize configurée
+// - testConnection() : vérifier connectivité
+// - syncDatabase() : synchroniser modèles
+// - seedDatabase() : données de test (dev uniquement)
+// ⚠️ Seeding en dur dans le code

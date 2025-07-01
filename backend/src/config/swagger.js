@@ -58,3 +58,10 @@ module.exports = {
         customSiteTitle: "Gardien du Temps - Documentation API"
     })
 };
+
+// Configuration documentation API Swagger/OpenAPI 3.0
+// - Métadonnées API (titre, version, contact)
+// - Serveurs dev/prod
+// - Authentification JWT Bearer
+// - Scanner automatique des routes pour docs
+// ⚠️ Problème : APIs paths incorrects

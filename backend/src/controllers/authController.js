@@ -122,3 +122,8 @@ exports.refreshToken = async (req, res) => {
         res.status(500).json({ message: 'Erreur lors du rafraîchissement du token', error: error.message });
     }
 };
+
+// Authentification JWT standard
+// - Login avec vérification bcrypt
+// - Génération/refresh tokens
+// - Récupération profil utilisateur

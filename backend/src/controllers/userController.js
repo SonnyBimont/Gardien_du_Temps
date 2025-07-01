@@ -127,18 +127,21 @@ const calculateDateRange = (period) => {
 
 // ===== FONCTIONS UTILITAIRES EXISTANTES (INCHANGÉES) =====
 
+// Ajouter un jour à une date
 const subDays = (date, days) => {
     const result = new Date(date);
     result.setDate(result.getDate() - days);
     return result;
 };
 
+// Obtenir le début de la journée
 const startOfDay = (date) => {
     const result = new Date(date);
     result.setHours(0, 0, 0, 0);
     return result;
 };
 
+// Obtenir la fin de la journée
 const endOfDay = (date) => {
     const result = new Date(date);
     result.setHours(23, 59, 59, 999);
@@ -570,6 +573,7 @@ exports.restoreUser = async (req, res) => {
     }
 };
 
+// Activer/Désactiver un utilisateur
 exports.toggleUserStatus = async (req, res) => {
     try {
         const { id } = req.params;
@@ -622,17 +626,18 @@ exports.toggleUserStatus = async (req, res) => {
         });
     }
 };
-   
+
+// Mettre à jour le profil de l'utilisateur connecté
 exports.updateProfile = async (req, res) => {
   try {
-    // ✅ AJOUTER : Logs de debug
+    // Logs de debug
     console.log('🔍 Headers authorization:', req.headers.authorization);
     console.log('🔍 req.user complet:', req.user);
     console.log('🔍 req.user.id:', req.user?.id);
     console.log('🔍 Type de req.user.id:', typeof req.user?.id);
     console.log('🔍 req.body:', req.body);
     
-    // ✅ VÉRIFIER : Si req.user existe
+    // Si req.user existe
     if (!req.user || !req.user.id) {
       return res.status(401).json({
         success: false,
@@ -653,7 +658,7 @@ exports.updateProfile = async (req, res) => {
       year_type 
     } = req.body;
 
-    // ✅ AJOUTER : Validation du year_type
+    // Validation du year_type
     if (year_type && !['civil', 'school'].includes(year_type)) {
       return res.status(400).json({
         success: false,
@@ -1529,3 +1534,9 @@ exports.getRecentActivityWithPeriod = async (req, res) => {
         });
     }
 };
+
+// Contrôleur principal utilisateurs avec statistiques
+// - CRUD utilisateurs avec permissions par rôle
+// - Statistiques dashboard avec périodes fixes
+// - Gestion des profils et statuts (actif/inactif)
+// - Fonctions utilitaires pour calculs de dates

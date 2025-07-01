@@ -768,3 +768,8 @@ exports.getYearBounds = (year, yearType = 'civil') => {
       };
   }
 };
+
+// Gestion du pointage et suivi du temps
+// - CRUD pointages avec validations métier
+// - Pointage rapide (clock-in/out) avec logique anti-doublon
+// - Rapports mensuels et statistiques équipe
