@@ -7,7 +7,6 @@ const QuickTimeTrackingIcons = () => {
   const [feedback, setFeedback] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
   
-  // ✅ UTILISER : Les mêmes stores que DirectorDashboard
   const { 
     todayEntries, 
     fetchTodayEntries,
@@ -19,7 +18,6 @@ const QuickTimeTrackingIcons = () => {
   
   const { user } = useAuthStore();
 
-  // ✅ COPIER : La même logique que DirectorDashboard
   const myTodayEntries = todayEntries.filter(entry => entry?.user_id === user?.id);
   
   const getTodayStatusLocal = () => {
@@ -54,7 +52,7 @@ const QuickTimeTrackingIcons = () => {
 
   const status = getTodayStatusLocal();
 
-  // ✅ COPIER : Les mêmes fonctions utilitaires que DirectorDashboard
+  // même logique que DirectorDashboard
   const getPauses = (entries) => {
     const pauses = [];
     let currentBreakStart = null;
@@ -83,12 +81,10 @@ const QuickTimeTrackingIcons = () => {
     return pauses.length > 0 && pauses[pauses.length - 1].end === null;
   };
 
-  // ✅ COPIER : Les mêmes conditions que DirectorDashboard
   const canClockIn = !status.arrival && !status.departure;
   const canPauseOrResume = status.arrival && !status.departure;
   const canClockOut = status.arrival && !status.departure;
 
-  // ✅ COPIER : La même fonction handleClockAction que DirectorDashboard
   const handleClockAction = async (action) => {
     if (actionLoading) return;
     setActionLoading(action);
@@ -140,7 +136,7 @@ const QuickTimeTrackingIcons = () => {
     setTimeout(() => setFeedback(null), 2000);
   };
 
-  // ✅ MÊME LOGIQUE : Que les boutons de DirectorDashboard
+  // Meme logique que les boutons de DirectorDashboard
   const handleClockClick = () => {
     if (canClockIn) {
       handleClockAction('arrival');
@@ -162,7 +158,7 @@ const QuickTimeTrackingIcons = () => {
     }
   };
 
-  // ✅ NE PAS AFFICHER si pas directeur
+  // NE PAS AFFICHER si pas directeur
   if (user?.role !== 'director') {
     return null;
   }

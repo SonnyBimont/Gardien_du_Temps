@@ -47,6 +47,7 @@ const LoginForm = () => {
     }
   }, [error, formErrors, clearError]);
 
+  // Fonction de validation du formulaire
   const validateForm = () => {
     const errors = {};
     
@@ -68,6 +69,7 @@ const LoginForm = () => {
     return Object.keys(errors).length === 0;
   };
 
+  // Gérer la soumission du formulaire
   const handleSubmit = async (e) => {
     e.preventDefault();
     clearError();
@@ -110,6 +112,7 @@ const LoginForm = () => {
     }
   };
 
+  // Gérer les changements dans les champs de saisie
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCredentials(prev => ({
@@ -126,10 +129,12 @@ const LoginForm = () => {
     }
   };
 
+  // Gérer l'affichage/masquage du mot de passe
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
+  // Gérer la touche "Entrée" pour soumettre le formulaire
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleSubmit(e);

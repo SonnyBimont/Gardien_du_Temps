@@ -29,6 +29,7 @@ const PlanningModal = ({ isOpen, onClose, selectedDate, existingPlanning, projec
     }
   }, [isOpen, existingPlanning]);
 
+  // Valider le formulaire avant la soumission
   const validateForm = () => {
     const newErrors = {};
     
@@ -95,6 +96,7 @@ const PlanningModal = ({ isOpen, onClose, selectedDate, existingPlanning, projec
     }
   };
 
+  // Gestion de la suppression avec confirmation
   const handleDelete = async () => {
     if (!existingPlanning) return;
     
@@ -115,7 +117,7 @@ const PlanningModal = ({ isOpen, onClose, selectedDate, existingPlanning, projec
       if (result?.success) {
         console.log('🗑️ Suppression réussie');
         
-        // ✅ AJOUTER : Nettoyage forcé après suppression réussie
+        // Nettoyage forcé après suppression réussie
         setTimeout(() => {
           document.body.style.overflow = '';
           document.body.style.paddingRight = '';
@@ -152,7 +154,7 @@ const PlanningModal = ({ isOpen, onClose, selectedDate, existingPlanning, projec
     });
     setErrors({});
     
-    // ✅ FORCER le nettoyage du body
+    // Force le nettoyage du body
     setTimeout(() => {
       document.body.style.overflow = '';
       document.body.style.paddingRight = '';

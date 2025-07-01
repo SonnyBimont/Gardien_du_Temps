@@ -1,6 +1,7 @@
 // src/validators/userValidator.js
 const { body, validationResult } = require('express-validator');
 
+// Middleware pour valider les données utilisateur lors de la création ou de la mise à jour
 exports.validateUser = [
     body('email').isEmail().withMessage('Veuillez fournir un email valide'),
     body('password')

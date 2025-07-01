@@ -1,5 +1,6 @@
 import React from 'react';
 
+// Chargement d'un spinner 
 const LoadingSpinner = ({ 
   size = 'md', 
   color = 'blue', 
