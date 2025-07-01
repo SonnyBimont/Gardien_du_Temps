@@ -3,7 +3,7 @@ const winston = require('winston');
 const config = require('../config/config');
 
 // Configuration du logger sécurisé
-export const logger = winston.createLogger({
+const logger = winston.createLogger({
   level: config.nodeEnv === 'production' ? 'info' : 'debug',
   format: winston.format.combine(
     winston.format.timestamp(),
@@ -67,3 +67,5 @@ logger.auth = {
     });
   }
 };
+
+module.exports = logger;
