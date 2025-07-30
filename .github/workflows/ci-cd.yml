@@ -2,7 +2,7 @@ name: 🚀 CI/CD Pipeline - Gardien du Temps
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, dev]
   pull_request:
     branches: [main]
 
