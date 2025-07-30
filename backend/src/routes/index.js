@@ -25,6 +25,31 @@ router.use('/hour-planning', hourPlanningRoutes);
 router.use('/school-vacations', schoolVacationRoutes);
 router.use('/activity-logs', activityLogRoutes);
 
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: Vérification du statut de l'API
+ *     description: Endpoint de base pour vérifier que l'API est en ligne et fonctionnelle
+ *     tags: [Général]
+ *     responses:
+ *       200:
+ *         description: API en ligne et fonctionnelle
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Bienvenue sur l'API Gardien du Temps"
+ *                 version:
+ *                   type: string
+ *                   example: "1.0.0"
+ *                 status:
+ *                   type: string
+ *                   example: "online"
+ */
 // Route de base pour vérifier que l'API fonctionne
 router.get('/', (req, res) => {
     res.json({

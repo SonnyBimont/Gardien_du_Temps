@@ -1,3 +1,40 @@
+/**
+ * ===== ADMIN DASHBOARD - TABLEAU DE BORD ADMINISTRATEUR =====
+ * 
+ * Tableau de bord complet pour les administrateurs avec gestion globale du système.
+ * Interface de supervision pour utilisateurs, structures et activité générale.
+ * 
+ * FONCTIONNALITÉS PRINCIPALES :
+ * - Vue d'ensemble système avec KPIs et statistiques globales
+ * - Gestion complète des utilisateurs (CRUD, activation/désactivation)
+ * - Gestion des structures avec filtres avancés (ville, zone)
+ * - Monitoring de l'activité récente en temps réel
+ * - Filtres et recherche avancés pour utilisateurs/structures
+ * - Gestion des périodes temporelles (semaine, mois, année)
+ * 
+ * ARCHITECTURE :
+ * - Store Zustand (useAdminStore) pour la gestion d'état
+ * - Composants modaux pour création/édition
+ * - Filtrage en temps réel côté client
+ * - Gestion des erreurs et loading states
+ * 
+ * PROBLÈMES IDENTIFIÉS :
+ * - Console.log de debug en production à supprimer
+ * - Code dupliqué avec DirectorDashboard (PERIOD_OPTIONS, formatTime)
+ * - Composant volumineux (~1500 lignes) à diviser
+ * - Gestion d'état complexe avec multiples useState
+ * - Calculs de dates dupliqués (calculateDateRange vs timeCalculations.js)
+ * - Double Modal pour création utilisateur (markup dupliqué)
+ * 
+ * AMÉLIORATIONS SUGGÉRÉES :
+ * - Diviser en sous-composants (UserManagement, StructureManagement, ActivityFeed)
+ * - Centraliser les constantes PERIOD_OPTIONS dans utils/
+ * - Utiliser useReducer pour la gestion d'état complexe
+ * - Factoriser les fonctions utilitaires partagées
+ * - Optimiser avec useMemo pour les filtres coûteux
+ * - Nettoyer les logs de debug
+ */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { useAdminStore } from '../../stores/adminStore';

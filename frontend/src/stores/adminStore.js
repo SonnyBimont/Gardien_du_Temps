@@ -1,3 +1,44 @@
+/**
+ * ===== ADMIN STORE - STORE ZUSTAND GESTION ADMINISTRATIVE =====
+ * 
+ * Store principal pour la gestion administrative globale du système.
+ * Gère les utilisateurs, structures, statistiques et activité récente.
+ * 
+ * FONCTIONNALITÉS PRINCIPALES :
+ * - CRUD complet utilisateurs (création, lecture, mise à jour, suppression)
+ * - CRUD complet structures avec géolocalisation et zones scolaires
+ * - Statistiques système avec support périodes fixes
+ * - Monitoring activité récente en temps réel
+ * - Validation côté client robuste
+ * - Fonctions utilitaires de recherche et filtrage
+ * 
+ * ARCHITECTURE :
+ * - État centralisé avec Zustand
+ * - Actions async avec gestion d'erreurs
+ * - Cache local des données
+ * - Validation business rules intégrée
+ * 
+ * NOUVEAUTÉS RÉCENTES :
+ * - Support des périodes fixes (semaine/mois/année en cours)
+ * - API statistiques avec dates de début/fin
+ * - Fonctions de validation renforcées
+ * - Gestion de l'activité récente avec filtres temporels
+ * 
+ * PROBLÈMES IDENTIFIÉS :
+ * - Console.log de debug en production à supprimer
+ * - Validation parfois redondante avec le backend
+ * - Fonctions utilitaires pourraient être externalisées
+ * - Gestion d'erreurs inconsistante (parfois console, parfois state)
+ * - Quelques actions jamais utilisées (bulkUpdateUsers, exportUsers)
+ * 
+ * AMÉLIORATIONS SUGGÉRÉES :
+ * - Centraliser tous les logs de debug
+ * - Créer un système de validation uniforme
+ * - Externaliser les utilitaires de recherche/filtrage
+ * - Optimiser avec des selectors pour les calculs coûteux
+ * - Ajouter persistence locale pour mode offline
+ */
+
 import { create } from 'zustand';
 import api from '../services/api';
 
@@ -18,6 +59,7 @@ export const useAdminStore = create((set, get) => ({
 
   // ===== ACTIONS UTILISATEURS (INCHANGÉES) =====
   
+  // Récupérer la liste des utilisateurs avec filtres optionnels
   fetchUsers: async (filters = {}) => {
     set({ loading: true, error: null });
     
@@ -57,6 +99,7 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  // Créer un nouvel utilisateur
   createUser: async (userData) => {
     set({ error: null });
     
@@ -93,6 +136,7 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  // Mettre à jour un utilisateur
   updateUser: async (userId, userData) => {
     console.log('🔧 adminStore.updateUser appelé avec:', { userId, userData });
     
@@ -125,6 +169,7 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  // Supprimer un utilisateur
   deleteUser: async (userId) => {
     set({ error: null });
     
@@ -153,6 +198,7 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  // Mettre à jour les statistiques des utilisateurs
   toggleUserStatus: async (userId, active) => {
     set({ error: null });
     
@@ -194,6 +240,7 @@ export const useAdminStore = create((set, get) => ({
 
   // ===== ACTIONS STRUCTURES (INCHANGÉES) =====
   
+  // Récupérer la liste des structures avec option pour inclure les statistiques
   fetchStructures: async (includeStats = false) => {
     set({ loading: true, error: null });
     
@@ -228,6 +275,7 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  // Créer une nouvelle structure
   createStructure: async (structureData) => {
     set({ error: null });
     
@@ -264,6 +312,7 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  // Mettre à jour une structure
   updateStructure: async (structureId, structureData) => {
     set({ error: null });
     
@@ -296,6 +345,7 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  // Supprimer une structure
   deleteStructure: async (structureId) => {
     set({ error: null });
     
@@ -594,6 +644,7 @@ export const useAdminStore = create((set, get) => ({
 
   // ===== FONCTIONS UTILITAIRES (INCHANGÉES) =====
   
+  // Validation des données utilisateur et structure
   validateUserData: (userData) => {
     if (!userData.email || !userData.email.includes('@')) {
       return 'Email invalide';
@@ -618,6 +669,7 @@ export const useAdminStore = create((set, get) => ({
     return null;
   },
 
+  // Validation des données de la structure
   validateStructureData: (structureData) => {
     if (!structureData.name || structureData.name.trim().length < 3) {
       return 'Le nom de la structure doit contenir au moins 3 caractères';
@@ -653,6 +705,7 @@ export const useAdminStore = create((set, get) => ({
     return null;
   },
   
+  // Mettre à jour les statistiques des utilisateurs
   updateUserStats: (users) => {
     const totalUsers = users.length;
     const activeUsers = users.filter(user => user.active !== false).length;
@@ -673,6 +726,7 @@ export const useAdminStore = create((set, get) => ({
     }));
   },
 
+  // Mettre à jour les statistiques des structures
   updateStructureStats: (structures) => {
     const totalStructures = structures.length;
     

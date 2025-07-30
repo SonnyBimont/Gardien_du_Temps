@@ -20,11 +20,11 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: 'http://localhost:3000/api/v1',
+                url: 'http://localhost:3000/api',
                 description: 'Serveur de développement'
             },
             {
-                url: 'https://api.gardien-temps.com/api/v1',
+                url: 'https://api.gardien-temps.com/api',
                 description: 'Serveur de production'
             }
         ],
@@ -58,3 +58,10 @@ module.exports = {
         customSiteTitle: "Gardien du Temps - Documentation API"
     })
 };
+
+// Configuration documentation API Swagger/OpenAPI 3.0
+// - Métadonnées API (titre, version, contact)
+// - Serveurs dev/prod configurés pour /api (sans /v1)
+// - Authentification JWT Bearer
+// - Scanner automatique des routes pour docs
+// URLs corrigées pour correspondre à la structure actuelle

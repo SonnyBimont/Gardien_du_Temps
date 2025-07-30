@@ -1,8 +1,14 @@
-FROM node:18-alpine
+# ✅ VERSION OPTIMISÉE - Multi-stage build
+FROM node:18-alpine as builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
-# Copier le code source
+RUN npm ci --only=production
 COPY . .
-EXPOSE 3001
-CMD ["npm", "start"]
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine
+COPY --from=builder /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

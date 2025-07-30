@@ -140,7 +140,7 @@ exports.syncVacationsFromAPI = async (req, res) => {
     const results = [];
     const errors = [];
     
-    // ✅ FORCER : Supprimer TOUTES les anciennes données
+    // Supprimer TOUTES les anciennes données
     if (forceSync) {
       console.log('🗑️ Suppression forcée de toutes les anciennes vacances...');
       const deletedCount = await School_Vacations.destroy({
@@ -152,17 +152,17 @@ exports.syncVacationsFromAPI = async (req, res) => {
       console.log(`🗑️ ${deletedCount} anciennes vacances supprimées`);
     }
     
-    // ✅ BOUCLE sur chaque zone ET année
+    // BOUCLE sur chaque zone ET année
     for (const zone of zones) {
       for (const schoolYear of schoolYears) {
         try {
           console.log(`📡 Récupération zone ${zone}, année ${schoolYear}...`);
           
-          // ✅ URL corrigée avec plus de résultats
+          // URL corrigée avec plus de résultats
           const apiUrl = `https://data.education.gouv.fr/api/records/1.0/search/`
             + `?dataset=fr-en-calendrier-scolaire`
             + `&q=`
-            + `&rows=200` // ✅ Plus de résultats
+            + `&rows=200`
             + `&facet=description&facet=population&facet=start_date&facet=end_date&facet=zones&facet=annee_scolaire`
             + `&refine.zones=Zone+${zone}`
             + `&refine.annee_scolaire=${schoolYear}`
@@ -190,7 +190,7 @@ exports.syncVacationsFromAPI = async (req, res) => {
             continue;
           }
           
-          // ✅ TRAITER chaque record
+          // TRAITER chaque record
           for (const record of records) {
             const fields = record.fields;
     
@@ -206,20 +206,20 @@ exports.syncVacationsFromAPI = async (req, res) => {
     continue;
   }
             
-            // ✅ VÉRIFIER que c'est pour les élèves
+            // VÉRIFIER que c'est pour les élèves
   if (population !== "Élèves" && population !== "-" && population != null && population !== "") {
     console.log(`ℹ️ Ignoré (population inconnue: ${population}):`, fields.description);
     continue;
   }
             
-  // ✅ NOUVEAU : Vérifier que c'est bien la bonne zone
+  // Vérifier que c'est bien la bonne zone
   const recordZones = fields.zones || '';
   if (!recordZones.includes(`Zone ${zone}`)) {
     console.log(`ℹ️ Ignoré (zone: ${recordZones}, attendu: Zone ${zone}):`, fields.description);
     continue;
   }
 
-            // ✅ CRÉER l'objet vacance
+            // CRÉER l'objet vacance
             const vacationData = {
               zone: zone,
               period_name: fields.description,
@@ -228,7 +228,7 @@ exports.syncVacationsFromAPI = async (req, res) => {
               school_year: schoolYear,
             };
             
-            // ✅ CRÉER directement (pas de vérification doublon si forceSync)
+            // CRÉER directement (pas de vérification doublon si forceSync)
             try {
               const newVacation = await School_Vacations.create(vacationData);
               console.log(`✅ CRÉÉ: ${fields.description} (${fields.start_date} → ${fields.end_date})`);
@@ -260,7 +260,7 @@ exports.syncVacationsFromAPI = async (req, res) => {
       }
     }
     
-    // ✅ RÉSUMÉ final
+    // RÉSUMÉ final
     const summary = {
       total_processed: results.length,
       created: results.filter(r => r.status === 'created').length,
@@ -338,7 +338,6 @@ exports.getAvailableSchoolYears = async (req, res) => {
 };
 
 
-// À ajouter dans schoolVacationController.js
 exports.getVacationsCalendar = async (req, res) => {
     try {
         const { zone, schoolYear, location } = req.query;
@@ -357,11 +356,11 @@ exports.getVacationsCalendar = async (req, res) => {
             // Les dates dans la DB sont les VRAIES dates de début/fin des vacances
             const startDate = new Date(vacation.start_date);
             
-            // ✅ CORRECTION : Pour le calendrier, on veut que la fin soit INCLUSIVE
+            // Pour le calendrier, on veut que la fin soit INCLUSIVE
             // Donc on GARDE la date de fin telle quelle (pas +1 jour)
             const endDate = new Date(vacation.end_date);
             
-            // ✅ POUR FullCalendar, il faut AJOUTER 1 jour seulement pour l'affichage
+            // POUR FullCalendar, il faut AJOUTER 1 jour seulement pour l'affichage
             // car FullCalendar traite la date de fin comme exclusive
             const fullCalendarEndDate = new Date(endDate);
             fullCalendarEndDate.setDate(fullCalendarEndDate.getDate() + 1);
@@ -378,7 +377,7 @@ exports.getVacationsCalendar = async (req, res) => {
                 extendedProps: {
                     zone: vacation.zone,
                     schoolYear: vacation.school_year,
-                    // ✅ AJOUTER : Les vraies dates pour les vérifications
+                    // Les vraies dates pour les vérifications
                     realStartDate: vacation.start_date,
                     realEndDate: vacation.end_date
                 }
@@ -547,3 +546,9 @@ exports.getVacationsInGovernmentFormat = async (req, res) => {
         });
     }
 };
+
+// Synchronisation vacances scolaires API gouvernement
+// - Sync automatique depuis data.education.gouv.fr
+// - Gestion zones A/B/C et années scolaires
+// - Format calendrier FullCalendar
+// - Vérification si date = vacances

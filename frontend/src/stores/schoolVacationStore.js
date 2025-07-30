@@ -1,3 +1,42 @@
+/**
+ * ===== SCHOOL VACATION STORE - STORE ZUSTAND VACANCES SCOLAIRES =====
+ * 
+ * Store spécialisé dans la gestion des vacances scolaires françaises.
+ * Gère le calendrier des vacances par zones géographiques A, B, C.
+ * 
+ * FONCTIONNALITÉS PRINCIPALES :
+ * - Récupération calendrier vacances par zone et année scolaire
+ * - Support zone null = toutes les zones (fonctionnalité flexible)
+ * - Vérification si une date donnée est en période de vacances
+ * - Récupération des détails d'une période de vacances spécifique
+ * - Gestion des zones disponibles et zone sélectionnée
+ * - Conversion automatique année civile → année scolaire
+ * 
+ * LOGIQUE MÉTIER :
+ * - Détection automatique année scolaire (septembre → août)
+ * - Gestion des dates étendues avec realStartDate/realEndDate
+ * - Filtrage par zone avec fallback sur toutes les zones
+ * - Cache des vacances en mémoire pour performance
+ * 
+ * POINTS FORTS :
+ * - API flexible (zone optionnelle)
+ * - Fonctions utilitaires pratiques (isVacationDay, getVacationInfo)
+ * - Logging de debug complet pour troubleshooting
+ * - Gestion robuste des formats de dates multiples
+ * 
+ * PROBLÈMES IDENTIFIÉS :
+ * - Console.log nombreux à supprimer en production
+ * - Logique de dates complexe (multiple fallbacks)
+ * - Pas de cache persistant (rechargement à chaque session)
+ * - Gestion d'erreurs basique
+ * 
+ * AMÉLIORATIONS SUGGÉRÉES :
+ * - Supprimer/conditionner tous les console.log
+ * - Simplifier la logique de gestion des dates
+ * - Ajouter persistence localStorage pour cache
+ * - Améliorer les messages d'erreurs utilisateur
+ */
+
 import { create } from 'zustand';
 import api from '../services/api';
 
@@ -8,14 +47,14 @@ export const useSchoolVacationStore = create((set, get) => ({
   selectedZone: 'B', // Zone par défaut
   availableZones: ['A', 'B', 'C'], //  Zones disponibles
 
-  // ✅ MODIFIER : fetchVacations pour supporter zone null = toutes les zones
+  // fetchVacations pour supporter zone null = toutes les zones
   fetchVacations: async (startDate, endDate, zone = null) => {
     set({ loading: true, error: null });
     
     try {
       const params = new URLSearchParams();
       
-      // ✅ NOUVEAU : Si zone = null, on ne filtre pas par zone
+      // Si zone = null, on ne filtre pas par zone
       if (zone) {
         params.append('zone', zone);
       }
@@ -58,13 +97,14 @@ export const useSchoolVacationStore = create((set, get) => ({
     }
   },
 
-  // ✅ NOUVEAU : Fonctions pour filtrer les vacances selon la zone sélectionnée
+  // Fonctions pour filtrer les vacances selon la zone sélectionnée
   getVacationsForZone: (zone) => {
     const vacations = get().vacations;
     if (!zone) return vacations; // Toutes les zones
     return vacations.filter(v => v.extendedProps?.zone === zone);
   },
 
+  // Vérifier si une date est un jour de vacances
   isVacationDay: (date, zone = null) => {
     const vacations = zone ? get().getVacationsForZone(zone) : get().vacations;
     if (!vacations || vacations.length === 0) return false;
@@ -86,6 +126,8 @@ export const useSchoolVacationStore = create((set, get) => ({
     });
   },
 
+  // Récupérer les infos de vacances pour une date spécifique
+  // Permet de vérifier si une date est dans les vacances
   getVacationInfo: (date, zone = null) => {
     const vacations = zone ? get().getVacationsForZone(zone) : get().vacations;
     if (!vacations || vacations.length === 0) return null;
@@ -107,7 +149,7 @@ export const useSchoolVacationStore = create((set, get) => ({
     });
   },
 
-  // ✅ NOUVEAU : Setters pour la zone sélectionnée
+  // Setters pour la zone sélectionnée
   setZone: (zone) => set({ selectedZone: zone }),
   clearError: () => set({ error: null })
 }));

@@ -52,7 +52,7 @@ exports.upsertPlanning = async (req, res) => {
 
     const { plan_date, planned_hours, project_id = null, color = '#3B82F6', description = '' } = req.body;
 
-    // ✅ VALIDATION CORRIGEE
+    // Validation des champs requis
     if (!plan_date) {
       console.error('❌ plan_date manquant');
       return res.status(400).json({
@@ -62,7 +62,7 @@ exports.upsertPlanning = async (req, res) => {
       });
     }
 
-    // ✅ CORRIGER : Accepter 0 pour la suppression
+    // Accepter 0 pour la suppression
     if (planned_hours === null || planned_hours === undefined || isNaN(planned_hours)) {
       console.error('❌ planned_hours invalide:', planned_hours);
       return res.status(400).json({
@@ -93,7 +93,7 @@ exports.upsertPlanning = async (req, res) => {
 
     console.log('✅ Validation OK, tentative upsert...');
 
-    // ✅ GESTION SUPPRESSION : Si 0 heures, supprimer l'enregistrement
+    // GESTION SUPPRESSION : Si 0 heures, supprimer l'enregistrement
     if (hoursValue === 0) {
       console.log('🗑️ Suppression demandée (0 heures)');
       
@@ -143,3 +143,8 @@ exports.upsertPlanning = async (req, res) => {
     });
   }
 };
+
+// Planification annuelle détaillée
+// - Upsert planning avec validation 0-24h
+// - Suppression automatique si 0h
+// - Calculs objectifs annuels

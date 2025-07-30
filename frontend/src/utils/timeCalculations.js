@@ -1,3 +1,40 @@
+/**
+ * ===== TIME CALCULATIONS - UTILITAIRES DE CALCUL TEMPOREL =====
+ * 
+ * Collection de fonctions utilitaires pour les calculs liés au temps de travail.
+ * Utilise date-fns pour la manipulation des dates avec support français.
+ * 
+ * FONCTIONNALITÉS PRINCIPALES :
+ * - Calculs de périodes (semaine/mois/année en cours et précédents)
+ * - Statistiques de temps travaillé (weekly/monthly)
+ * - Analyse de régularité et consistance
+ * - Détection des statuts de travail (en cours, complet, absent)
+ * - Gestion des pauses multiples
+ * - Formatage des durées et dates
+ * 
+ * MODULES PRINCIPAUX :
+ * - Calcul de plages de dates (getCurrentWeekRange, getCurrentMonthRange, etc.)
+ * - Statistiques de travail (calculateWeeklyStats, calculateMonthlyStats)
+ * - Analyse de performance (getPerformanceStatus, getConsistencyRating)
+ * - Utilitaires de temps (formatTime, calculateTotalHours, getTodayStatus)
+ * 
+ * BONNES PRATIQUES :
+ * - Utilisation de date-fns pour robustesse
+ * - Support de la locale française
+ * - Fonctions pures et réutilisables
+ * - Gestion des cas edge (données manquantes, formats invalides)
+ * 
+ * PROBLÈMES POTENTIELS :
+ * - Certaines fonctions très spécifiques pourraient être simplifiées
+ * - Code dupliqué avec les dashboards (calculatePeriodDates)
+ * - Quelques calculs complexes qui mériteraient des commentaires additionnels
+ * 
+ * AMÉLIORATION SUGGÉRÉE :
+ * - Centraliser tous les calculs de périodes ici
+ * - Documenter les algorithmes de calcul de régularité
+ * - Ajouter des tests unitaires pour les cas edge
+ */
+
 import { 
   differenceInMinutes, 
   format, 
@@ -162,7 +199,7 @@ export const calculatePeriodObjectiveStandard = (period, weeklyHours, annualHour
       
     case 'current_year':
     case 'previous_year':
-      // ✅ PRIORITÉ à annual_hours si défini
+      // PRIORITÉ à annual_hours si défini
       return annualHours || (weekly * 52);
       
     default:
@@ -700,6 +737,7 @@ const calculateConsistency = (arrivalTimes, departureTimes) => {
   };
 };
 
+// Calculer la variance d'un tableau de nombres
 const calculateVariance = (numbers) => {
   const mean = numbers.reduce((sum, num) => sum + num, 0) / numbers.length;
   const squaredDiffs = numbers.map(num => Math.pow(num - mean, 2));

@@ -1,3 +1,38 @@
+/**
+ * ===== TIME STORE - STORE ZUSTAND GESTION DU TEMPS =====
+ * 
+ * Store principal pour la gestion du temps de travail avec pointage, statistiques et rapports.
+ * Utilise Zustand pour le state management et inclut un système de cache basique.
+ * 
+ * FONCTIONNALITÉS PRINCIPALES :
+ * - Gestion du pointage (arrivée/départ/pauses)
+ * - Récupération des entrées du jour et historique
+ * - Calculs statistiques (weekly/monthly)
+ * - Rapports mensuels et d'équipe
+ * - Cache simple pour éviter les recalculs
+ * - Fallback en cas d'erreur API
+ * 
+ * ACTIONS DISPONIBLES :
+ * - fetchTodayEntries : Récupère les pointages du jour
+ * - fetchTimeHistory : Historique des temps de travail
+ * - clockIn/clockOut : Pointage arrivée/départ
+ * - startBreak/endBreak : Gestion des pauses
+ * - fetchMonthlyReport : Rapports mensuels détaillés
+ * - fetchTeamSummary : Synthèse d'équipe pour managers
+ * 
+ * PROBLÈMES IDENTIFIÉS :
+ * - Console.warn et console.log à supprimer en production
+ * - Cache très basique (pourrait utiliser une lib comme React Query)
+ * - Gestion d'erreurs parfois incohérente
+ * - Calculs statistiques répétés dans plusieurs stores
+ * 
+ * AMÉLIORATIONS SUGGÉRÉES :
+ * - Centraliser la gestion d'erreurs
+ * - Implémenter un cache plus robuste
+ * - Externaliser les calculs statistiques
+ * - Ajouter de la persistence locale pour mode offline
+ */
+
 // Store pour le suivi du temps
 import { create } from 'zustand';
 import api from '../services/api';
@@ -122,7 +157,7 @@ export const useTimeStore = create((set, get) => ({
         throw new Error(response.data.message || 'Erreur lors du pointage');
       }
     } catch (error) {
-      // ✅ FALLBACK vers méthode générique
+      // FALLBACK vers méthode générique
       if (error.response?.status === 404) {
         return get().recordTimeEntry(fallbackType, taskId, comment);
       }
@@ -245,7 +280,7 @@ fetchTeamSummary: async (days = 30, structureId = null) => {
   set({ teamLoading: true, error: null });
   
   try {
-    // ✅ CORRECTION: Utiliser le bon nom de paramètre
+    // Utiliser le bon nom de paramètre
     const params = new URLSearchParams();
     
     // Mapper les périodes textuelles vers des nombres de jours
@@ -425,7 +460,7 @@ exportTeamData: async (format = 'csv', filters = {}) => {
       return _processedCache;
     }
     
-    // ✅ Calculer et cacher
+    // Calculer et cacher
     const result = calculateTotalHours(timeHistory);
     set({
       _processedCache: result,

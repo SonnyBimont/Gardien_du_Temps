@@ -141,6 +141,34 @@ const { protect, authorize } = require('../middlewares/auth');
  */
 
 // Routes pour tous les utilisateurs connectés
+/**
+ * @swagger
+ * /users/profile:
+ *   get:
+ *     summary: Récupérer le profil de l'utilisateur connecté
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profil récupéré avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Non autorisé - Authentification requise
+ *       404:
+ *         description: Utilisateur non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
 router.get('/profile', protect, (req, res) => {
     req.params.id = req.user.id;
     userController.getUserById(req, res);
@@ -151,6 +179,50 @@ router.get('/profile', protect, (req, res) => {
 //     userController.updateUser(req, res);
 // });
 
+/**
+ * @swagger
+ * /users/profile:
+ *   put:
+ *     summary: Mettre à jour le profil de l'utilisateur connecté
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               first_name:
+ *                 type: string
+ *               last_name:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Profil mis à jour avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Données invalides
+ *       401:
+ *         description: Non autorisé - Authentification requise
+ *       500:
+ *         description: Erreur serveur
+ */
 router.put('/profile', protect, userController.updateProfile);
 
 // ===== ROUTES UTILISATEURS =====
@@ -404,18 +476,237 @@ router
     .delete(protect, authorize('admin', 'director'), userController.deleteUser);
 
 
+/**
+ * @swagger
+ * /users/{id}/restore:
+ *   post:
+ *     summary: Restaurer un utilisateur supprimé
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de l'utilisateur à restaurer
+ *     responses:
+ *       200:
+ *         description: Utilisateur restauré avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Non autorisé - Authentification requise
+ *       403:
+ *         description: Interdit - Droits insuffisants
+ *       404:
+ *         description: Utilisateur non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
 router.post('/:id/restore', protect, authorize('admin','director'), userController.restoreUser);  
 
+/**
+ * @swagger
+ * /users/{id}/toggle-status:
+ *   patch:
+ *     summary: Activer/désactiver un utilisateur
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de l'utilisateur
+ *     responses:
+ *       200:
+ *         description: Statut utilisateur modifié avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Non autorisé - Authentification requise
+ *       403:
+ *         description: Interdit - Droits insuffisants
+ *       404:
+ *         description: Utilisateur non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
 router.patch('/:id/toggle-status', protect, authorize('admin','director'), userController.toggleUserStatus);  
 
 // ===== ROUTES STATISTIQUES ADMIN ===== // ===== SYSTÈME ET AUDIT =====
+/**
+ * @swagger
+ * /users/admin/stats:
+ *   get:
+ *     summary: Récupérer les statistiques générales
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Statistiques récupérées avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *       401:
+ *         description: Non autorisé
+ *       403:
+ *         description: Droits insuffisants - Admin uniquement
+ */
 router.get('/admin/stats', protect, authorize('admin'), userController.getStats);
+
+/**
+ * @swagger
+ * /users/admin/stats-fixed:
+ *   get:
+ *     summary: Récupérer les statistiques avec périodes fixes
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Statistiques avec périodes fixes récupérées avec succès
+ *       401:
+ *         description: Non autorisé
+ *       403:
+ *         description: Droits insuffisants - Admin uniquement
+ */
 router.get('/admin/stats-fixed', protect, authorize('admin'), userController.getStatsWithFixedPeriods);
+
+/**
+ * @swagger
+ * /users/admin/dashboard-stats:
+ *   get:
+ *     summary: Récupérer les statistiques du tableau de bord
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Statistiques du tableau de bord récupérées avec succès
+ *       401:
+ *         description: Non autorisé
+ *       403:
+ *         description: Droits insuffisants - Admin uniquement
+ */
 router.get('/admin/dashboard-stats', protect, authorize('admin'), userController.getDashboardStats);
+
+/**
+ * @swagger
+ * /users/admin/dashboard-stats-fixed:
+ *   get:
+ *     summary: Récupérer les statistiques du tableau de bord avec périodes fixes
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Statistiques du tableau de bord avec périodes fixes récupérées avec succès
+ *       401:
+ *         description: Non autorisé
+ *       403:
+ *         description: Droits insuffisants - Admin uniquement
+ */
 router.get('/admin/dashboard-stats-fixed', protect, authorize('admin'), userController.getDashboardStatsWithFixedPeriods);
+
+/**
+ * @swagger
+ * /users/admin/recent-activity:
+ *   get:
+ *     summary: Récupérer l'activité récente
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Activité récente récupérée avec succès
+ *       401:
+ *         description: Non autorisé
+ *       403:
+ *         description: Droits insuffisants - Admin uniquement
+ */
 router.get('/admin/recent-activity', protect, authorize('admin'), userController.getRecentActivity);
+
+/**
+ * @swagger
+ * /users/admin/recent-activity-period:
+ *   get:
+ *     summary: Récupérer l'activité récente avec période
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Activité récente avec période récupérée avec succès
+ *       401:
+ *         description: Non autorisé
+ *       403:
+ *         description: Droits insuffisants - Admin uniquement
+ */
 router.get('/admin/recent-activity-period', protect, authorize('admin'), userController.getRecentActivityWithPeriod);
+
+/**
+ * @swagger
+ * /users/admin/system/health:
+ *   get:
+ *     summary: Vérifier l'état de santé du système
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: État de santé du système récupéré avec succès
+ *       401:
+ *         description: Non autorisé
+ *       403:
+ *         description: Droits insuffisants - Admin uniquement
+ */
 router.get('/admin/system/health',protect, authorize('admin'), userController.getSystemHealth);
+
+/**
+ * @swagger
+ * /users/admin/system/audit-logs:
+ *   get:
+ *     summary: Récupérer les logs d'audit système
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logs d'audit récupérés avec succès
+ *       401:
+ *         description: Non autorisé
+ *       403:
+ *         description: Droits insuffisants - Admin uniquement
+ */
 router.get('/admin/system/audit-logs',protect, authorize('admin'), userController.getAuditLogs);
 
 module.exports = router;

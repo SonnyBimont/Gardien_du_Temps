@@ -279,3 +279,9 @@ exports.markTaskAsCompleted = async (req, res) => {
     });
   }
 };
+
+// Gestion des tâches et assignations
+// - CRUD tâches avec relations projet/utilisateur
+// - Assignation via table de liaison User_Task
+// - Fonctions spécifiques animateurs/directeurs
+// - Marquage comme terminé avec timestamp

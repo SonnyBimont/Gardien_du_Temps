@@ -241,3 +241,9 @@ exports.searchLogs = async (req, res) => {
         });
     }
 };
+
+// Gestion des logs d'activité système
+// - CRUD complet pour Activity_Log
+// - Recherche avancée avec tri et filtres
+// - Filtrage par utilisateur, date, type d'action
+// - Inclusion automatique des données utilisateur

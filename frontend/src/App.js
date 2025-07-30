@@ -1,8 +1,29 @@
+/**
+ * APPLICATION PRINCIPALE REACT - GARDIEN DU TEMPS FRONTEND
+ * 
+ * Point d'entrée de l'application React avec gestion complète :
+ * - Routage protégé (authentification)
+ * - Pages publiques/privées
+ * - Error Boundary global
+ * - Loading states et splash screen
+ * - Page 404 personnalisée
+ * 
+ * Architecture :
+ * - ProtectedRoute : Routes nécessitant une authentification
+ * - PublicRoute : Routes accessibles sans auth (redirection si connecté)
+ * - ErrorBoundary : Gestion des erreurs React
+ * - Initialisation et vérification auth au démarrage
+ */
+
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import TermsOfService from './pages/legal/CGU';
+import PrivacyPolicy from './pages/legal/PolitiqueConfidentialite';
+import LegalNotices from './pages/legal/MentionsLegales';
+import CookiePolicy from './pages/legal/PolitiqueCookies';
 import Layout from './components/common/Layout';
 
 const ProtectedRoute = ({ children }) => {
@@ -150,8 +171,14 @@ function App() {
                   <LoginPage />
                 </PublicRoute>
               } 
-            />
-            
+            />      
+
+  {/* Routes Légales */}
+  <Route path="/legal/terms-of-service" element={<TermsOfService />} />
+  <Route path="/legal/privacy-policy" element={<PrivacyPolicy />} />
+  <Route path="/legal/legal-notices" element={<LegalNotices />} />
+  <Route path="/legal/cookie-policy" element={<CookiePolicy />} />
+
             {/* Routes protégées */}
             <Route
               path="/dashboard"

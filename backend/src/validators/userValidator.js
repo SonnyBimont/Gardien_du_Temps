@@ -1,6 +1,31 @@
-// src/validators/userValidator.js
+/**
+ * VALIDATEURS POUR LES DONNÉES UTILISATEUR
+ * 
+ * Utilise express-validator pour valider les données d'entrée des utilisateurs.
+ * Inclut la validation des champs requis et le formatage des erreurs.
+ * 
+ * Validations :
+ * - Email valide
+ * - Mot de passe (min 6 caractères)
+ * - Nom/prénom requis
+ * - Rôle dans la liste autorisée
+ * - Structure ID numérique
+ */
+
 const { body, validationResult } = require('express-validator');
 
+/**
+ * Middleware de validation pour création/modification d'utilisateur
+ * 
+ * @type {Array} Tableau de middlewares express-validator
+ * 
+ * Règles de validation :
+ * - Email format valide
+ * - Mot de passe minimum 6 caractères
+ * - Nom et prénom obligatoires
+ * - Rôle parmi admin/director/animator
+ * - Structure ID entier
+ */
 exports.validateUser = [
     body('email').isEmail().withMessage('Veuillez fournir un email valide'),
     body('password')
@@ -13,7 +38,7 @@ exports.validateUser = [
         .withMessage('Le rôle doit être admin, director ou animator'),
     body('structure_id').isInt().withMessage('L\'ID de la structure doit être un entier'),
 
-    // Middleware qui vérifie les résultats de validation
+    // Middleware final qui traite les erreurs de validation
     (req, res, next) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {

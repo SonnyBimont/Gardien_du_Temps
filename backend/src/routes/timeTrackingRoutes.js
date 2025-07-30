@@ -285,6 +285,73 @@ router
     .route('/range')
     .get(protect, timeTrackingController.getTimeEntriesByDateRange);
 
+/**
+ * @swagger
+ * /time-trackings/team-summary:
+ *   get:
+ *     summary: Récupérer un résumé des heures d'équipe
+ *     description: Obtient un résumé des pointages et heures travaillées pour une équipe ou structure
+ *     tags: [Pointages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Date pour le résumé (défaut = aujourd'hui)
+ *       - in: query
+ *         name: structure_id
+ *         schema:
+ *           type: integer
+ *         description: ID de la structure (optionnel pour admin)
+ *     responses:
+ *       200:
+ *         description: Résumé d'équipe récupéré avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     date:
+ *                       type: string
+ *                       format: date
+ *                     team_stats:
+ *                       type: object
+ *                       properties:
+ *                         total_users:
+ *                           type: integer
+ *                         present_users:
+ *                           type: integer
+ *                         total_hours:
+ *                           type: number
+ *                           format: float
+ *                     users:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           user:
+ *                             type: object
+ *                           hours_worked:
+ *                             type: number
+ *                             format: float
+ *                           status:
+ *                             type: string
+ *       401:
+ *         description: Non autorisé - Authentification requise
+ *       403:
+ *         description: Interdit - Droits directeur/admin requis
+ *       500:
+ *         description: Erreur serveur
+ */
 // récupérer les heures d'équipe :
 router.get('/team-summary', protect, authorize('director', 'admin'), timeTrackingController.getTeamSummary);
 

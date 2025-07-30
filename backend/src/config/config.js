@@ -30,4 +30,18 @@ const config = {
     }
 };
 
+if (config.nodeEnv === 'production') {
+    const required = ['JWT_SECRET', 'DB_PASSWORD'];
+    const missing = required.filter(key => !process.env[key]);
+    if (missing.length) {
+        throw new Error(`Variables manquantes: ${missing.join(', ')}`);
+    }
+}
+
 module.exports = config;
+
+// Configuration centralisée de l'application
+// - Charge les variables d'environnement (.env)
+// - Définit paramètres serveur (port, env)
+// - Configure connexion PostgreSQL avec pool
+// - Paramètres JWT (secret, expiration)

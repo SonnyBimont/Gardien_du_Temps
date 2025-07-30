@@ -239,3 +239,9 @@ exports.deleteStructure = async (req, res) => {
         res.status(400).json({ message: 'Erreur lors de la suppression de la structure', error: error.message });
     }
 };
+
+// Gestion des structures avec validation
+// - CRUD structures avec champs étendus
+// - Validation email, capacité, zone scolaire
+// - Suppression logique (désactivation)
+// - Gestion responsable et coordonnées

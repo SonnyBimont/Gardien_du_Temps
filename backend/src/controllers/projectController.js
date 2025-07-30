@@ -194,3 +194,8 @@ exports.assignTaskToAnimator = async (req, res) => {
     });
   }
 };
+
+// Gestion projets simples
+// - CRUD basique avec relations tâches
+// - Filtrage par structure/directeur
+// - Assignation tâches aux animateurs

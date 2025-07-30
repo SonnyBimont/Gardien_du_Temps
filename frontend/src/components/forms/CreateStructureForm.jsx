@@ -1,7 +1,53 @@
+/**
+ * ===== CREATE STRUCTURE FORM - FORMULAIRE CRÉATION/ÉDITION STRUCTURE =====
+ * 
+ * Formulaire complet pour créer ou modifier une structure (centre de loisirs).
+ * Interface réutilisable en mode création ou édition selon les props.
+ * 
+ * FONCTIONNALITÉS PRINCIPALES :
+ * - Formulaire unifié création/édition avec détection automatique
+ * - Validation côté client complète avec messages d'erreur
+ * - Gestion des zones de vacances scolaires (A, B, C)
+ * - Champs optionnels responsable et contact
+ * - Intégration adminStore pour persistance
+ * - États de loading et gestion d'erreurs
+ * 
+ * CHAMPS GÉRÉS :
+ * - Informations de base : nom, adresse, ville, code postal
+ * - Configuration : zone vacances, capacité, statut actif
+ * - Contact : téléphone, email, responsable
+ * - Validation : code postal français (5 chiffres), emails valides
+ * 
+ * VALIDATION ROBUSTE :
+ * - Champs obligatoires avec messages explicites
+ * - Regex pour code postal français (5 chiffres)
+ * - Validation email basique mais suffisante
+ * - Validation zone vacances scolaires
+ * - Validation capacité numérique positive
+ * 
+ * ARCHITECTURE PROPRE :
+ * - État local avec useState pour les données du formulaire
+ * - Fonction de validation séparée et testable
+ * - Gestion d'erreurs par champ avec affichage ciblé
+ * - Intégration store pour actions CRUD
+ * 
+ * POINTS POSITIFS :
+ * - Code propre et bien structuré
+ * - Validation complète côté client
+ * - Réutilisabilité création/édition
+ * - Gestion d'erreurs appropriée
+ * 
+ * AMÉLIORATIONS MINEURES :
+ * - Validation email pourrait être plus robuste (regex)
+ * - Callback onSuccess/onCancel pourrait être optimisé
+ * - Loading state pourrait avoir un spinner dédié
+ */
+
 import React, { useState } from 'react';
 import { useAdminStore } from '../../stores/adminStore';
 import { X, Building2 } from 'lucide-react';
 
+// fonction qui gère le formulaire de création/édition d'une structure
 const CreateStructureForm = ({ onSuccess, onCancel, initialData = null }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -62,6 +108,7 @@ const CreateStructureForm = ({ onSuccess, onCancel, initialData = null }) => {
     return Object.keys(errors).length === 0;
   };
 
+  // Fonction de soumission du formulaire
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -95,6 +142,7 @@ const CreateStructureForm = ({ onSuccess, onCancel, initialData = null }) => {
     }
   };
 
+  // Fonction de gestion des changements dans les champs du formulaire
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({

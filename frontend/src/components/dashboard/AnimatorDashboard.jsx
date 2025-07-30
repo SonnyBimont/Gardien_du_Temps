@@ -1,3 +1,47 @@
+/**
+ * ===== ANIMATOR DASHBOARD - TABLEAU DE BORD ANIMATEUR =====
+ * 
+ * Interface simplifiée pour les animateurs avec focus sur le pointage personnel
+ * et la visualisation de leurs propres données de temps de travail.
+ * 
+ * FONCTIONNALITÉS PRINCIPALES :
+ * - Pointage personnel (arrivée/départ/pause) avec interface intuitive
+ * - Affichage de l'heure actuelle en temps réel
+ * - Résumé des temps travaillés (jour/semaine/mois)
+ * - Historique personnel des 30 derniers jours
+ * - Statut en temps réel des pointages du jour
+ * - Interface responsive et user-friendly
+ * 
+ * DESIGN ET UX :
+ * - Boutons de pointage visuels avec codes couleur
+ * - Mise à jour automatique de l'heure chaque minute
+ * - Feedback visuel pour les actions en cours
+ * - Design cohérent avec les autres dashboards
+ * - Affichage personnalisé avec prénom utilisateur
+ * 
+ * PROBLÈMES IDENTIFIÉS :
+ * - Code LARGEMENT DUPLIQUÉ avec DirectorDashboard (logique pointage identique)
+ * - Console.log de debug en production à supprimer
+ * - Loading spinner dupliqué (même markup que autres composants)
+ * - Fonctions de calcul temps répétées (getWorkedTime, etc.)
+ * - Logique de pointage identique aux autres dashboards
+ * - Gestion d'état similaire avec useState multiples
+ * 
+ * AMÉLIORATIONS CRITIQUES :
+ * - FACTORISER la logique de pointage en hook custom (useTimeTracking)
+ * - Créer un composant TimeTrackingInterface réutilisable
+ * - Centraliser les calculs de temps dans timeCalculations.js
+ * - Supprimer les console.log de debug
+ * - Utiliser le composant LoadingSpinner commun
+ * - Optimiser les re-renders avec useMemo/useCallback
+ * 
+ * CODE À REFACTORISER EN PRIORITÉ :
+ * - handleClockAction (identique DirectorDashboard)
+ * - getTodayStatus (identique DirectorDashboard)  
+ * - getWorkedTime (identique DirectorDashboard)
+ * - Interface de pointage (design identique)
+ */
+
 import React, { useState, useEffect } from 'react';
 import { 
   Clock, 

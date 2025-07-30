@@ -1,3 +1,27 @@
+/**
+ * ===== DASHBOARD PAGE - PAGE PRINCIPALE TABLEAU DE BORD =====
+ * 
+ * Page conteneur qui affiche le tableau de bord approprié selon le rôle utilisateur.
+ * Gère l'état de connexion réseau et la synchronisation automatique des données.
+ * 
+ * FONCTIONNALITÉS :
+ * - Routage conditionnel selon le rôle (admin/director/animator)
+ * - Gestion du mode hors ligne avec bannière d'information
+ * - Barre de statut avec informations utilisateur et état de connexion
+ * - Rafraîchissement automatique des données toutes les 5 minutes
+ * - Avatar généré automatiquement avec initiales
+ * 
+ * BONNES PRATIQUES OBSERVÉES :
+ * - Gestion propre des événements online/offline
+ * - Cleanup des intervals et event listeners
+ * - UX informative pour les différents états (loading, erreur, hors ligne)
+ * 
+ * AMÉLIORATIONS MINEURES :
+ * - Le loading spinner est encore dupliqué (à centraliser)
+ * - Avatar pourrait être un composant réutilisable
+ * - Messages d'erreur/rôle non reconnu pourraient être externalisés
+ */
+
 // src/pages/DashboardPage.jsx
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';

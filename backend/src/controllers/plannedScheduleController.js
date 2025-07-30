@@ -276,3 +276,8 @@ exports.getYearlyPlanning = async (req, res) => {
     });
   }
 };
+
+// Planification horaires et modèles
+// - CRUD plannings avec templates
+// - Filtrage par période et utilisateur
+// - Support années scolaires/civiles
