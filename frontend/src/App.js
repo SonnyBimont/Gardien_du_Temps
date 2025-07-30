@@ -20,6 +20,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useAuthStore } from './stores/authStore';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import TermsOfService from './pages/legal/CGU';
+import PrivacyPolicy from './pages/legal/PolitiqueConfidentialite';
+import LegalNotices from './pages/legal/MentionsLegales';
+import CookiePolicy from './pages/legal/PolitiqueCookies';
 import Layout from './components/common/Layout';
 
 const ProtectedRoute = ({ children }) => {
@@ -167,8 +171,14 @@ function App() {
                   <LoginPage />
                 </PublicRoute>
               } 
-            />
-            
+            />      
+
+  {/* Routes Légales */}
+  <Route path="/legal/terms-of-service" element={<TermsOfService />} />
+  <Route path="/legal/privacy-policy" element={<PrivacyPolicy />} />
+  <Route path="/legal/legal-notices" element={<LegalNotices />} />
+  <Route path="/legal/cookie-policy" element={<CookiePolicy />} />
+
             {/* Routes protégées */}
             <Route
               path="/dashboard"

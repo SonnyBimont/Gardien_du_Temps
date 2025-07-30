@@ -1,6 +1,6 @@
 /**
  * COMPOSANT FORMULAIRE DE CONNEXION
- * 
+ *
  * Formulaire complet d'authentification avec :
  * - Validation côté client (email, mot de passe)
  * - Gestion d'état local (credentials, erreurs, loading)
@@ -8,14 +8,14 @@
  * - Gestion des erreurs avec auto-nettoyage
  * - Redirection basée sur les rôles
  * - Comptes de démonstration (développement)
- * 
+ *
  * Fonctionnalités :
  * - Validation temps réel des champs
  * - "Se souvenir de moi" avec localStorage
  * - Gestion des touches clavier (Entrée)
  * - États de chargement avec spinner
  * - Design responsive avec Tailwind
- * 
+ *
  * ⚠️ PROBLÈMES DÉTECTÉS :
  * - Redirection par rôle non fonctionnelle (routes n'existent pas)
  * - Style inline pour le bouton œil (non cohérent)
@@ -23,39 +23,39 @@
  * - Validation email basique (regex simple)
  */
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../stores/authStore';
-import { LogIn, Eye, EyeOff, Shield } from 'lucide-react';
-import Input from '../common/Input';
-import Button from '../common/Button';
-import Card from '../common/Card';
-import LoadingSpinner from '../common/LoadingSpinner';
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuthStore } from "../../stores/authStore";
+import { LogIn, Eye, EyeOff, Shield } from "lucide-react";
+import Input from "../common/Input";
+import Button from "../common/Button";
+import Card from "../common/Card";
+import LoadingSpinner from "../common/LoadingSpinner";
 
 const LoginForm = () => {
   const [credentials, setCredentials] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [formErrors, setFormErrors] = useState({});
-  
+
   const { login, loading, error, clearError, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
 
   // Redirection si déjà connecté
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
 
   // Charger les données sauvegardées
   useEffect(() => {
-    const savedEmail = localStorage.getItem('rememberedEmail');
+    const savedEmail = localStorage.getItem("rememberedEmail");
     if (savedEmail) {
-      setCredentials(prev => ({ ...prev, email: savedEmail }));
+      setCredentials((prev) => ({ ...prev, email: savedEmail }));
       setRememberMe(true);
     }
   }, []);
@@ -67,7 +67,7 @@ const LoginForm = () => {
         clearError();
         setFormErrors({});
       }, 5000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [error, formErrors, clearError]);
@@ -75,21 +75,21 @@ const LoginForm = () => {
   // Fonction de validation du formulaire
   const validateForm = () => {
     const errors = {};
-    
+
     // Validation email
     if (!credentials.email) {
-      errors.email = 'L\'email est obligatoire';
+      errors.email = "L'email est obligatoire";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(credentials.email)) {
-      errors.email = 'Format d\'email invalide';
+      errors.email = "Format d'email invalide";
     }
-    
+
     // Validation mot de passe
     if (!credentials.password) {
-      errors.password = 'Le mot de passe est obligatoire';
+      errors.password = "Le mot de passe est obligatoire";
     } else if (credentials.password.length < 6) {
-      errors.password = 'Le mot de passe doit contenir au moins 6 caractères';
+      errors.password = "Le mot de passe doit contenir au moins 6 caractères";
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -99,55 +99,55 @@ const LoginForm = () => {
     e.preventDefault();
     clearError();
     setFormErrors({});
-    
+
     // Validation côté client
     if (!validateForm()) {
       return;
     }
-    
+
     try {
       const result = await login(credentials);
-      
+
       if (result.success) {
         // Gérer le "Se souvenir de moi"
         if (rememberMe) {
-          localStorage.setItem('rememberedEmail', credentials.email);
+          localStorage.setItem("rememberedEmail", credentials.email);
         } else {
-          localStorage.removeItem('rememberedEmail');
+          localStorage.removeItem("rememberedEmail");
         }
-        
+
         // Redirection basée sur le rôle
         const user = result.user;
         switch (user.role) {
-          case 'admin':
-            navigate('/admin/dashboard');
+          case "admin":
+            navigate("/admin/dashboard");
             break;
-          case 'director':
-            navigate('/director/dashboard');
+          case "director":
+            navigate("/director/dashboard");
             break;
-          case 'animator':
-            navigate('/animator/dashboard');
+          case "animator":
+            navigate("/animator/dashboard");
             break;
           default:
-            navigate('/dashboard');
+            navigate("/dashboard");
         }
       }
     } catch (error) {
-      console.error('Erreur de connexion:', error);
+      console.error("Erreur de connexion:", error);
     }
   };
 
   // Gérer les changements dans les champs de saisie
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setCredentials(prev => ({
+    setCredentials((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
-    
+
     // Nettoyer l'erreur spécifique au champ
     if (formErrors[name]) {
-      setFormErrors(prev => {
+      setFormErrors((prev) => {
         const { [name]: removed, ...rest } = prev;
         return rest;
       });
@@ -161,7 +161,7 @@ const LoginForm = () => {
 
   // Gérer la touche "Entrée" pour soumettre le formulaire
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSubmit(e);
     }
   };
@@ -183,7 +183,7 @@ const LoginForm = () => {
             Connectez-vous à votre espace de travail
           </p>
         </div>
-        
+
         {/* Formulaire de connexion */}
         <Card className="p-8">
           <form onSubmit={handleSubmit} className="space-y-6" noValidate>
@@ -202,7 +202,7 @@ const LoginForm = () => {
                 </div>
               </div>
             )}
-            
+
             {/* Champ Email */}
             <div>
               <Input
@@ -217,55 +217,65 @@ const LoginForm = () => {
                 error={formErrors.email}
                 disabled={loading}
                 autoComplete="email"
-                className={formErrors.email ? 'border-red-300 focus:border-red-500' : ''}
+                className={
+                  formErrors.email ? "border-red-300 focus:border-red-500" : ""
+                }
               />
             </div>
-            
+
             {/* Champ Mot de passe */}
             <div>
-<div className="relative">
-  <Input
-    label="Mot de passe"
-    name="password"
-    type={showPassword ? 'text' : 'password'}
-    value={credentials.password}
-    onChange={handleChange}
-    onKeyPress={handleKeyPress}
-    required
-    placeholder="Votre mot de passe"
-    error={formErrors.password}
-    disabled={loading}
-    autoComplete="current-password"
-    className={formErrors.password ? 'border-red-300 focus:border-red-500 pr-10' : 'pr-10'}
-  />
-  <button
-    type="button"
-    tabIndex={-1}
-    onClick={togglePasswordVisibility}
-    style={{
-      position: "absolute",
-      top: "50%",
-      right: "0.75rem",
-      transform: "translateY(-8%)",
-      background: "none",
-      border: 0,
-      padding: 0,
-      margin: 0,
-      color: "#9ca3af",
-      cursor: "pointer",
-      height: "2rem",
-      width: "2rem",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center"
-    }}
-    disabled={loading}
-  >
-    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-  </button>
-</div>
+              <div className="relative">
+                <Input
+                  label="Mot de passe"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={credentials.password}
+                  onChange={handleChange}
+                  onKeyPress={handleKeyPress}
+                  required
+                  placeholder="Votre mot de passe"
+                  error={formErrors.password}
+                  disabled={loading}
+                  autoComplete="current-password"
+                  className={
+                    formErrors.password
+                      ? "border-red-300 focus:border-red-500 pr-10"
+                      : "pr-10"
+                  }
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={togglePasswordVisibility}
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    right: "0.75rem",
+                    transform: "translateY(-8%)",
+                    background: "none",
+                    border: 0,
+                    padding: 0,
+                    margin: 0,
+                    color: "#9ca3af",
+                    cursor: "pointer",
+                    height: "2rem",
+                    width: "2rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                  disabled={loading}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
             </div>
-            
+
             {/* Options */}
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -278,11 +288,14 @@ const LoginForm = () => {
                   disabled={loading}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                <label
+                  htmlFor="remember-me"
+                  className="ml-2 block text-sm text-gray-900"
+                >
                   Se souvenir de moi
                 </label>
               </div>
-              
+
               <div className="text-sm">
                 <button
                   type="button"
@@ -290,14 +303,14 @@ const LoginForm = () => {
                   disabled={loading}
                   onClick={() => {
                     // TODO: Implémenter la récupération de mot de passe
-                    alert('Fonctionnalité à venir');
+                    alert("Fonctionnalité à venir");
                   }}
                 >
                   Mot de passe oublié ?
                 </button>
               </div>
             </div>
-            
+
             {/* Bouton de connexion */}
             <Button
               type="submit"
@@ -318,34 +331,52 @@ const LoginForm = () => {
               )}
             </Button>
           </form>
-          
+
           {/* Informations supplémentaires */}
           <div className="mt-6 border-t border-gray-200 pt-6">
             <div className="text-center">
               <p className="text-xs text-gray-500">
-                En vous connectant, vous acceptez nos{' '}
-                <button className="text-blue-600 hover:text-blue-500 underline">
+                En vous connectant, vous acceptez nos{" "}
+                <Link
+                  to="/legal/terms-of-service"
+                  className="text-blue-600 hover:text-blue-500 underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   conditions d'utilisation
-                </button>
-                {' '}et notre{' '}
-                <button className="text-blue-600 hover:text-blue-500 underline">
+                </Link>{" "}
+                et notre{" "}
+                <Link
+                  to="/legal/privacy-policy"
+                  className="text-blue-600 hover:text-blue-500 underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   politique de confidentialité
-                </button>
+                </Link>
               </p>
             </div>
           </div>
         </Card>
-        
+
         {/* Informations de démonstration */}
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <Card className="p-4 bg-yellow-50 border-yellow-200">
             <h3 className="text-sm font-medium text-yellow-800 mb-2">
               Comptes de démonstration
             </h3>
             <div className="text-xs text-yellow-700 space-y-1">
-              <p><strong>Admin:</strong> admin@gardien-temps.com / password123</p>
-              <p><strong>Directeur:</strong> directeur@gardien-temps.com / password123</p>
-              <p><strong>Animateur:</strong> animateur1@gardien-temps.com / password123</p>
+              <p>
+                <strong>Admin:</strong> admin@gardien-temps.com / password123
+              </p>
+              <p>
+                <strong>Directeur:</strong> directeur@gardien-temps.com /
+                password123
+              </p>
+              <p>
+                <strong>Animateur:</strong> animateur1@gardien-temps.com /
+                password123
+              </p>
             </div>
           </Card>
         )}

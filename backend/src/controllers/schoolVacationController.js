@@ -338,7 +338,6 @@ exports.getAvailableSchoolYears = async (req, res) => {
 };
 
 
-// À ajouter dans schoolVacationController.js
 exports.getVacationsCalendar = async (req, res) => {
     try {
         const { zone, schoolYear, location } = req.query;
