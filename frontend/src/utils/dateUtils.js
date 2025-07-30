@@ -160,7 +160,7 @@ export const getCurrentYear = (yearType = DEFAULT_YEAR_TYPE) => {
   if (yearType === YEAR_TYPES.SCHOOL) {
     const schoolYear = currentMonth >= 8 ? currentYear : currentYear - 1;
     
-    // ✅ CORRIGER : Logs conditionnels pour éviter le spam
+    // Logs conditionnels pour éviter le spam
     if (Math.random() < 0.001) { // Log seulement 0.1% du temps
       console.log('🎓 getCurrentYear SCHOOL:', {
         dateActuelle: today.toLocaleDateString('fr-FR'),
