@@ -1,47 +1,86 @@
-```sql
-USERS (
-  #id: INTEGER,
-  email: VARCHAR(255) UNIQUE NOT NULL,
-  password: VARCHAR(255) NOT NULL,
-  first_name: VARCHAR(100) NOT NULL,
-  last_name: VARCHAR(100) NOT NULL,
-  role: ENUM('admin', 'director', 'animator') NOT NULL,
-  structure_id: INTEGER REFERENCES STRUCTURES(id),
-  active: BOOLEAN DEFAULT true,
-  created_at: TIMESTAMP,
-  updated_at: TIMESTAMP
-)
+STRUCTURE
+id_structure (CP)
+nom
+adresse
+code_postal
+ville
+zone_vacances_scolaires
+actif
 
-STRUCTURES (
-  #id: INTEGER,
-  name: VARCHAR(200) NOT NULL,
-  address: TEXT NOT NULL,
-  city: VARCHAR(100) NOT NULL,
-  postal_code: VARCHAR(5) NOT NULL,
-  school_vacation_zone: ENUM('A', 'B', 'C') NOT NULL,
-  phone: VARCHAR(20),
-  email: VARCHAR(255),
-  manager_name: VARCHAR(200),
-  manager_email: VARCHAR(255),
-  capacity: INTEGER,
-  active: BOOLEAN DEFAULT true,
-  created_at: TIMESTAMP,
-  updated_at: TIMESTAMP
-)
+UTILISATEUR
+id_utilisateur (CP)
+email
+mot_de_passe
+nom
+prenom
+telephone
+role
+type_contrat
+heures_hebdomadaires
+heures_annuelles
+date_debut_contrat
+date_fin_contrat
+actif
+#id_structure (CE)
 
-TIME_TRACKINGS (
-  #id: INTEGER,
-  user_id: INTEGER REFERENCES USERS(id) NOT NULL,
-  structure_id: INTEGER REFERENCES STRUCTURES(id) NOT NULL,
-  date: DATE NOT NULL,
-  clock_in: TIME,
-  clock_out: TIME,
-  break_duration: INTEGER DEFAULT 0,
-  total_hours: DECIMAL(4,2),
-  status: ENUM('present', 'absent', 'incomplete') DEFAULT 'incomplete',
-  notes: TEXT,
-  created_at: TIMESTAMP,
-  updated_at: TIMESTAMP,
-  UNIQUE(user_id, date)
-)
-```
+POINTAGE
+id_pointage (CP)
+date_heure
+type_pointage
+commentaire
+valide
+#id_utilisateur (CE)
+#id_validateur (CE) (peut être nul, fait référence à TILISATEUR)
+
+PLANNING_PREVISIONNEL
+id_planning (CP)
+date
+heure_debut
+heure_fin
+pause_debut
+pause_fin
+commentaire
+est_modele
+#id_utilisateur (CE)
+
+JOURNAL_ACTIVITE
+id_journal (CP)
+date_action
+type_action
+description
+ip_address
+#id_utilisateur (CE)
+
+PROJET
+id_projet (CP)
+nom
+description
+date_debut
+date_fin
+statut
+#id_structure (CE)
+
+TACHE
+id_tache (CP)
+nom
+description
+priorite
+temps_estime
+date_debut
+date_echeance
+statut
+recurrence
+#id_projet (CE)
+
+EST_ASSIGNE (Table associative)
+#id_utilisateur (CP, CE)
+#id_tache (CP, CE)
+temps_travaille
+date_travail
+VACANCES_SCOLAIRES
+id_vacances (CP)
+zone
+nom_periode
+date_debut
+date_fin
+annee_scolaire

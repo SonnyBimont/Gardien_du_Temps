@@ -15,7 +15,7 @@ CONTIENT, 11 PROJET, 1N TACHE
 
 JOURNAL_ACTIVITE: date_action, type_action, description, ip_address
 STRUCTURE: nom, adresse, code_postal, ville, zone_vacances_scolaires, actif
-DÉPEND, 11 STRUCTURE, 1N PROJET
+DÉPEND, 11 STRUCTURE, 0N PROJET
 PROJET: nom, description, date_debut, date_fin, statut
 
 // english // 
@@ -37,5 +37,5 @@ CONTAINS, 11 PROJECT, 1N TASK
 
 ACTIVITY_LOG: action_date, action_type, description, ip_address
 STRUCTURE: name, address, postal_code, city, school_vacation_zone, active
-DEPENDS_ON, 11 STRUCTURE, 1N PROJECT
+DEPENDS_ON, 11 STRUCTURE, 0N PROJECT
 PROJECT: name, description, start_date, end_date, status

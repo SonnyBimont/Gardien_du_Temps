@@ -1,4 +1,3 @@
-# ✅ VERSION OPTIMISÉE
 FROM node:18-alpine
 WORKDIR /app
 

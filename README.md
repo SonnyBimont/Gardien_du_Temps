@@ -1,112 +1,143 @@
-## Projet d’Application – Gestion du Temps de Travail pour Structures Multi-sites
+# 🕒 Gardien du Temps
+### Application de Gestion du Temps de Travail Multi-sites
+
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](https://docker.com)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green?logo=node.js)](https://nodejs.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-blue?logo=postgresql)](https://postgresql.org)
 
 ---
 
-### 🌟 Objectif du projet
-
-Créer une application web dédiée à la gestion du temps de travail, permettant aux directeurs de structure de suivre et automatiser les heures de travail de leur équipe (animateurs), tout en facilitant leur propre gestion horaire.
-
+# ⚡ Démarrage immédiat
+# Une seule commande pour tout lancer
+```
+git clone [REPO_URL] && cd Gardien_du_Temps && docker-compose -f docker-compose.dev.yml up -d
+```
+-   🎉 Votre application est maintenant accessible sur http://localhost:3001
 ---
 
-### 👥 Cibles utilisateurs
+## 🎯 **À PROPOS**
 
-* **Administrateurs globaux** : pour la supervision générale de l’application.
-* **Directeurs de structure** : pour gérer les horaires de leur structure.
-* **Animateurs** : pour pointer leurs heures de travail de façon simple et rapide.
+Application web pour la gestion du temps de travail dans des structures multi-sites. Permet aux directeurs de pointer et suivre les horaires, établir planning prévisionnel et consulter heures travaillées sur objectif.
+Aussi, de leurs équipes et aux animateurs de pointer facilement leurs heures.
 
+### **👥 Utilisateurs cibles**
+- **Administrateurs** : Supervision globale
+- **Directeurs** : Pointage - Planning / Gestion des équipes par structure  
+- **Animateurs** : Pointage simple et rapide
 ---
 
-### 🏢 Organisation des utilisateurs
+# 🚀 **DÉMARRAGE RAPIDE**
 
-* L’application devra permettre la gestion de **plusieurs structures indépendantes**.
-* Chaque structure regroupe :
+## ⚡ Installation Express
 
-  * **1 à X directeurs**
-  * **XX animateurs**
+### 1. Cloner le projet
+```bash
+git clone https://github.com/[USERNAME]/Gardien_du_Temps.git
+cd Gardien_du_Temps
+```
 
-🔐 **Confidentialité renforcée** :
+### 2. Lancer avec Docker (RECOMMANDÉ)
+```bash
+docker-compose -f docker-compose.dev.yml up -d
+```
 
-* Chaque directeur ne peut visualiser que :
+### 3. Accéder à l'application
+#### Frontend : http://localhost:3001
+#### Backend API : http://localhost:3000/api
+#### Base de données : localhost:5432
+#### Swagger : http://localhost:3000/api-docs
 
-  * **Ses propres horaires**
-  * **Les horaires des animateurs de sa structure uniquement**
-* Les directeurs d’une même structure **ne peuvent pas consulter les horaires des autres directeurs**.
+# 🛠️ **DÉVELOPPEMENT LOCAL**
 
+## 🔧 Installation manuelle
+
+### Backend
+```bash
+cd backend
+npm install
+cp .env.example .env
+npm run dev
+```
+
+### Frontend (nouveau terminal)
+```bash
+cd frontend  
+npm install
+npm start
+```
+
+### 🗄️ Base de données (PostgreSQL requise)
+#### Option 1: PostgreSQL avec Docker
+```bash
+docker run --name postgres-gardien \
+  -e POSTGRES_DB=db \
+  -e POSTGRES_USER=user \
+  -e POSTGRES_PASSWORD=password \
+  -p 5432:5432 -d postgres:14-alpine
+```
+
+#### Option 2: Installation locale PostgreSQL
+- Créer la base : [DB]
+- User: [USER] / Password: [PASSWORD]
 ---
 
-### 🕒 Fonctionnalités principales
+# 📱 **TECHNOLOGIES**
 
-#### 🔐 Authentification & sécurité
+## 🎨 Frontend
+- **React 18** : Interface utilisateur moderne
+- **Tailwind CSS** : Styles utilitaires rapides
+- **Zustand** : Gestion d'état légère
+- **Axios** : Requêtes API optimisées
 
-* Connexion sécurisée avec gestion des rôles (admin, directeur, animateur)
-* Chiffrement des données sensibles
-* Journalisation des accès et actions (audit log)
+## ⚙️ Backend
+- **Node.js** : Runtime JavaScript performant
+- **Express.js** : Framework web minimaliste
+- **Sequelize** : ORM PostgreSQL robuste
+- **JWT** : Authentification sans état
 
-#### 📲 Pointage des temps
+## 🗄️ Base de données
+- **PostgreSQL** : Base relationnelle fiable
+-  **Sequelize** : ORM
+- **Migrations** : Versionning du schéma
+- **Index** : Optimisations performances
 
-* Arrivée (début de journée)
-* Pause méridienne (début et fin)
-* Reprise d’activité
-* Départ (fin de journée)
-* Possibilité de pointer plusieurs fois dans la journée
+## 🐳 DevOps
+- **Docker** : Containerisation multi-environnement
+- **GitHub Actions** : CI/CD automatisé
+- **Nginx** : Proxy reverse production
 
-#### 🗓️ Prévisionnel & objectifs
+--- 
 
-* Chaque directeur peut saisir son **prévisionnel horaire annuel** (par semaine, période ou mois)
-* Possibilité de définir un **objectif horaire** :
+# 🔑 **FONCTIONNALITÉS PRINCIPALES**
 
-  * **Annuel ou mensuel**
-  * Paramétrable en fonction du **type de contrat**
-* Possibilité de créer des **modèles de semaine ou de mois** pour simplifier la création du planning
+## 🔐 Authentification
+- Connexion sécurisée JWT
+- Gestion des rôles (Admin/Directeur/Animateur)
+- Permissions par structure
 
-#### 📈 Suivi et historique
+## ⏰ Pointage
+- Arrivée/Départ simple
+- Pauses méridienne
+- Pointages multiples journaliers
+- Historique complet
 
-* Visualisation des horaires pointés par jour/semaine/mois
-* Calcul automatique des heures :
+## 📊 Suivi
+- Tableaux de bord personnalisés
+- Calculs automatiques (jour/semaine/mois)
+- Exports PDF/Excel
 
-  * Journalières, hebdomadaires, mensuelles
-  * Comparaison avec les objectifs définis
-* Alerte en cas de :
-
-  * Dépassement
-  * Sous-réalisation
-  * Oubli de pointage
-
-#### 💼 Nouveau module – Projets & tâches annuelles
-
-* Création de **projets annuels** (ex. : "Événements d’été", "Animations trimestrielles")
-* Définition de **tâches récurrentes** (hebdomadaires, mensuelles, périodiques)
-* Attribution aux directeurs ou animateurs
-* Suivi de l’avancement (calendrier + kanban)
-* Association possible du **temps estimé / temps réel** (intégration avec le pointage)
-
-#### 🏛️ Gestion des vacances scolaires
-
-* Import automatique des vacances scolaires selon la zone géographique du centre
-
+## 🏢 Multi-structures
+- Cloisonnement des données
+- Gestion indépendante par site
+- Confidentialité renforcée
 ---
 
-### 🧑‍💼 Espace directeur
+# 🛡️ **SÉCURITÉ**
 
-* Gestion des horaires de ses animateurs
-* Suivi de ses propres horaires
-* Saisie et ajustement du prévisionnel
-* Export des relevés de temps (PDF / Excel)
-* Validation ou commentaire des anomalies
-
-### ⚙️ Espace administrateur
-
-* Gestion des structures, utilisateurs, contrats
-* Suivi consolidé de l’activité
-* Paramétrage des règles (contrats, seuils, alertes)
-* Accès aux exports globaux
-
----
-
-### 📱 Contraintes techniques
-
-* Application **web responsive** (mobile, tablette, PC)
-* Interface fluide, ergonomique et intuitive
-* Gestion des permissions avec cloisonnement des données
-* Architecture scalable et évolutive
-* Prévision d’évolutions futures (gestion des congés, absences, intégration paie, etc.)
+## 🔒 Mesures implémentées
+- **JWT** : Tokens sécurisés avec expiration
+- **CORS** : Origines autorisées uniquement
+- **Helmet** : Headers de sécurité automatiques
+- **Validation** : Données d'entrée strictes
+- **Chiffrement** : Mots de passe hashés bcrypt
+- **Audit** : Logs détaillés des actions

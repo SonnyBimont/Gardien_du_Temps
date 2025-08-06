@@ -6,8 +6,8 @@ skinparam usecase {
   BorderColor DarkBlue
 }
 skinparam actor {
-  BackgroundColor LightYellow
-  BorderColor Gold
+  BackgroundColor blue
+  BorderColor DarkBlue
 }
 skinparam rectangle {
   BackgroundColor White
@@ -36,15 +36,13 @@ rectangle "Fonctionnalités 'Gardien du Temps'" {
   }
   
   rectangle "Gestion des Horaires" {
-    usecase "Gérer les horaires\ndes animateurs" as GererHorairesAnimateurs
-    usecase "Définir le prévisionnel horaire" as Previsionnel
+    usecase "Suivre les horaires\ndes animateurs" as GererHorairesAnimateurs
+    usecase "Définir un prévisionnel horaire" as Previsionnel
     usecase "Définir les objectifs horaires" as Objectifs
   }
   
-  rectangle "Suivi et Rapports" {
-    usecase "Visualiser le suivi\ndes horaires" as Suivi
+  rectangle "Export Rapports" {
     usecase "Exporter les données" as Export
-    usecase "Gérer les alertes" as Alertes
   }
   
   rectangle "Projets & Tâches" {
@@ -55,6 +53,10 @@ rectangle "Fonctionnalités 'Gardien du Temps'" {
   rectangle "Vacances Scolaires" {
     usecase "Gérer les calendriers\nde vacances" as Vacances
   }
+    rectangle "Structures" {
+    usecase "Gérer sa structure" as Structure
+    usecase "Créer/Modifier ses animateurs" as Animateurs
+  }
 }
 
 ' Relations Administrateur
@@ -63,7 +65,6 @@ Admin --> GererStructures
 Admin --> GererUtilisateurs
 Admin --> Parametrage
 Admin --> Export
-Admin --> Vacances
 
 ' Relations Directeur
 Directeur --> Auth
@@ -73,11 +74,12 @@ Directeur --> ConsulterPointages
 Directeur --> GererHorairesAnimateurs
 Directeur --> Previsionnel
 Directeur --> Objectifs
-Directeur --> Suivi
 Directeur --> Export
-Directeur --> Alertes
 Directeur --> Projets
 Directeur --> Taches
+Directeur --> Vacances
+Directeur --> Structure
+Directeur --> Animateurs
 
 ' Relations Animateur
 Animateur --> Auth

@@ -12,7 +12,6 @@
  * 
  * ⚠️ PROBLÈMES DE SÉCURITÉ :
  * - Logs sensibles (token en clair)
- * - Pas de rate limiting
  * - Cache simple sans invalidation
  */
 
